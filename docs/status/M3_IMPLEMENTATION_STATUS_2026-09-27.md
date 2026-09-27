@@ -25,13 +25,19 @@ M3 hardening adds:
 
 ## Automated evidence
 
-The M3 branch must pass:
+Validated on branch head `701c46b5ca31ba9af355fd30fde89ceeeba5fae9`, GitHub Actions run
+`36337004128`:
 
-- `:app:assembleDebug`;
-- `:spikes:geckoview:assembleDebug` and spike unit tests;
-- `:browser:runtime:testDebugUnitTest`;
-- `:browser:shell:testDebugUnitTest`;
-- the existing pure-domain/architecture gates.
+- `:app:assembleDebug` — PASS;
+- `:spikes:geckoview:assembleDebug` and spike unit tests — PASS;
+- `:browser:runtime:testDebugUnitTest` — PASS;
+- `:browser:shell:testDebugUnitTest` — PASS;
+- existing pure-domain/architecture gates — PASS;
+- APK artifact upload — PASS.
+
+The run produced artifact `taho-browser-m3-debug` (artifact id `10937710935`) for physical-device
+acceptance. This build evidence proves compilation/test execution only; it does not substitute for
+the physical D3/D4/D5/D7/D15 results.
 
 ## Physical-device exit gate
 
