@@ -16,8 +16,10 @@ object NavigationInput {
 
         val explicitScheme = SCHEME.find(input)?.groupValues?.get(1)?.lowercase()
         if (explicitScheme != null) {
-            return when (explicitScheme) {
-                "http", "https" -> input
+            return when {
+                explicitScheme == "http" || explicitScheme == "https" -> input
+                explicitScheme == "localhost" && LOCALHOST_WITH_PORT.matches(input) ->
+                    "https://$input"
                 else -> search(input)
             }
         }
@@ -50,6 +52,10 @@ object NavigationInput {
     }
 
     private val SCHEME = Regex("^([a-zA-Z][a-zA-Z0-9+.-]*):")
+    private val LOCALHOST_WITH_PORT = Regex(
+        """^localhost:\d+(?:[/?#].*)?$""",
+        RegexOption.IGNORE_CASE,
+    )
     private val IPV4 = Regex(
         """^(?:\d{1,3}\.){3}\d{1,3}$""",
     )
