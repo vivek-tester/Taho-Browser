@@ -140,3 +140,40 @@ the required two-app/device M4 exit condition.
 
 Do not start M5 durability/persistence work until the M4 gate state above is explicitly resolved or
 the project chooses to continue source work while carrying the documented device dependency.
+
+
+## M5 — Capture durability and supported request types
+
+**Source/automated status:** complete candidate; physical/device exit evidence still required.
+
+Implemented:
+
+- Room-backed capture sessions, transactions and encrypted body metadata;
+- AES-GCM capture encryption with Android Keystore production implementation;
+- inline encrypted bodies and encrypted file-backed bodies above the inline threshold;
+- immediate SESSION_ONLY deletion on explicit session close, including file-backed ciphertext;
+- retention sweep for abandoned session-only data with file cleanup;
+- private capture memory-only/non-persistence;
+- interrupted STARTED recovery to PARTIAL;
+- committed-record survival across repository/database recreation;
+- storage degradation states for key invalidation, low storage, missing/corrupt bodies and database failures;
+- separate capture-data clear operation with no browser-store dependency;
+- relevance classification, default relevance filtering and search/method/state/tab filters;
+- redirect evidence;
+- GraphQL, form, multipart and binary body classification with explicit unsupported/limited states;
+- COMPLETE/PARTIAL/TRUNCATED/UNAVAILABLE/NOT_APPLICABLE presentation states;
+- durable records surfaced after lifecycle/process recovery without pretending re-transfer support;
+- committed Room v1 schema checked in CI.
+
+Automated evidence is required on the final M5 branch/main head before merge.
+
+Still required for the full M5 exit gate:
+
+- physical process-death demonstration with committed records and interrupted-record PARTIAL labeling;
+- device evidence for Keystore/key-loss behavior;
+- device low-storage behavior;
+- unresolved-attribution durable-view evidence;
+- private-session non-persistence evidence on device;
+- measured Gecko support confirmation for the request-body types advertised as supported/limited.
+
+M6 secure large-payload handoff is not included.

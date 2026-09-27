@@ -18,7 +18,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
+import app.taho.browser.capture.domain.CaptureQuery
+import app.taho.browser.capture.domain.CaptureRepositoryResult
+import app.taho.browser.capture.domain.CaptureSessionKind
+import app.taho.browser.capture.domain.CaptureSessionLifecycle
+import app.taho.browser.capture.domain.DurableCaptureSession
+import app.taho.browser.capture.domain.RelevanceClassifier
+import app.taho.browser.capture.domain.RetentionPolicy
 import app.taho.browser.capture.domain.SecretPolicy
+import app.taho.browser.capture.domain.StorageDegradationReason
+import app.taho.browser.capture.persist.CaptureMaintenance
+import app.taho.browser.capture.persist.RoomCaptureRepository
 import app.taho.browser.observation.M4CaptureRuntime
 import app.taho.browser.observation.M4CaptureRuntimeSnapshot
 import app.taho.browser.observation.ObservedBrowserSession
@@ -46,6 +56,7 @@ import app.taho.browser.transfer.core.M4PreparationResult
 class MainActivity : ComponentActivity() {
     private lateinit var controller: BrowserRuntimeController
     private lateinit var captureRuntime: M4CaptureRuntime
+    private lateinit var captureRepository: RoomCaptureRepository
     private var activeAndroidPermissionRequestId: String? = null
     private var activeAndroidPermissions: List<String> = emptyList()
     private var transferNotice by mutableStateOf<String?>(null)
@@ -71,6 +82,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         controller = BrowserRuntimeStore.get(this)
+        captureRepository = CapturePersistenceStore.repository(this)
+        CaptureMaintenance.schedule(this)
         captureRuntime = M4CaptureRuntime(
             runtime = GeckoRuntimeHolder.get(this),
             gate = if (BuildConfig.M1_ATTRIBUTION_VERIFIED) {
@@ -80,6 +93,14 @@ class MainActivity : ComponentActivity() {
             },
             appVersion = BuildConfig.VERSION_NAME,
             engineVersion = BuildConfig.GECKOVIEW_VERSION,
+            captureSessionId = CapturePersistenceStore.captureSessionId(),
+            sessionInitializer = ::initializeCaptureSession,
+            durableSink = captureRepository::commit,
+            historyLoader = {
+                captureRepository.list(
+                    CaptureQuery(limit = 500),
+                )
+            },
         )
         captureRuntime.start()
 
@@ -162,7 +183,9 @@ class MainActivity : ComponentActivity() {
                     isPrivate = snapshot.isPrivate,
                     canGoBack = snapshot.canGoBack,
                     canGoForward = snapshot.canGoForward,
-                    notice = transferNotice ?: snapshot.notice,
+                    notice = transferNotice
+                        ?: captureSnapshot.storageDegradedReason?.let(::storageNotice)
+                        ?: snapshot.notice,
                     sitePermission = snapshot.sitePermission?.let { permission ->
                         val copy = permissionCopy(permission.kind)
                         SitePermissionUiState(
@@ -236,6 +259,42 @@ class MainActivity : ComponentActivity() {
         super.onStop()
     }
 
+    override fun onDestroy() {
+        captureRuntime.close()
+        super.onDestroy()
+    }
+
+    private fun initializeCaptureSession(
+        sessionId: String,
+    ): CaptureRepositoryResult<Unit> {
+        val now = System.currentTimeMillis()
+
+        when (
+            val closed = captureRepository.closeAbandonedActiveSessions(
+                currentSessionId = sessionId,
+                nowEpochMs = now,
+            )
+        ) {
+            is CaptureRepositoryResult.Degraded -> return closed
+            is CaptureRepositoryResult.Success -> Unit
+        }
+
+        when (val recovered = captureRepository.markInterruptedPartial(now)) {
+            is CaptureRepositoryResult.Degraded -> return recovered
+            is CaptureRepositoryResult.Success -> Unit
+        }
+
+        return captureRepository.upsertSession(
+            DurableCaptureSession(
+                id = sessionId,
+                kind = CaptureSessionKind.EPHEMERAL,
+                lifecycle = CaptureSessionLifecycle.ACTIVE,
+                retention = RetentionPolicy.SESSION_ONLY,
+                createdAtEpochMs = now,
+            ),
+        )
+    }
+
     private fun syncCaptureSessions(snapshot: BrowserSnapshot) {
         val byId = snapshot.tabs.associateBy { it.id }
         val observed = mutableListOf<ObservedBrowserSession>()
@@ -254,8 +313,12 @@ class MainActivity : ComponentActivity() {
     private fun captureUiRequests(
         captureSnapshot: M4CaptureRuntimeSnapshot,
         selectedTabId: String,
-    ): List<M4CaptureRequestUiState> =
-        captureSnapshot.requests
+    ): List<M4CaptureRequestUiState> {
+        val liveTransactionIds = captureSnapshot.requests
+            .map { it.transactionId }
+            .toSet()
+
+        val live = captureSnapshot.requests
             .filter { it.tabId == selectedTabId }
             .mapNotNull { request ->
                 val display = captureRuntime.display(request.transferId) ?: return@mapNotNull null
@@ -277,16 +340,52 @@ class MainActivity : ComponentActivity() {
                         M4CompletenessUi.valueOf(display.requestBodyCompleteness.name),
                     responseBodyCompleteness =
                         M4CompletenessUi.valueOf(display.responseBodyCompleteness.name),
+                    bodyRepresentation = display.bodyRepresentation?.name,
+                    bodyLimitation = display.bodyLimitation,
                     sensitiveCount = display.sensitiveCount,
                     fromPrivateSession = request.fromPrivateSession,
-                    transferBlockedReason = if (request.reviewRequired) {
-                        "This request needs additional sensitive-data review before transfer."
-                    } else {
-                        null
+                    transferBlockedReason = when {
+                        request.reviewRequired ->
+                            display.bodyLimitation
+                                ?: "This request needs additional sensitive-data review before transfer."
+                        else -> null
                     },
                     explicitPolicyAllowed = false,
                 )
             }
+
+        val durable = captureSnapshot.persistedRecords
+            .asSequence()
+            .filter { it.tahoTabId == selectedTabId }
+            .filter { it.id !in liveTransactionIds }
+            .filter { RelevanceClassifier.isRelevantByDefault(it.relevance) }
+            .map { stored ->
+                M4CaptureRequestUiState(
+                    id = "stored:" + stored.id,
+                    method = stored.method,
+                    url = stored.url,
+                    status = stored.status,
+                    durationMs = null,
+                    category = stored.relevance.category.name,
+                    headers = emptyList(),
+                    requestBodyCompleteness =
+                        M4CompletenessUi.valueOf(stored.requestBodyCompleteness.name),
+                    responseBodyCompleteness =
+                        M4CompletenessUi.valueOf(stored.responseBodyCompleteness.name),
+                    bodyRepresentation = stored.requestBodyRepresentation?.name,
+                    bodyLimitation = stored.bodyLimitation,
+                    sensitiveCount = 0,
+                    fromPrivateSession = false,
+                    transferBlockedReason =
+                        "Stored capture survived lifecycle/process recovery. " +
+                            "Direct re-transfer from durable ciphertext is deferred to M6.",
+                    explicitPolicyAllowed = false,
+                )
+            }
+            .toList()
+
+        return live + durable
+    }
 
     private fun sendToTaho(
         transferId: String,
@@ -359,6 +458,22 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    private fun storageNotice(reason: StorageDegradationReason): String =
+        when (reason) {
+            StorageDegradationReason.KEY_INVALIDATED ->
+                "Captured-request encryption key is unavailable. Browsing still works; stored capture data must be cleared."
+            StorageDegradationReason.LOW_STORAGE ->
+                "Capture storage is low. New request bodies may be unavailable."
+            StorageDegradationReason.BODY_FILE_MISSING ->
+                "A captured body file is missing; metadata is still available."
+            StorageDegradationReason.KEY_ROTATION ->
+                "A captured body cannot be decrypted with the current key."
+            StorageDegradationReason.CORRUPT_RECORD ->
+                "Some captured request data is unreadable; browsing is unaffected."
+            StorageDegradationReason.DATABASE_CORRUPT ->
+                "Captured-request storage is corrupt. Browsing remains available."
+        }
 
     private fun permissionCopy(kind: BrowserSitePermissionKind): Pair<String, String> =
         when (kind) {

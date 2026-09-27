@@ -80,13 +80,33 @@ sealed interface ProductionObservationMessage {
         val eventId: String,
         val requestId: String,
         val extTabId: Int,
-        val bytes: ByteArray,
+        val bytes: ByteArray = ByteArray(0),
+        val formData: Map<String, List<String>> = emptyMap(),
     ) : ProductionObservationMessage {
         override val type: String = "TX_REQ_BODY"
 
         override fun toString(): String =
             "TxRequestBody(conn=$connectionId,seq=$sequence,eventId=$eventId," +
-                "requestId=$requestId,extTabId=$extTabId,bytes=" + bytes.size + ")"
+                "requestId=$requestId,extTabId=$extTabId,bytes=" + bytes.size +
+                ",formFields=" + formData.size + ")"
+    }
+
+    data class TxRedirect(
+        val connectionId: String,
+        val sequence: Long,
+        val eventId: String,
+        val requestId: String,
+        val extTabId: Int,
+        val statusCode: Int,
+        val redirectUrl: String,
+        val reportedAt: Double?,
+    ) : ProductionObservationMessage {
+        override val type: String = "TX_REDIRECT"
+
+        override fun toString(): String =
+            "TxRedirect(conn=$connectionId,seq=$sequence,eventId=$eventId," +
+                "requestId=$requestId,extTabId=$extTabId,statusCode=$statusCode," +
+                "redirectUrl=<redacted>)"
     }
 
     data class TxResponseStart(
@@ -239,8 +259,20 @@ object ProductionObservationProtocol {
                 )
 
                 "TX_REQ_BODY" -> {
-                    val decoded = Base64.getDecoder().decode(json.getString("base64"))
-                    require(decoded.size <= IngressMessageType.TX_REQ_BODY.payloadCapBytes)
+                    val bodyKind = json.optString("bodyKind", "RAW")
+                    val decoded = if (bodyKind == "RAW") {
+                        Base64.getDecoder().decode(json.getString("base64")).also {
+                            require(it.size <= IngressMessageType.TX_REQ_BODY.payloadCapBytes)
+                        }
+                    } else {
+                        ByteArray(0)
+                    }
+                    val formData = if (bodyKind == "FORM") {
+                        parseFormData(json)
+                    } else {
+                        emptyMap()
+                    }
+                    require(decoded.isNotEmpty() || formData.isNotEmpty())
                     ProductionObservationMessage.TxRequestBody(
                         connectionId = requiredId(json, "conn"),
                         sequence = positiveSequence(json),
@@ -248,6 +280,22 @@ object ProductionObservationProtocol {
                         requestId = requiredId(json, "reqId"),
                         extTabId = extTabId(json),
                         bytes = decoded,
+                        formData = formData,
+                    )
+                }
+
+                "TX_REDIRECT" -> {
+                    val statusCode = json.getInt("statusCode")
+                    require(statusCode in 300..399)
+                    ProductionObservationMessage.TxRedirect(
+                        connectionId = requiredId(json, "conn"),
+                        sequence = positiveSequence(json),
+                        eventId = requiredId(json, "id"),
+                        requestId = requiredId(json, "reqId"),
+                        extTabId = extTabId(json),
+                        statusCode = statusCode,
+                        redirectUrl = requiredHttpUrl(json.getString("redirectUrl")),
+                        reportedAt = json.optNullableDouble("ts"),
                     )
                 }
 
@@ -303,6 +351,7 @@ object ProductionObservationProtocol {
             "TX_START",
             "TX_REQ_HEADERS",
             "TX_REQ_BODY",
+            "TX_REDIRECT",
             "TX_RESP_START",
             "TX_COMPLETE",
             "TX_ERROR" -> ObservationLane.BULK
@@ -316,6 +365,7 @@ object ProductionObservationProtocol {
             "TX_START" -> IngressMessageType.TX_START.payloadCapBytes
             "TX_REQ_HEADERS" -> IngressMessageType.TX_REQ_HEADERS.payloadCapBytes
             "TX_REQ_BODY" -> IngressMessageType.TX_REQ_BODY.payloadCapBytes
+            "TX_REDIRECT" -> IngressMessageType.TX_REDIRECT.payloadCapBytes
             "TX_RESP_START" -> IngressMessageType.TX_RESP_START.payloadCapBytes
             "TX_COMPLETE" -> IngressMessageType.TX_COMPLETE.payloadCapBytes
             "TX_ERROR" -> IngressMessageType.TX_ERROR.payloadCapBytes
@@ -353,6 +403,31 @@ object ProductionObservationProtocol {
                 add(ProductionObservationMessage.HeaderValue(name, value))
             }
         }
+    }
+
+    private fun parseFormData(json: JSONObject): Map<String, List<String>> {
+        val array = json.optJSONArray("form") ?: return emptyMap()
+        require(array.length() <= 200)
+        val result = linkedMapOf<String, List<String>>()
+        repeat(array.length()) { index ->
+            val item = array.getJSONObject(index)
+            val name = item.getString("name")
+            require(name.isNotBlank() && name.length <= MAX_HEADER_NAME_CHARS)
+            val values = item.optJSONArray("values")
+            val parsed = buildList {
+                if (values != null) {
+                    require(values.length() <= 32)
+                    repeat(values.length()) { valueIndex ->
+                        val value = values.getString(valueIndex)
+                        require(value.length <= MAX_HEADER_VALUE_CHARS)
+                        require(!containsControl(value))
+                        add(value)
+                    }
+                }
+            }
+            result[name] = parsed
+        }
+        return result
     }
 
     private fun containsControl(value: String): Boolean =

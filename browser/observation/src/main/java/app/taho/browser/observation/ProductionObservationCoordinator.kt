@@ -27,6 +27,7 @@ sealed interface ProductionObservationEvent {
         val isPrivate: Boolean?,
         val message: ProductionObservationMessage,
         val sequenceGap: Boolean,
+        val targetHost: String? = null,
     ) : ProductionObservationEvent {
         override fun toString(): String =
             "Bulk(tahoTabId=$tahoTabId,isPrivate=$isPrivate,type=" + message.type +
@@ -219,6 +220,8 @@ class ProductionObservationCoordinator(
                 Triple(message.connectionId, message.sequence, message.extTabId)
             is ProductionObservationMessage.TxRequestBody ->
                 Triple(message.connectionId, message.sequence, message.extTabId)
+            is ProductionObservationMessage.TxRedirect ->
+                Triple(message.connectionId, message.sequence, message.extTabId)
             is ProductionObservationMessage.TxResponseStart ->
                 Triple(message.connectionId, message.sequence, message.extTabId)
             is ProductionObservationMessage.TxComplete ->
@@ -258,9 +261,13 @@ class ProductionObservationCoordinator(
                 isPrivate = binding?.isPrivate,
                 message = message,
                 sequenceGap = gap,
+                targetHost = binding?.committedUrl?.invoke()?.let(::hostOf),
             ),
         )
     }
+
+    private fun hostOf(raw: String): String? =
+        runCatching { URI(raw).host?.lowercase() }.getOrNull()
 
     private fun sameOrigin(expected: String?, actual: String): Boolean {
         val left = origin(expected) ?: return false

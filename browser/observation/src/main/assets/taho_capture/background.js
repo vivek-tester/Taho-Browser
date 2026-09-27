@@ -103,15 +103,33 @@ browser.webRequest.onBeforeRequest.addListener(
       ts: Number.isFinite(details.timeStamp) ? details.timeStamp : null
     }));
 
-    const raw = details.requestBody && details.requestBody.raw;
-    if (Array.isArray(raw) && raw.length === 1 && raw[0] && raw[0].bytes) {
-      try {
-        const encoded = bytesToBase64(raw[0].bytes);
-        if (encoded.length <= 240000) {
-          emit("TX_REQ_BODY", Object.assign(base(details), { base64: encoded }));
+    const requestBody = details.requestBody || null;
+    const formData = requestBody && requestBody.formData;
+    if (formData && typeof formData === "object") {
+      const form = Object.keys(formData).slice(0, 200).map((name) => ({
+        name: String(name).slice(0, 256),
+        values: Array.isArray(formData[name])
+          ? formData[name].slice(0, 32).map((value) => String(value).slice(0, 16384))
+          : []
+      }));
+      emit("TX_REQ_BODY", Object.assign(base(details), {
+        bodyKind: "FORM",
+        form
+      }));
+    } else {
+      const raw = requestBody && requestBody.raw;
+      if (Array.isArray(raw) && raw.length === 1 && raw[0] && raw[0].bytes) {
+        try {
+          const encoded = bytesToBase64(raw[0].bytes);
+          if (encoded.length <= 240000) {
+            emit("TX_REQ_BODY", Object.assign(base(details), {
+              bodyKind: "RAW",
+              base64: encoded
+            }));
+          }
+        } catch (_) {
+          // Capability/unsupported bodies remain UNAVAILABLE natively.
         }
-      } catch (_) {
-        // Capability/unsupported bodies remain UNAVAILABLE natively.
       }
     }
   },
@@ -159,6 +177,17 @@ try {
     filter
   );
 }
+
+browser.webRequest.onBeforeRedirect.addListener(
+  (details) => {
+    emit("TX_REDIRECT", Object.assign(base(details), {
+      statusCode: details.statusCode,
+      redirectUrl: String(details.redirectUrl || ""),
+      ts: Number.isFinite(details.timeStamp) ? details.timeStamp : null
+    }));
+  },
+  filter
+);
 
 browser.webRequest.onCompleted.addListener(
   (details) => {

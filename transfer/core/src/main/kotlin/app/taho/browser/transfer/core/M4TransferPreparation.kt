@@ -12,6 +12,7 @@ import app.taho.browser.capture.domain.SecretPolicy
 import app.taho.browser.capture.domain.SecretPolicyDefaults
 import app.taho.browser.capture.domain.SecretRef
 import app.taho.browser.contract.BodyEncoding
+import app.taho.browser.contract.BodyRepresentation
 import app.taho.browser.contract.CaptureCompleteness
 import app.taho.browser.contract.Completeness
 import app.taho.browser.contract.ContractLimits
@@ -63,6 +64,8 @@ data class M4CapturedRequest(
     val reviewRequired: Boolean,
     val capturedAt: Long,
     val redirectCount: Int,
+    val bodyRepresentation: BodyRepresentation? = body?.representation,
+    val bodyLimitation: String? = null,
     val observation: ObservationSource = ObservationSource.ENGINE,
 )
 
@@ -80,6 +83,8 @@ data class M4DisplayRequest(
     val headers: List<M4DisplayHeader>,
     val requestBodyCompleteness: Completeness,
     val responseBodyCompleteness: Completeness,
+    val bodyRepresentation: BodyRepresentation?,
+    val bodyLimitation: String?,
     val sensitiveCount: Int,
 )
 
@@ -138,6 +143,8 @@ object M4TransferPreparer {
             headers = displayHeaders,
             requestBodyCompleteness = input.completeness.requestBody,
             responseBodyCompleteness = input.completeness.responseBody,
+            bodyRepresentation = input.bodyRepresentation,
+            bodyLimitation = input.bodyLimitation,
             sensitiveCount = input.secretAssessment.findings.size,
         )
     }
