@@ -99,7 +99,6 @@ enum class M4PreparationBlock {
     REVIEW_REQUIRED,
     EXPLICIT_SECRET_UNAVAILABLE,
     INVALID_CONTRACT,
-    REQUIRES_LARGE_PAYLOAD_M6,
 }
 
 sealed interface M4PreparationResult {
