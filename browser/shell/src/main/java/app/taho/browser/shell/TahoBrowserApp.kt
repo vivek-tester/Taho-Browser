@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -106,9 +107,7 @@ private fun CaptureIndicator(
         CaptureState.ERROR -> TahoError
         CaptureState.PAUSED, CaptureState.OFF -> Color.Transparent
     }
-    val showDot = state == CaptureState.OBSERVING ||
-        state == CaptureState.CAPTURING ||
-        state == CaptureState.ERROR
+    val showDot = state != CaptureState.PAUSED && state != CaptureState.OFF
 
     Row(
         modifier = Modifier
