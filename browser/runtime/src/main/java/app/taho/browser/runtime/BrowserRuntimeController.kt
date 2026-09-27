@@ -2,7 +2,6 @@ package app.taho.browser.runtime
 
 import android.Manifest
 import android.content.Context
-import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import org.mozilla.geckoview.AllowOrDeny
@@ -390,25 +389,18 @@ class BrowserRuntimeController(context: Context) {
     fun persistNow() {
         mainHandler.removeCallbacks(persistRunnable)
 
-        val normalTabs = tabs
-            .filterNot { it.isPrivate }
-            .map { tab ->
-                PersistedBrowserTab(
-                    id = tab.id,
-                    title = tab.title,
-                    location = tab.location,
-                    serializedSessionState = tab.sessionState?.toString(),
-                )
-            }
-
-        val selectedNormal = selectedTabId.takeIf { selected ->
-            normalTabs.any { it.id == selected }
-        }
-
         sessionStore.save(
-            PersistedBrowserState(
-                tabs = normalTabs,
-                selectedTabId = selectedNormal,
+            BrowserPersistencePolicy.stateForDisk(
+                tabs = tabs.map { tab ->
+                    BrowserPersistableTab(
+                        id = tab.id,
+                        title = tab.title,
+                        location = tab.location,
+                        serializedSessionState = tab.sessionState?.toString(),
+                        isPrivate = tab.isPrivate,
+                    )
+                },
+                selectedTabId = selectedTabId,
             ),
         )
     }
@@ -491,43 +483,39 @@ class BrowserRuntimeController(context: Context) {
                 session: GeckoSession,
                 request: GeckoSession.NavigationDelegate.LoadRequest,
             ): GeckoResult<AllowOrDeny>? {
-                val parsed = Uri.parse(request.uri)
-                val scheme = parsed.scheme?.lowercase().orEmpty()
+                val decision = BrowserNavigationPolicy.decide(
+                    uri = request.uri,
+                    targetNewWindow =
+                    request.target == GeckoSession.NavigationDelegate.TARGET_WINDOW_NEW,
+                    hasUserGesture = request.hasUserGesture,
+                    isRedirect = request.isRedirect,
+                    externalRequestPending = pendingExternalNavigation != null,
+                )
 
-                if (
-                    request.target == GeckoSession.NavigationDelegate.TARGET_WINDOW_NEW &&
-                    scheme in INTERNAL_BROWSING_SCHEMES
-                ) {
-                    if (!request.hasUserGesture) {
-                        return GeckoResult.fromValue(AllowOrDeny.DENY)
+                return when (decision.disposition) {
+                    BrowserNavigationDisposition.ALLOW_IN_BROWSER -> null
+
+                    BrowserNavigationDisposition.OPEN_NEW_TAB -> {
+                        val newTabId = newTab(privateMode = tab.isPrivate)
+                        load(tabId = newTabId, uri = request.uri)
+                        GeckoResult.fromValue(AllowOrDeny.DENY)
                     }
 
-                    val newTabId = newTab(privateMode = tab.isPrivate)
-                    load(tabId = newTabId, uri = request.uri)
-                    return GeckoResult.fromValue(AllowOrDeny.DENY)
-                }
-
-                if (scheme in EXTERNAL_SCHEMES) {
-                    if (
-                        !request.hasUserGesture ||
-                        request.isRedirect ||
-                        pendingExternalNavigation != null
-                    ) {
-                        return GeckoResult.fromValue(AllowOrDeny.DENY)
+                    BrowserNavigationDisposition.REQUEST_EXTERNAL_APP -> {
+                        val external = BrowserExternalNavigationRequest(
+                            id = UUID.randomUUID().toString(),
+                            tabId = tab.id,
+                            uri = request.uri,
+                            scheme = decision.scheme.orEmpty(),
+                        )
+                        pendingExternalNavigation = PendingExternalNavigation(external)
+                        notifyChangedIfReady()
+                        GeckoResult.fromValue(AllowOrDeny.DENY)
                     }
 
-                    val external = BrowserExternalNavigationRequest(
-                        id = UUID.randomUUID().toString(),
-                        tabId = tab.id,
-                        uri = request.uri,
-                        scheme = scheme,
-                    )
-                    pendingExternalNavigation = PendingExternalNavigation(external)
-                    notifyChangedIfReady()
-                    return GeckoResult.fromValue(AllowOrDeny.DENY)
+                    BrowserNavigationDisposition.DENY ->
+                        GeckoResult.fromValue(AllowOrDeny.DENY)
                 }
-
-                return null
             }
 
             override fun onLocationChange(
@@ -629,7 +617,7 @@ class BrowserRuntimeController(context: Context) {
                 val prompt = BrowserSitePermissionPrompt(
                     id = UUID.randomUUID().toString(),
                     tabId = tab.id,
-                    origin = displayOrigin(perm.uri),
+                    origin = BrowserNavigationPolicy.displayOrigin(perm.uri),
                     kind = kind,
                     isPrivate = tab.isPrivate,
                 )
@@ -678,7 +666,7 @@ class BrowserRuntimeController(context: Context) {
                 val prompt = BrowserSitePermissionPrompt(
                     id = UUID.randomUUID().toString(),
                     tabId = tab.id,
-                    origin = displayOrigin(uri),
+                    origin = BrowserNavigationPolicy.displayOrigin(uri),
                     kind = kind,
                     isPrivate = tab.isPrivate,
                 )
@@ -774,24 +762,6 @@ class BrowserRuntimeController(context: Context) {
         }
     }
 
-    private fun displayOrigin(raw: String): String {
-        val parsed = Uri.parse(raw)
-        val host = parsed.host ?: return raw.take(MAX_ORIGIN_LENGTH)
-        val scheme = parsed.scheme?.lowercase()
-        val port = parsed.port.takeIf { it >= 0 }
-        return buildString {
-            if (scheme == "http" || scheme == "https") {
-                append(scheme)
-                append("://")
-            }
-            append(host)
-            if (port != null) {
-                append(':')
-                append(port)
-            }
-        }.take(MAX_ORIGIN_LENGTH)
-    }
-
     private fun requireSelected(): RuntimeTab =
         tabs.first { it.id == selectedTabId }
 
@@ -810,21 +780,6 @@ class BrowserRuntimeController(context: Context) {
 
     companion object {
         private const val PERSIST_DEBOUNCE_MS = 500L
-        private const val MAX_ORIGIN_LENGTH = 160
-
-        private val INTERNAL_BROWSING_SCHEMES = setOf(
-            "http",
-            "https",
-            "about",
-        )
-
-        private val EXTERNAL_SCHEMES = setOf(
-            "mailto",
-            "tel",
-            "sms",
-            "geo",
-        )
-
         private val SUPPORTED_ANDROID_PERMISSIONS = setOf(
             Manifest.permission.ACCESS_COARSE_LOCATION,
             Manifest.permission.ACCESS_FINE_LOCATION,

@@ -17,5 +17,6 @@ val geckoViewVersion: String by project
 
 dependencies {
     implementation("org.mozilla.geckoview:geckoview-omni:$geckoViewVersion")
+    testImplementation("org.json:json:20260814")
     testImplementation(kotlin("test"))
 }
