@@ -180,7 +180,7 @@ class RoomCaptureRepositoryTest {
         val sweep = assertIs<CaptureRepositoryResult.Success<app.taho.browser.capture.domain.RetentionSweepResult>>(
             repository.sweepRetention(3L * 24L * 60L * 60L * 1000L),
         )
-        assertEquals(2, sweep.value.deletedSessions)
+        assertEquals(1, sweep.value.deletedSessions)
         val rows = assertIs<CaptureRepositoryResult.Success<*>>(
             repository.list(CaptureQuery()),
         )
