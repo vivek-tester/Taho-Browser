@@ -16,15 +16,20 @@ sealed interface ProductionObservationEvent {
     data object GateBlocked : ProductionObservationEvent
     data class ExtensionReady(val extensionId: String) : ProductionObservationEvent
     data class ExtensionFailed(val reason: String) : ProductionObservationEvent
-    data class TabBound(val tahoTabId: String, val extTabId: Int) : ProductionObservationEvent
+    data class TabBound(
+        val tahoTabId: String,
+        val extTabId: Int,
+        val isPrivate: Boolean,
+    ) : ProductionObservationEvent
     data class Rejected(val reason: String) : ProductionObservationEvent
     data class Bulk(
         val tahoTabId: String?,
+        val isPrivate: Boolean?,
         val message: ProductionObservationMessage,
         val sequenceGap: Boolean,
     ) : ProductionObservationEvent {
         override fun toString(): String =
-            "Bulk(tahoTabId=$tahoTabId,type=" + message.type +
+            "Bulk(tahoTabId=$tahoTabId,isPrivate=$isPrivate,type=" + message.type +
                 ",sequenceGap=$sequenceGap)"
     }
 }
@@ -38,6 +43,7 @@ class ProductionObservationCoordinator(
         val tahoTabId: String,
         val session: GeckoSession,
         val committedUrl: () -> String?,
+        val isPrivate: Boolean,
     )
 
     private val sessions = mutableListOf<RegisteredSession>()
@@ -120,12 +126,13 @@ class ProductionObservationCoordinator(
         tahoTabId: String,
         session: GeckoSession,
         committedUrl: () -> String?,
+        isPrivate: Boolean,
     ) {
         if (gate != ProductionCaptureGate.ENABLED) return
 
         sessions.removeAll { it.session === session || it.tahoTabId == tahoTabId }
         bindingByExtTab.entries.removeAll { it.value.session === session }
-        val registered = RegisteredSession(tahoTabId, session, committedUrl)
+        val registered = RegisteredSession(tahoTabId, session, committedUrl, isPrivate)
         sessions += registered
         extension?.let { attachIdentityDelegate(it, registered) }
     }
@@ -176,6 +183,7 @@ class ProductionObservationCoordinator(
                         ProductionObservationEvent.TabBound(
                             tahoTabId = registered.tahoTabId,
                             extTabId = register.extTabId,
+                            isPrivate = registered.isPrivate,
                         ),
                     )
                     return null
@@ -228,6 +236,7 @@ class ProductionObservationCoordinator(
             sink(
                 ProductionObservationEvent.Bulk(
                     tahoTabId = null,
+                    isPrivate = null,
                     message = message,
                     sequenceGap = sequence != 1L,
                 ),
@@ -242,10 +251,11 @@ class ProductionObservationCoordinator(
 
         val gap = sequence != lastSequence + 1
         lastSequence = sequence
-        val tahoTabId = meta.third?.let { bindingByExtTab[it]?.tahoTabId }
+        val binding = meta.third?.let { bindingByExtTab[it] }
         sink(
             ProductionObservationEvent.Bulk(
-                tahoTabId = tahoTabId,
+                tahoTabId = binding?.tahoTabId,
+                isPrivate = binding?.isPrivate,
                 message = message,
                 sequenceGap = gap,
             ),
