@@ -71,9 +71,9 @@ jobs:
           :browser:observation:testDebugUnitTest
           :transfer:android:assembleDebug
 
-      - name: Upload M3 browser APK
+      - name: Upload gated M4 browser APK
         uses: actions/upload-artifact@v4
         with:
-          name: taho-browser-m3-debug
+          name: taho-browser-m4-gated-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
