@@ -34,14 +34,38 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - name: Ensure Android SDK 37
+      - name: Ensure Android SDK 37 preview platform
         shell: bash
         run: |
+          set -euo pipefail
           SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
           SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
           test -x "$SDKMANAGER"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" "platforms;android-37" "build-tools;36.0.0"
+
+          PLATFORM_PACKAGE="$(
+            "$SDKMANAGER" --list --channel=3 |
+              awk -F'|' '
+                /platforms;android-37/ {
+                  gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1)
+                  print $1
+                }
+              ' |
+              sort -V |
+              tail -n 1
+          )"
+
+          test -n "$PLATFORM_PACKAGE"
+          echo "Installing Android 17 platform package: $PLATFORM_PACKAGE"
+          "$SDKMANAGER" --channel=3 "$PLATFORM_PACKAGE" "build-tools;36.0.0"
+
+          PLATFORM_DIR="${PLATFORM_PACKAGE#platforms;}"
+          if [ ! -e "$SDK_ROOT/platforms/android-37" ] &&
+             [ -d "$SDK_ROOT/platforms/$PLATFORM_DIR" ]; then
+            ln -s "$SDK_ROOT/platforms/$PLATFORM_DIR" "$SDK_ROOT/platforms/android-37"
+          fi
+
+          test -f "$SDK_ROOT/platforms/android-37/android.jar"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "9.3.1"
