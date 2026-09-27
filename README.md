@@ -1,6 +1,6 @@
 # Taho Browser
 
-Android browser companion for Taho API Testing.
+Android capture browser companion for Taho. The Browser captures and prepares requests; Project-Taho is responsible for API editing, execution, testing, diagnostics, and security analysis.
 
 ## Build authority
 
@@ -34,7 +34,7 @@ The production shell defaults capture to OFF until a real capture coordinator su
 - `:contract:taho-transfer`
 - `:spikes:geckoview` (disposable M1 verification harness)
 
-Browsing must remain independent of capture health, transfer is user initiated, and imported requests must remain unsaved and unexecuted until explicit action in Taho.
+Browsing must remain independent of capture health. Taho Browser never executes or tests captured APIs. Transfer is user initiated; Project-Taho owns request editing, execution, testing, diagnostics, and security analysis. The Project-Taho receiver will be implemented after the Browser capture/transfer path is runnable.
 
 ## M1 verification
 
