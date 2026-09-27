@@ -8,6 +8,7 @@ import android.security.keystore.KeyProperties
 import app.taho.browser.contract.ContractLimits
 import org.json.JSONObject
 import java.io.BufferedInputStream
+import java.io.ByteArrayInputStream
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
@@ -15,7 +16,6 @@ import java.io.FileOutputStream
 import java.io.InputStream
 import java.security.KeyStore
 import javax.crypto.Cipher
-import javax.crypto.CipherInputStream
 import javax.crypto.CipherOutputStream
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -82,12 +82,18 @@ internal class AndroidKeystoreTransferArtifactCipher : TransferArtifactCipher {
     }
 
     override fun openDecrypted(file: File): InputStream {
-        val raw = BufferedInputStream(FileInputStream(file))
-        try {
+        require(file.isFile) { "Transfer artifact is missing" }
+        require(
+            file.length() <=
+                ContractLimits.ARTIFACT_PLAINTEXT_BYTES + MAX_FORMAT_OVERHEAD_BYTES,
+        ) { "Encrypted transfer artifact exceeds configured cap" }
+
+        BufferedInputStream(FileInputStream(file)).use { raw ->
             val version = raw.read()
             val ivLength = raw.read()
             require(version == FORMAT_VERSION) { "Unsupported artifact format" }
             require(ivLength in 12..32) { "Invalid artifact IV" }
+
             val iv = ByteArray(ivLength)
             var offset = 0
             while (offset < iv.size) {
@@ -96,16 +102,23 @@ internal class AndroidKeystoreTransferArtifactCipher : TransferArtifactCipher {
                 offset += read
             }
 
+            val ciphertext = raw.readBytes()
+            require(ciphertext.size >= GCM_TAG_BYTES) {
+                "Transfer artifact authentication tag is missing"
+            }
+
             val cipher = Cipher.getInstance(TRANSFORMATION)
             cipher.init(
                 Cipher.DECRYPT_MODE,
                 key(),
                 GCMParameterSpec(128, iv),
             )
-            return CipherInputStream(raw, cipher)
-        } catch (t: Throwable) {
-            raw.close()
-            throw t
+            val plaintext = cipher.doFinal(ciphertext)
+            require(
+                plaintext.size.toLong() <=
+                    ContractLimits.ARTIFACT_PLAINTEXT_BYTES,
+            ) { "Decrypted transfer artifact exceeds configured cap" }
+            return ByteArrayInputStream(plaintext)
         }
     }
 
@@ -136,6 +149,8 @@ internal class AndroidKeystoreTransferArtifactCipher : TransferArtifactCipher {
         const val KEY_ALIAS = "taho_browser_transfer_artifact_v1"
         const val TRANSFORMATION = "AES/GCM/NoPadding"
         const val FORMAT_VERSION = 1
+        const val GCM_TAG_BYTES = 16
+        const val MAX_FORMAT_OVERHEAD_BYTES = 2L + 32L + GCM_TAG_BYTES
     }
 }
 
