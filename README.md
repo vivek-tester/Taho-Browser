@@ -10,16 +10,16 @@ Implementation follows `TAHO_BROWSER_BUILD_PLAN.md`. UI/UX follows `TAHO_BROWSER
 
 M0/M1/M2 foundation is in progress:
 
-- Native Kotlin + Jetpack Compose shell.
-- Browser-first AMOLED chrome foundation.
-- Complete module boundaries from the build plan.
-- Pure capture-domain identity/evidence model.
-- Corrected transaction reducer with process-death recovery, provisional observation, bounded de-duplication, and write-once attribution.
+- Native Kotlin + Jetpack Compose browser shell.
+- Browser-first AMOLED chrome with a real GeckoView canvas behind it.
+- Process-scoped GeckoRuntime and tab/session ownership foundation.
+- Candidate GeckoView pin `156.0.20260921121718`; capability status remains VERIFY until device spikes pass.
+- Disposable two-tab SPIKE-01 app with bundled WebExtension attribution instrumentation.
+- Pure capture-domain identity/evidence model and corrected transaction reducer.
 - Pure transfer contract and initial payload budgets.
 - JVM CI for correctness-critical modules.
-- GeckoView dependency intentionally remains unpinned until the M1 capability spike selects and records a tested engine release.
 
-The shell defaults capture to OFF until a real coordinator supplies engine state; the UI does not claim capture is active before capture exists.
+The production shell defaults capture to OFF until a real capture coordinator supplies engine state; it never claims capture is active merely because GeckoView is running.
 
 ## Module graph
 
@@ -32,9 +32,10 @@ The shell defaults capture to OFF until a real coordinator supplies engine state
 - `:transfer:core`
 - `:transfer:android`
 - `:contract:taho-transfer`
+- `:spikes:geckoview` (disposable M1 verification harness)
 
 Browsing must remain independent of capture health, transfer is user initiated, and imported requests must remain unsaved and unexecuted until explicit action in Taho.
 
-## Pending capability gate
+## M1 verification
 
-M1 must prove the GeckoView engine pin, two-tab attribution, first-load behavior, redirects, extension reconnect, lifecycle recovery, and private-mode behavior before production capture depends on those capabilities.
+Run `:spikes:geckoview` on a physical Android device and follow `docs/spikes/SPIKE-01-attribution.md`. Do not promote the observation path from VERIFY to SUPPORTED until the recorded evidence passes.

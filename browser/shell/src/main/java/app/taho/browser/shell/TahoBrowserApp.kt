@@ -41,6 +41,7 @@ fun TahoBrowserApp(
     onCaptureClick: () -> Unit = {},
     onOmniboxClick: () -> Unit = {},
     onTabsClick: () -> Unit = {},
+    browserContent: @Composable () -> Unit = {},
 ) {
     TahoTheme {
         Box(
@@ -49,11 +50,9 @@ fun TahoBrowserApp(
                 .background(TahoBg)
                 .systemBarsPadding(),
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = 108.dp),
-            )
+            Box(modifier = Modifier.fillMaxSize()) {
+                browserContent()
+            }
 
             Column(
                 modifier = Modifier

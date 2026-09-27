@@ -22,7 +22,7 @@ class BrowserRuntimeController(context: Context) {
 
     private val runtime = GeckoRuntimeHolder.get(context)
     private val tabs = mutableListOf<RuntimeTab>()
-    private var selectedTabId: String
+    private lateinit var selectedTabId: String
     private var listener: ((BrowserSnapshot) -> Unit)? = null
 
     init {
