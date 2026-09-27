@@ -19,10 +19,12 @@ import app.taho.browser.shell.BrowserUiState
 import app.taho.browser.shell.TahoBrowserApp
 
 class MainActivity : ComponentActivity() {
+    private lateinit var controller: app.taho.browser.runtime.BrowserRuntimeController
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val controller = BrowserRuntimeStore.get(this)
+        controller = BrowserRuntimeStore.get(this)
 
         setContent {
             var snapshot by remember { mutableStateOf(controller.snapshot()) }
@@ -43,14 +45,19 @@ class MainActivity : ComponentActivity() {
                     tabCount = snapshot.tabCount,
                     isLoading = snapshot.isLoading,
                     loadFailed = snapshot.loadFailed,
+                    crashed = snapshot.crashed,
                     isPrivate = snapshot.isPrivate,
+                    canGoBack = snapshot.canGoBack,
+                    canGoForward = snapshot.canGoForward,
                     tabs = snapshot.tabs.map { tab ->
                         BrowserTabUiState(
                             id = tab.id,
+                            title = tab.title,
                             location = tab.location,
                             isPrivate = tab.isPrivate,
                             isLoading = tab.isLoading,
                             loadFailed = tab.loadFailed,
+                            crashed = tab.crashed,
                             selected = tab.id == snapshot.selectedTabId,
                         )
                     },
@@ -62,7 +69,13 @@ class MainActivity : ComponentActivity() {
                 },
                 onBack = controller::goBack,
                 onForward = controller::goForward,
-                onReload = controller::reload,
+                onReload = {
+                    if (snapshot.crashed) {
+                        controller.recoverCrashedTab(snapshot.selectedTabId)
+                    } else {
+                        controller.reload()
+                    }
+                },
                 onNewTab = { controller.newTab(privateMode = false) },
                 onNewPrivateTab = { controller.newTab(privateMode = true) },
                 onSelectTab = controller::selectTab,
@@ -82,5 +95,10 @@ class MainActivity : ComponentActivity() {
                 },
             )
         }
+    }
+
+    override fun onStop() {
+        controller.persistNow()
+        super.onStop()
     }
 }

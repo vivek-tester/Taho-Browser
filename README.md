@@ -12,6 +12,8 @@ M0/M1/M2 foundation is in progress:
 
 - Native Kotlin + Jetpack Compose browser shell.
 - Browser-first AMOLED chrome with a real GeckoView canvas behind it.
+- Editable URL/search omnibox, history-aware back/forward/reload controls, and normal/private tab switching.
+- Normal-tab session-state persistence candidate plus explicit content-crash recovery; private tabs are never written to the restore store.
 - Process-scoped GeckoRuntime and tab/session ownership foundation.
 - Candidate GeckoView pin `156.0.20260921121718`; capability status remains VERIFY until device spikes pass.
 - Disposable two-tab SPIKE-01 app with bundled WebExtension attribution instrumentation.

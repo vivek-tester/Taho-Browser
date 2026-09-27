@@ -56,10 +56,12 @@ import app.taho.browser.capture.domain.CaptureState
 
 data class BrowserTabUiState(
     val id: String,
+    val title: String?,
     val location: String?,
     val isPrivate: Boolean,
     val isLoading: Boolean,
     val loadFailed: Boolean,
+    val crashed: Boolean,
     val selected: Boolean,
 )
 
@@ -70,7 +72,10 @@ data class BrowserUiState(
     val tabCount: Int = 1,
     val isLoading: Boolean = false,
     val loadFailed: Boolean = false,
+    val crashed: Boolean = false,
     val isPrivate: Boolean = false,
+    val canGoBack: Boolean = false,
+    val canGoForward: Boolean = false,
     val tabs: List<BrowserTabUiState> = emptyList(),
 )
 
@@ -112,7 +117,10 @@ fun TahoBrowserApp(
                     .padding(horizontal = 13.dp, vertical = 11.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                if (state.loadFailed) {
+                if (state.crashed) {
+                    PageCrashBanner(onReload = onReload)
+                    Spacer(Modifier.height(9.dp))
+                } else if (state.loadFailed) {
                     LoadFailureBanner(onReload = onReload)
                     Spacer(Modifier.height(9.dp))
                 }
@@ -128,6 +136,8 @@ fun TahoBrowserApp(
 
                 if (editing) {
                     NavigationTray(
+                        canGoBack = state.canGoBack,
+                        canGoForward = state.canGoForward,
                         onBack = onBack,
                         onForward = onForward,
                         onReload = onReload,
@@ -193,6 +203,44 @@ fun TahoBrowserApp(
 }
 
 @Composable
+private fun PageCrashBanner(onReload: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(TahoSheet)
+            .border(1.dp, TahoWarn.copy(alpha = .50f), RoundedCornerShape(14.dp))
+            .padding(horizontal = 14.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "This page stopped responding.",
+                color = TahoText,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 11.sp,
+            )
+            Text(
+                text = "The tab is still open.",
+                color = TahoFaint,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 9.sp,
+            )
+        }
+        Text(
+            text = "Reload Page",
+            modifier = Modifier
+                .clip(RoundedCornerShape(999.dp))
+                .clickable(onClick = onReload)
+                .padding(horizontal = 10.dp, vertical = 7.dp),
+            color = TahoGoldHi,
+            fontFamily = FontFamily.Monospace,
+            fontSize = 10.sp,
+        )
+    }
+}
+
+@Composable
 private fun LoadFailureBanner(onReload: () -> Unit) {
     Row(
         modifier = Modifier
@@ -225,6 +273,8 @@ private fun LoadFailureBanner(onReload: () -> Unit) {
 
 @Composable
 private fun NavigationTray(
+    canGoBack: Boolean,
+    canGoForward: Boolean,
     onBack: () -> Unit,
     onForward: () -> Unit,
     onReload: () -> Unit,
@@ -234,10 +284,10 @@ private fun NavigationTray(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        ChromeAction("Back", "‹", Modifier.weight(1f), onBack)
-        ChromeAction("Forward", "›", Modifier.weight(1f), onForward)
-        ChromeAction("Reload", "↻", Modifier.weight(1f), onReload)
-        ChromeAction("Done", "×", Modifier.weight(1f), onCancel)
+        ChromeAction("Back", "‹", Modifier.weight(1f), canGoBack, onBack)
+        ChromeAction("Forward", "›", Modifier.weight(1f), canGoForward, onForward)
+        ChromeAction("Reload", "↻", Modifier.weight(1f), true, onReload)
+        ChromeAction("Done", "×", Modifier.weight(1f), true, onCancel)
     }
 }
 
@@ -246,6 +296,7 @@ private fun ChromeAction(
     label: String,
     glyph: String,
     modifier: Modifier = Modifier,
+    enabled: Boolean,
     onClick: () -> Unit,
 ) {
     Row(
@@ -254,16 +305,20 @@ private fun ChromeAction(
             .clip(RoundedCornerShape(999.dp))
             .background(Color(0xD9161619))
             .border(1.dp, Color.White.copy(alpha = .10f), RoundedCornerShape(999.dp))
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 10.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(glyph, color = TahoGoldHi, fontSize = 15.sp)
+        Text(
+            glyph,
+            color = if (enabled) TahoGoldHi else TahoFaint,
+            fontSize = 15.sp,
+        )
         Spacer(Modifier.width(5.dp))
         Text(
             text = label,
-            color = TahoMuted,
+            color = if (enabled) TahoMuted else TahoFaint,
             fontFamily = FontFamily.Monospace,
             fontSize = 9.sp,
             maxLines = 1,
@@ -568,7 +623,7 @@ private fun TabRow(
                     Spacer(Modifier.width(7.dp))
                 }
                 Text(
-                    text = tabTitle(tab.location),
+                    text = tab.title?.takeIf { it.isNotBlank() } ?: tabTitle(tab.location),
                     color = TahoText,
                     fontFamily = FontFamily.Monospace,
                     fontSize = 11.sp,
@@ -579,12 +634,17 @@ private fun TabRow(
             Spacer(Modifier.height(3.dp))
             Text(
                 text = when {
+                    tab.crashed -> "Page stopped responding"
                     tab.loadFailed -> "Failed to load"
                     tab.isLoading -> "Loading…"
                     tab.location.isNullOrBlank() || tab.location == "about:blank" -> "New tab"
                     else -> compactLocation(tab.location)
                 },
-                color = if (tab.loadFailed) TahoError else TahoFaint,
+                color = when {
+                    tab.crashed -> TahoWarn
+                    tab.loadFailed -> TahoError
+                    else -> TahoFaint
+                },
                 fontFamily = FontFamily.Monospace,
                 fontSize = 9.sp,
                 maxLines = 1,
