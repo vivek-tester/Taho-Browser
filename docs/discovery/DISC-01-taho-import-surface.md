@@ -1,6 +1,6 @@
 # DISC-01 — Actual Taho import surface
 
-Status: RESOLVED FOR DESIGN; receiver implementation still required  
+Status: RESOLVED FOR DESIGN; receiver intentionally deferred until Taho Browser capture/transfer is runnable  
 Taho app repository inspected: `vivek-tester/Project-Taho`  
 Source commit inspected: `5825b8207df1081b27873e209d43be58eaf983b9`  
 Date: 2026-09-27
@@ -39,7 +39,7 @@ versioned JSON envelope as shared text or route it through SmartPaste.
 
 ## Receiver design consequence
 
-TAHO-01 requires a small Project-Taho change:
+TAHO-01 will later require a Project-Taho change. It is not part of the current Browser bring-up:
 
 - add one explicit import action owned by `com.eternal.taho`;
 - validate schema/version/byte budgets before constructing `ApiRequest`;
@@ -67,3 +67,21 @@ a successful Send-to-Taho path.
 - `lib/core/services/security_engine.dart`
 - `lib/core/services/diagnostic_engine.dart`
 - `lib/screens/home_screen.dart`
+
+
+## Product responsibility boundary
+
+Taho Browser is not an API testing engine. Its responsibilities stop at:
+
+1. browse;
+2. observe/capture network requests;
+3. normalize and preserve capture evidence;
+4. let the user review what will be transferred;
+5. transfer a versioned request envelope to Project-Taho.
+
+Project-Taho owns request editing, environment/collection management, execution, response inspection,
+diagnostics, security analysis, and test workflows.
+
+Receiver implementation is deliberately sequenced after the Browser itself runs and can produce a
+real transfer candidate. Until then, the Browser contract and fixtures may evolve without forcing
+premature receiver code into Project-Taho.
