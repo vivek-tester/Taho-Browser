@@ -44,6 +44,16 @@ class JsonBodySecretScannerTest {
     }
 
     @Test
+    fun credentialShapedValueUnderUnknownNameFailsClosed() {
+        val result = JsonBodySecretScanner.scan(
+            transactionKey = "tx-json-shape",
+            rawJson = """{"credential":"abcDEF1234567890_abcDEF1234567890_abcDEF12"}""",
+        )
+
+        assertTrue(result.requiresReview)
+    }
+
+    @Test
     fun ordinaryJsonDoesNotRequireReview() {
         val result = JsonBodySecretScanner.scan(
             transactionKey = "tx-json-4",

@@ -129,6 +129,8 @@ class M4InMemoryCaptureAssemblerTest {
 
         val captured = assembler.requestsForTab("tab-a").single()
         assertTrue(captured.reviewRequired)
+        assertEquals(null, captured.body)
+        assertFalse(captured.toString().contains("live-password"))
         val blocked = assertIs<M4PreparationResult.Blocked>(
             M4TransferPreparer.prepare(captured),
         )

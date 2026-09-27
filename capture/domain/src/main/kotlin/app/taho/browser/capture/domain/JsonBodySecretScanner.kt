@@ -67,6 +67,10 @@ object JsonBodySecretScanner {
                                     ),
                                 )
                             }
+                        } else if (child is String && looksSecretShaped(child)) {
+                            // Unknown field names with credential-shaped values are not
+                            // classified into a category here; M4 fails closed instead.
+                            opaqueSensitiveContainer = true
                         }
 
                         if (child is JSONObject || child is JSONArray) {
@@ -115,4 +119,25 @@ object JsonBodySecretScanner {
             .trim()
             .lowercase(Locale.ROOT)
             .replace('_', '-')
+
+    private fun looksSecretShaped(value: String): Boolean {
+        if (value.startsWith("Bearer ", ignoreCase = true) ||
+            value.startsWith("Basic ", ignoreCase = true)
+        ) {
+            return true
+        }
+
+        if (JWT.matches(value) || AWS_ACCESS_KEY.matches(value)) return true
+        if (value.length !in 32..256 || value.any(Char::isWhitespace)) return false
+
+        val hasLetter = value.any(Char::isLetter)
+        val hasDigit = value.any(Char::isDigit)
+        val hasTokenSymbol = value.any { it in "-_+/=." }
+        return hasLetter && hasDigit && (hasTokenSymbol || value.length >= 40)
+    }
+
+    private val JWT = Regex(
+        """^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$""",
+    )
+    private val AWS_ACCESS_KEY = Regex("""^AKIA[A-Z0-9]{12,28}$""")
 }

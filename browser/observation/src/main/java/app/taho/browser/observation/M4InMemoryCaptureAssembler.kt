@@ -202,20 +202,24 @@ class M4InMemoryCaptureAssembler(
                 } else {
                     val bodyScan = JsonBodySecretScanner.scan(key, text)
                     findings += bodyScan.assessment.findings
-                    if (bodyScan.requiresReview || bodyScan.assessment.findings.isNotEmpty()) {
+                    val unsafeBody =
+                        bodyScan.requiresReview || bodyScan.assessment.findings.isNotEmpty()
+                    if (unsafeBody) {
                         reviewRequired = true
+                        transferBody = null
+                    } else {
+                        transferBody = TransferBody(
+                            representation = BodyRepresentation.JSON,
+                            contentType = contentType,
+                            charset = "utf-8",
+                            encoding = BodyEncoding.UTF8,
+                            size = bytes.size.toLong(),
+                            declaredSize = null,
+                            truncated = false,
+                            completeness = Completeness.COMPLETE,
+                            content = text,
+                        )
                     }
-                    transferBody = TransferBody(
-                        representation = BodyRepresentation.JSON,
-                        contentType = contentType,
-                        charset = "utf-8",
-                        encoding = BodyEncoding.UTF8,
-                        size = bytes.size.toLong(),
-                        declaredSize = null,
-                        truncated = false,
-                        completeness = Completeness.COMPLETE,
-                        content = text,
-                    )
                 }
             }
         }
