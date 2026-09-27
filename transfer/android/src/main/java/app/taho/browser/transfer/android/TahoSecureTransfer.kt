@@ -162,13 +162,16 @@ class TahoSecureTransferCoordinator(
             TransferReceiptReceiver::class.java,
         )
             .setAction(TransferReceiptReceiver.ACTION_RECEIPT)
-            .putExtra(
-                TransferReceiptReceiver.EXTRA_EXPECTED_TRANSFER_ID,
-                transferId,
+            .setData(
+                Uri.Builder()
+                    .scheme(TransferReceiptReceiver.RECEIPT_SCHEME)
+                    .authority(TransferReceiptReceiver.RECEIPT_AUTHORITY)
+                    .appendPath(transferId)
+                    .build(),
             )
         return PendingIntent.getBroadcast(
             appContext,
-            transferId.hashCode(),
+            0,
             intent,
             PendingIntent.FLAG_ONE_SHOT or
                 PendingIntent.FLAG_UPDATE_CURRENT or
