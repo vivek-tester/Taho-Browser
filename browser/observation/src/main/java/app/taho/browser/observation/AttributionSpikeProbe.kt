@@ -9,6 +9,10 @@ import org.mozilla.geckoview.WebExtension
 sealed interface SpikeProbeEvent {
     data class ExtensionReady(val extensionId: String) : SpikeProbeEvent
     data class InstallFailed(val message: String) : SpikeProbeEvent
+    data class WebRequestCapability(
+        val available: Boolean,
+        val registeredListeners: String,
+    ) : SpikeProbeEvent
 
     data class SessionAnnouncement(
         val appTabId: String,
@@ -57,6 +61,13 @@ class AttributionSpikeProbe(
             val json = message as? JSONObject ?: return invalid("background")
 
             when (json.optString("kind")) {
+                "web_request_capability" -> sink(
+                    SpikeProbeEvent.WebRequestCapability(
+                        available = json.optBoolean("available", false),
+                        registeredListeners = json.optString("listeners", ""),
+                    ),
+                )
+
                 "background_announce" -> sink(
                     SpikeProbeEvent.BackgroundAnnouncement(
                         javascriptTabId = json.optNullableInt("jsTabId"),
@@ -133,7 +144,7 @@ class AttributionSpikeProbe(
                             sessionIdentity = senderSession?.let { System.identityHashCode(it) },
                             senderMatchesRegisteredSession = senderSession === registered.session,
                             javascriptTabId = json.optNullableInt("jsTabId"),
-                            topLevel = sender.isTopLevel,
+                            topLevel = sender.isTopLevel(),
                         ),
                     )
                     return null

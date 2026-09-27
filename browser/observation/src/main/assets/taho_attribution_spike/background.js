@@ -37,29 +37,36 @@ function emitWebRequest(phase, details) {
   });
 }
 
+const registered = [];
 const filter = { urls: ["<all_urls>"] };
 
-browser.webRequest.onBeforeRequest.addListener(
-  (details) => emitWebRequest("onBeforeRequest", details), filter
-);
-browser.webRequest.onBeforeSendHeaders.addListener(
-  (details) => emitWebRequest("onBeforeSendHeaders", details), filter
-);
-browser.webRequest.onSendHeaders.addListener(
-  (details) => emitWebRequest("onSendHeaders", details), filter
-);
-browser.webRequest.onHeadersReceived.addListener(
-  (details) => emitWebRequest("onHeadersReceived", details), filter
-);
-browser.webRequest.onBeforeRedirect.addListener(
-  (details) => emitWebRequest("onBeforeRedirect", details), filter
-);
-browser.webRequest.onResponseStarted.addListener(
-  (details) => emitWebRequest("onResponseStarted", details), filter
-);
-browser.webRequest.onCompleted.addListener(
-  (details) => emitWebRequest("onCompleted", details), filter
-);
-browser.webRequest.onErrorOccurred.addListener(
-  (details) => emitWebRequest("onErrorOccurred", details), filter
-);
+function register(name, event) {
+  if (!event || typeof event.addListener !== "function") {
+    return;
+  }
+  event.addListener((details) => emitWebRequest(name, details), filter);
+  registered.push(name);
+}
+
+if (!browser.webRequest) {
+  sendNative({
+    kind: "web_request_capability",
+    available: false,
+    listeners: ""
+  });
+} else {
+  register("onBeforeRequest", browser.webRequest.onBeforeRequest);
+  register("onBeforeSendHeaders", browser.webRequest.onBeforeSendHeaders);
+  register("onSendHeaders", browser.webRequest.onSendHeaders);
+  register("onHeadersReceived", browser.webRequest.onHeadersReceived);
+  register("onBeforeRedirect", browser.webRequest.onBeforeRedirect);
+  register("onResponseStarted", browser.webRequest.onResponseStarted);
+  register("onCompleted", browser.webRequest.onCompleted);
+  register("onErrorOccurred", browser.webRequest.onErrorOccurred);
+
+  sendNative({
+    kind: "web_request_capability",
+    available: registered.length > 0,
+    listeners: registered.join(",")
+  });
+}

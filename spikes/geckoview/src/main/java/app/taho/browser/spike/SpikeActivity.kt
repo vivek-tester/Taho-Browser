@@ -55,7 +55,7 @@ class SpikeActivity : Activity() {
             setText("https://example.com")
             setTextColor(Color.WHITE)
             setHintTextColor(Color.GRAY)
-            inputType = InputType.TYPE_TEXT_VARIATION_URI
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
             setSingleLine(true)
         }
 
@@ -130,6 +130,9 @@ class SpikeActivity : Activity() {
                 "extension ready id=" + event.extensionId
             is SpikeProbeEvent.InstallFailed ->
                 "extension install failed: " + event.message
+            is SpikeProbeEvent.WebRequestCapability ->
+                "webRequest available=" + event.available +
+                    " listeners=" + event.registeredListeners
             is SpikeProbeEvent.SessionAnnouncement ->
                 "session appTab=" + event.appTabId +
                     " identity=" + event.sessionIdentity +
