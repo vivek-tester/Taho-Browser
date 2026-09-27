@@ -107,6 +107,13 @@ class TahoSecureTransferCoordinator(
                 artifactUri = uri,
             )
         } catch (t: Throwable) {
+            runCatching {
+                appContext.revokeUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                )
+            }
+            journal.settle(transferId)
             artifactStore.settle(transferId)
             throw t
         }
