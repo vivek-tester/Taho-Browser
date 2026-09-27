@@ -38,6 +38,7 @@ dependencies {
     implementation(project(":browser:runtime"))
     implementation(project(":browser:observation"))
     implementation(project(":capture:domain"))
+    implementation(project(":capture:persist"))
     implementation(project(":transfer:core"))
     implementation(project(":transfer:android"))
     implementation(project(":contract:taho-transfer"))

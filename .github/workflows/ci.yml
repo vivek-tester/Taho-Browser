@@ -69,6 +69,7 @@ jobs:
           :browser:runtime:testDebugUnitTest
           :browser:shell:testDebugUnitTest
           :browser:observation:testDebugUnitTest
+          :capture:persist:testDebugUnitTest
           :transfer:android:assembleDebug
 
       - name: Upload gated M4 browser APK
