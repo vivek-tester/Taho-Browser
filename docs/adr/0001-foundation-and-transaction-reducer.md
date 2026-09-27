@@ -24,6 +24,16 @@ The build plan requires the production foundation and reducer to be established 
 
 The foundation pins AGP 8.13.2, Kotlin 2.3.21, Gradle 8.13 in CI, and JDK 17. This keeps the configured AGP and Kotlin plugin lines within their documented supported ranges.
 
+## Product boundary
+
+Taho Browser does not execute API tests, replay imported requests as an API client, run Taho's
+diagnostic/security engines, or own collections/environments. Those responsibilities belong to
+Project-Taho. The browser prepares an explicit versioned transfer only.
+
+The Project-Taho receiver may be implemented after the browser runtime and capture path are
+operational; keeping the contract module now prevents the two apps from coupling to each other's
+internal models.
+
 ## Consequences
 
 The capture reducer can be exhaustively tested on the JVM before engine integration. UI and persistence receive explicit partial/unavailable states instead of inferred success. Engine-specific assumptions stay outside the pure domain.
