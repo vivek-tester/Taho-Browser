@@ -12,6 +12,7 @@ import app.taho.browser.capture.domain.SecretPolicy
 import app.taho.browser.capture.domain.SecretPolicyDefaults
 import app.taho.browser.capture.domain.SecretRef
 import app.taho.browser.contract.BodyEncoding
+import app.taho.browser.contract.BodyRepresentation
 import app.taho.browser.contract.CaptureCompleteness
 import app.taho.browser.contract.Completeness
 import app.taho.browser.contract.ContractLimits
