@@ -22,12 +22,10 @@ data class TahoTransferDispatch(
 
 class TahoSecureTransferCoordinator(
     context: Context,
-    private val artifactStore: SecureTransferArtifactStore =
-        SecureTransferArtifactStore(context.applicationContext),
-    private val journal: TransferAttemptJournal =
-        TransferAttemptJournal(context.applicationContext),
 ) {
     private val appContext = context.applicationContext
+    private val artifactStore = SecureTransferArtifactStore(appContext)
+    private val journal = TransferAttemptJournal(appContext)
 
     fun isTargetAvailable(target: TahoDirectTransferTarget): Boolean =
         Intent(target.action)
