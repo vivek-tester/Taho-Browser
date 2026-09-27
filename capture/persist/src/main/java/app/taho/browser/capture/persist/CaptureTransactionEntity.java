@@ -50,6 +50,7 @@ public class CaptureTransactionEntity {
     @Nullable public String respHeadersRedacted;
     @Nullable public String respBodyRef;
     @NonNull public String respCompleteness;
+    @NonNull public String redirectsJson;
 
     @NonNull public String state;
     @NonNull public String relevanceCategory;
@@ -84,6 +85,7 @@ public class CaptureTransactionEntity {
         @Nullable String respHeadersRedacted,
         @Nullable String respBodyRef,
         @NonNull String respCompleteness,
+        @NonNull String redirectsJson,
         @NonNull String state,
         @NonNull String relevanceCategory,
         @NonNull String relevanceReason,
@@ -116,6 +118,7 @@ public class CaptureTransactionEntity {
         this.respHeadersRedacted = respHeadersRedacted;
         this.respBodyRef = respBodyRef;
         this.respCompleteness = respCompleteness;
+        this.redirectsJson = redirectsJson;
         this.state = state;
         this.relevanceCategory = relevanceCategory;
         this.relevanceReason = relevanceReason;

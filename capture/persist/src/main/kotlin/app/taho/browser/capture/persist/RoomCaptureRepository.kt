@@ -87,6 +87,7 @@ class RoomCaptureRepository private constructor(
                 headersJson(transaction.responseHeaders),
                 resp?.id,
                 transaction.responseBody?.completeness?.name ?: Completeness.UNAVAILABLE.name,
+                redirectsJson(transaction),
                 transaction.state.name,
                 transaction.relevance.category.name,
                 transaction.relevance.reason,
@@ -293,6 +294,20 @@ class RoomCaptureRepository private constructor(
                         put("name", value.name)
                         put("value", value.displayValue)
                         put("redacted", value.redacted)
+                    },
+                )
+            }
+        }.toString()
+
+    private fun redirectsJson(transaction: DurableTransaction): String =
+        JSONArray().apply {
+            transaction.redirects.forEach { hop ->
+                put(
+                    JSONObject().apply {
+                        put("statusCode", hop.statusCode)
+                        put("fromUrl", hop.fromUrl)
+                        put("toUrl", hop.toUrl)
+                        put("atEpochMs", hop.atEpochMs ?: JSONObject.NULL)
                     },
                 )
             }

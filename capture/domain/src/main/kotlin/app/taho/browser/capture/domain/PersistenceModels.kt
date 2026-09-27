@@ -94,6 +94,20 @@ data class DurableHeaderValue(
     val redacted: Boolean,
 )
 
+data class DurableRedirectHop(
+    val statusCode: Int,
+    val fromUrl: String,
+    val toUrl: String,
+    val atEpochMs: Long?,
+) {
+    init {
+        require(statusCode in 300..399)
+        require(fromUrl.startsWith("http://") || fromUrl.startsWith("https://"))
+        require(toUrl.startsWith("http://") || toUrl.startsWith("https://"))
+        require(atEpochMs == null || atEpochMs >= 0)
+    }
+}
+
 class DurableBody(
     val representation: DurableBodyRepresentation,
     val encoding: DurableBodyEncoding,
@@ -143,6 +157,7 @@ class DurableTransaction(
     val responseHeaders: List<DurableHeaderValue>,
     val encryptedResponseHeadersSource: SensitivePayload?,
     val responseBody: DurableBody?,
+    val redirects: List<DurableRedirectHop> = emptyList(),
     val state: DurableTransactionState,
     val relevance: Relevance,
     val observationSource: ObservationSource,
