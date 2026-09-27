@@ -10,7 +10,7 @@ import androidx.room.RoomDatabase;
         CaptureBodyEntity.class
     },
     version = 1,
-    exportSchema = false
+    exportSchema = true
 )
 public abstract class CaptureDatabase extends RoomDatabase {
     public abstract CaptureDao captureDao();
