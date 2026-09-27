@@ -101,6 +101,22 @@ const FIXTURE_PATHS = new Set([
   "/failed"
 ]);
 
+function safeFixtureMarker(parsed) {
+  const explicit = parsed.searchParams.get("tab");
+  if (explicit && /^(?:A|B|P|X\d{1,2})$/.test(explicit)) {
+    return explicit;
+  }
+
+  if (parsed.pathname === "/tab-a" || parsed.pathname === "/redirect-a") return "A";
+  if (parsed.pathname === "/tab-b" || parsed.pathname === "/redirect-b") return "B";
+  if (parsed.pathname === "/tab-p" || parsed.pathname === "/redirect-p") return "P";
+
+  const extra = parsed.pathname.match(/^\/extra-(\d{1,2})$/);
+  if (extra) return "X" + extra[1];
+
+  return null;
+}
+
 function fixtureTag(url) {
   try {
     const parsed = new URL(url);
@@ -108,18 +124,19 @@ function fixtureTag(url) {
       return null;
     }
 
-    if (FIXTURE_PATHS.has(parsed.pathname)) {
-      return parsed.pathname;
+    const knownPath =
+      FIXTURE_PATHS.has(parsed.pathname) ||
+      /^\/extra-\d+$/.test(parsed.pathname);
+
+    if (!knownPath) {
+      return null;
     }
 
-    if (/^\/extra-\d+$/.test(parsed.pathname)) {
-      return parsed.pathname;
-    }
+    const marker = safeFixtureMarker(parsed);
+    return marker ? parsed.pathname + "#" + marker : parsed.pathname;
   } catch (_) {
     return null;
   }
-
-  return null;
 }
 
 function emitWebRequest(phase, details) {
