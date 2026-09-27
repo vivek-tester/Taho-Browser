@@ -24,6 +24,8 @@ class TahoSecureTransferCoordinator(
     context: Context,
     private val artifactStore: SecureTransferArtifactStore =
         SecureTransferArtifactStore(context.applicationContext),
+    private val journal: TransferAttemptJournal =
+        TransferAttemptJournal(context.applicationContext),
 ) {
     private val appContext = context.applicationContext
 
@@ -55,6 +57,11 @@ class TahoSecureTransferCoordinator(
             ).putExtra(
                 TahoDirectTransferContract.EXTRA_RECEIPT_PENDING_INTENT,
                 receiptPendingIntent,
+            )
+            journal.begin(
+                transferId = prepared.envelope.transferId,
+                transport = TahoTransferTransport.DIRECT_INTENT,
+                targetPackage = target.packageName,
             )
             return TahoTransferDispatch(
                 intent = intent,
@@ -89,6 +96,11 @@ class TahoSecureTransferCoordinator(
                 resultReceiver = resultReceiver,
             )
 
+            journal.begin(
+                transferId = transferId,
+                transport = TahoTransferTransport.ARTIFACT_URI,
+                targetPackage = target.packageName,
+            )
             return TahoTransferDispatch(
                 intent = intent,
                 transport = TahoTransferTransport.ARTIFACT_URI,
@@ -101,6 +113,7 @@ class TahoSecureTransferCoordinator(
     }
 
     fun settle(transferId: String) {
+        journal.settle(transferId)
         val uri = SecureTransferArtifactProvider.uri(
             appContext.packageName,
             transferId,
@@ -116,6 +129,26 @@ class TahoSecureTransferCoordinator(
 
     fun cancel(transferId: String) {
         settle(transferId)
+    }
+
+    fun recoverExpiredAttempts(): List<String> {
+        val expired = journal.recoverExpired()
+        expired.forEach { entry ->
+            if (entry.transport == TahoTransferTransport.ARTIFACT_URI) {
+                val uri = SecureTransferArtifactProvider.uri(
+                    appContext.packageName,
+                    entry.transferId,
+                )
+                runCatching {
+                    appContext.revokeUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                    )
+                }
+                artifactStore.settle(entry.transferId)
+            }
+        }
+        return expired.map { it.transferId }
     }
 
     private fun receiptPendingIntent(transferId: String): PendingIntent {
