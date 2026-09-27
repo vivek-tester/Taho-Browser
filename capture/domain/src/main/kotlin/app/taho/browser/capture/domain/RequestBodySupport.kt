@@ -8,6 +8,8 @@ import java.util.Locale
 enum class BodySupportLimitation {
     NONE,
     BODY_NOT_OBSERVED,
+    BODY_TRUNCATED,
+    BODY_CHUNKS_INCOMPLETE,
     MALFORMED_TEXT,
     MALFORMED_FORM,
     MULTIPART_PARTS_UNAVAILABLE,
