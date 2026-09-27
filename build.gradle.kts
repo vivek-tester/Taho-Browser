@@ -12,9 +12,18 @@ val pureJvmModules = listOf(
     "transfer/core",
 )
 
+val captureReachableModules = listOf(
+    "capture/domain",
+    "capture/persist",
+    "browser/observation",
+    "transfer/core",
+    "transfer/android",
+    "contract/taho-transfer",
+)
+
 tasks.register("verifyArchitecture") {
     group = "verification"
-    description = "Fail if correctness-critical pure JVM modules gain Android dependencies."
+    description = "Fail if correctness/security-critical module boundaries are violated."
 
     doLast {
         pureJvmModules.forEach { module ->
@@ -34,6 +43,34 @@ tasks.register("verifyArchitecture") {
                 if (androidImport.containsMatchIn(sourceText)) {
                     throw GradleException(
                         "$module imports android.* from ${source.relativeTo(projectDir)}",
+                    )
+                }
+            }
+        }
+
+        captureReachableModules.forEach { module ->
+            fileTree(module) {
+                include("src/**/*.kt")
+            }.forEach { source ->
+                val sourceText = source.readText()
+                val genericLogSink = Regex(
+                    "(?:android\\.util\\.)?Log\\s*\\.",
+                )
+                val stdoutSink = Regex(
+                    "(?:System\\.(?:out|err)\\.|(?<![A-Za-z])println\\s*\\()",
+                )
+
+                if (genericLogSink.containsMatchIn(sourceText)) {
+                    throw GradleException(
+                        "Generic Log.* sink is forbidden in capture-reachable code: " +
+                            source.relativeTo(projectDir),
+                    )
+                }
+
+                if (stdoutSink.containsMatchIn(sourceText)) {
+                    throw GradleException(
+                        "Generic stdout/stderr sink is forbidden in capture-reachable code: " +
+                            source.relativeTo(projectDir),
                     )
                 }
             }
