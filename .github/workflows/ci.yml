@@ -68,6 +68,7 @@ jobs:
           :spikes:geckoview:testDebugUnitTest
           :browser:runtime:testDebugUnitTest
           :browser:shell:testDebugUnitTest
+          :browser:observation:testDebugUnitTest
           :transfer:android:assembleDebug
 
       - name: Upload M3 browser APK
