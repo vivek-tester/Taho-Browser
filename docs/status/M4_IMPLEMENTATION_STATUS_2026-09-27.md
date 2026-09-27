@@ -55,10 +55,11 @@ Branch: `build/m4-end-to-end-slice`
 The committed application is deliberately non-activating:
 
 - `BuildConfig.M1_ATTRIBUTION_VERIFIED = false`.
-- `BuildConfig.TAHO_TRANSFER_ACTION = ""`.
+- `BuildConfig.TAHO_TRANSFER_ACTION = "com.eternal.taho.action.IMPORT_TAHO_REQUEST"`.
 
-As a result, production capture remains OFF and an absent Project-Taho structured receiver cannot be
-launched accidentally.
+The structured receiver action now exists on the Project-Taho M4 branch. Production capture still
+remains OFF because the M1 attribution gate is false; no unverified Gecko traffic is activated by
+this source integration.
 
 ## M4 exit blockers
 
@@ -66,9 +67,18 @@ M4 remains blocked until all of the following are demonstrated:
 
 1. M1 on-device attribution/capability evidence passes.
 2. The M3 browser physical-device acceptance gate demonstrates the Browser actually runs correctly.
-3. The real Project-Taho receiver imports the transfer into the actual editor as an unsaved request,
-   returns a receipt, and never auto-executes.
+3. The implemented Project-Taho receiver/editor path is built and exercised on-device: it must open
+   an unsaved ephemeral editor request, return a matching receipt, and never auto-execute.
 4. Browser and Project-Taho run together on-device for a real captured GET and JSON POST with the
    expected method/query/headers/body/provenance.
 
 No M5 persistence/durability work is included in this phase.
+
+
+## Real Project-Taho receiver source
+
+Project-Taho PR #23 implements the matching action and direct-v1 receiver. The native entry stores a
+bounded direct envelope and exposes it to Flutter over a private MethodChannel. Dart validates the
+schema/policy, maps GET/complete-inline-JSON POST into the existing ApiRequest editor model, opens an
+ephemeral non-restorable request session, and returns a transfer-scoped ResultReceiver receipt.
+Nothing in the import path invokes Taho's send pipeline.

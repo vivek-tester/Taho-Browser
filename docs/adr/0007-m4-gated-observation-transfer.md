@@ -37,10 +37,13 @@ non-existent integration surface.
    requires a separate live-secret provider and is disabled in the M4 UI because no consent-safe
    provider is retained.
 10. Direct handoff is limited to the v1 envelope budget. Large payload transfer remains M6.
-11. The Android sender requires a caller-supplied target package and action. The known Project-Taho
-    package may be configured, but the structured receiver action remains blank until the real
-    receiver is implemented and verified.
-12. A receipt must match the pending `transferId`. Import is never interpreted as execution.
+11. The direct M4 target is the verified Project-Taho package `com.eternal.taho` and action
+    `com.eternal.taho.action.IMPORT_TAHO_REQUEST`. Package visibility is explicit. Caller
+    authentication hardening remains an M6 transport-security concern; M4 transfers only
+    parameterized/masked secrets and rejects EXPLICIT live-secret transfer.
+12. Receipt delivery uses a per-dispatch Android ResultReceiver so Taho remains foreground in the
+    actual editor. A receipt must match the pending `transferId`. Import is never interpreted as
+    execution.
 13. The M2 receiver harness may verify contract semantics and zero-execution behavior, but it is not
     accepted as the M4 two-app integration result.
 
