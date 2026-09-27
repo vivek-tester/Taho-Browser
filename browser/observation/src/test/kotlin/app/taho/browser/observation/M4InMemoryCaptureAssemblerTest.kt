@@ -178,7 +178,7 @@ class M4InMemoryCaptureAssemblerTest {
     }
 
     @Test
-    fun redirectChainAndFormLimitationAreRetainedInDurableEvidence() {
+    fun redirectChainAndSafeFormAreRetainedAndTransferable() {
         var durable: DurableTransaction? = null
         val assembler = M4InMemoryCaptureAssembler(
             appVersion = "0.1.0",
@@ -237,8 +237,13 @@ class M4InMemoryCaptureAssemblerTest {
         val captured = assembler.requestsForTab("tab-a").single()
         assertEquals(1, captured.redirectCount)
         assertEquals(DurableBodyRepresentation.FORM.name, captured.bodyRepresentation?.name)
-        assertTrue(captured.reviewRequired)
-        assertTrue(captured.bodyLimitation?.contains("Form", ignoreCase = true) == true)
+        assertFalse(captured.reviewRequired)
+        assertEquals(null, captured.bodyLimitation)
+        assertEquals(
+            app.taho.browser.contract.BodyRepresentation.FORM,
+            captured.body?.representation,
+        )
+        assertEquals("name=widget", captured.body?.content)
 
         val stored = requireNotNull(durable)
         try {
@@ -300,6 +305,82 @@ class M4InMemoryCaptureAssemblerTest {
         } finally {
             stored.close()
         }
+    }
+
+
+    @Test
+    fun jsonGraphqlBodyMapsToGraphqlTransferRepresentation() {
+        val assembler = M4InMemoryCaptureAssembler(
+            appVersion = "0.1.0",
+            engineVersion = "geckoview-test",
+            captureSessionId = "capture-graphql",
+        )
+        val body =
+            """{"query":"query Viewer { viewer { id } }","variables":{"limit":3}}"""
+                .encodeToByteArray()
+
+        accept(
+            assembler,
+            ProductionObservationMessage.TxStart(
+                "conn-graphql",
+                2,
+                "graphql-start",
+                "graphql-request",
+                7,
+                0,
+                null,
+                "https://api.example.test/graphql",
+                "POST",
+                "xmlhttprequest",
+                1000.0,
+            ),
+        )
+        accept(
+            assembler,
+            ProductionObservationMessage.TxRequestHeaders(
+                "conn-graphql",
+                3,
+                "graphql-headers",
+                "graphql-request",
+                7,
+                listOf(
+                    ProductionObservationMessage.HeaderValue(
+                        "Content-Type",
+                        "application/json",
+                    ),
+                ),
+            ),
+        )
+        accept(
+            assembler,
+            ProductionObservationMessage.TxRequestBody(
+                "conn-graphql",
+                4,
+                "graphql-body",
+                "graphql-request",
+                7,
+                body,
+            ),
+        )
+        accept(
+            assembler,
+            ProductionObservationMessage.TxComplete(
+                "conn-graphql",
+                5,
+                "graphql-complete",
+                "graphql-request",
+                7,
+                1010.0,
+            ),
+        )
+
+        val captured = assembler.requestsForTab("tab-a").single()
+        assertFalse(captured.reviewRequired)
+        assertEquals(
+            app.taho.browser.contract.BodyRepresentation.GRAPHQL,
+            captured.body?.representation,
+        )
+        assertEquals(body.decodeToString(), captured.body?.content)
     }
 
     @Test
