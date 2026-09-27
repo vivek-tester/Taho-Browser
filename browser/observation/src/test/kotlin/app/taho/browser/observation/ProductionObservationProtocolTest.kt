@@ -153,4 +153,63 @@ class ProductionObservationProtocolTest {
         assertFalse(redirect.toString().contains("token=secret"))
     }
 
+    @Test
+    fun parsesBoundedRequestBodyChunkMetadata() {
+        val payload = java.util.Base64.getEncoder()
+            .encodeToString("chunk-data".encodeToByteArray())
+        val raw = """{
+          "type":"TX_REQ_BODY",
+          "conn":"conn-1",
+          "seq":4,
+          "id":"event-body-1",
+          "reqId":"request-1",
+          "tabId":7,
+          "bodyKind":"RAW",
+          "chunkIndex":1,
+          "chunkCount":3,
+          "isFinal":false,
+          "observedTotalBytes":1024,
+          "truncated":false,
+          "base64":"$payload"
+        }""".trimIndent()
+
+        val message = assertIs<ObservationParseResult.Accepted>(
+            ProductionObservationProtocol.parse(raw, ObservationLane.BULK),
+        ).message
+        val body = assertIs<ProductionObservationMessage.TxRequestBody>(message)
+
+        assertEquals(1, body.chunkIndex)
+        assertEquals(3, body.chunkCount)
+        assertFalse(body.isFinal)
+        assertEquals(1024L, body.observedTotalBytes)
+        assertEquals("chunk-data", body.bytes.decodeToString())
+    }
+
+    @Test
+    fun rejectsInvalidFinalChunkMetadata() {
+        val payload = java.util.Base64.getEncoder()
+            .encodeToString("chunk-data".encodeToByteArray())
+        val raw = """{
+          "type":"TX_REQ_BODY",
+          "conn":"conn-1",
+          "seq":4,
+          "id":"event-body-2",
+          "reqId":"request-1",
+          "tabId":7,
+          "bodyKind":"RAW",
+          "chunkIndex":0,
+          "chunkCount":2,
+          "isFinal":true,
+          "base64":"$payload"
+        }""".trimIndent()
+
+        val result = ProductionObservationProtocol.parse(raw, ObservationLane.BULK)
+
+        assertEquals(
+            ObservationRejectReason.INVALID_FIELD,
+            assertIs<ObservationParseResult.Rejected>(result).reason,
+        )
+    }
+
+
 }
