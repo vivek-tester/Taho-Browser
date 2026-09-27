@@ -32,7 +32,7 @@ class M1SpikeRecorderTest {
         val result = recorder.toJson().toString()
 
         assertFalse(result.contains(secretToken))
-        assertTrue(result.contains(""A""))
+        assertTrue(result.contains("\\"A\\""))
     }
 
     @Test
