@@ -5,19 +5,32 @@ import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSessionSettings
 import java.util.UUID
 
+data class BrowserTabSnapshot(
+    val id: String,
+    val location: String?,
+    val isLoading: Boolean,
+    val loadFailed: Boolean,
+    val isPrivate: Boolean,
+)
+
 data class BrowserSnapshot(
     val selectedTabId: String,
     val location: String?,
     val tabCount: Int,
     val isLoading: Boolean,
+    val loadFailed: Boolean,
+    val isPrivate: Boolean,
+    val tabs: List<BrowserTabSnapshot>,
 )
 
 class BrowserRuntimeController(context: Context) {
     private data class RuntimeTab(
         val id: String,
         val session: GeckoSession,
+        val isPrivate: Boolean,
         var location: String? = null,
         var isLoading: Boolean = false,
+        var loadFailed: Boolean = false,
     )
 
     private val runtime = GeckoRuntimeHolder.get(context)
@@ -37,6 +50,17 @@ class BrowserRuntimeController(context: Context) {
             location = selected.location,
             tabCount = tabs.size,
             isLoading = selected.isLoading,
+            loadFailed = selected.loadFailed,
+            isPrivate = selected.isPrivate,
+            tabs = tabs.map { tab ->
+                BrowserTabSnapshot(
+                    id = tab.id,
+                    location = tab.location,
+                    isLoading = tab.isLoading,
+                    loadFailed = tab.loadFailed,
+                    isPrivate = tab.isPrivate,
+                )
+            },
         )
     }
 
@@ -51,17 +75,23 @@ class BrowserRuntimeController(context: Context) {
             .usePrivateMode(privateMode)
             .build()
         val session = GeckoSession(settings)
-        val tab = RuntimeTab(id = id, session = session)
+        val tab = RuntimeTab(
+            id = id,
+            session = session,
+            isPrivate = privateMode,
+        )
 
         session.setProgressDelegate(object : GeckoSession.ProgressDelegate {
             override fun onPageStart(session: GeckoSession, url: String) {
                 tab.location = url
                 tab.isLoading = true
+                tab.loadFailed = false
                 notifyChangedIfReady()
             }
 
             override fun onPageStop(session: GeckoSession, success: Boolean) {
                 tab.isLoading = false
+                tab.loadFailed = !success
                 notifyChangedIfReady()
             }
         })
@@ -74,8 +104,23 @@ class BrowserRuntimeController(context: Context) {
         return id
     }
 
+    fun newTab(privateMode: Boolean): String {
+        val id = createTab(privateMode)
+        selectTab(id)
+        return id
+    }
+
     fun closeTab(tabId: String) {
-        if (tabs.size == 1) return
+        if (tabs.size == 1) {
+            val only = tabs.single()
+            only.location = null
+            only.loadFailed = false
+            only.isLoading = false
+            only.session.loadUri("about:blank")
+            notifyChanged()
+            return
+        }
+
         val index = tabs.indexOfFirst { it.id == tabId }
         if (index == -1) return
 
@@ -105,12 +150,27 @@ class BrowserRuntimeController(context: Context) {
 
     fun load(tabId: String = selectedTabId, uri: String) {
         val tab = tabs.firstOrNull { it.id == tabId } ?: return
+        tab.loadFailed = false
+        tab.isLoading = true
+        notifyChangedIfReady()
         tab.session.loadUri(uri)
     }
 
-    fun reload() = requireSelected().session.reload()
-    fun goBack() = requireSelected().session.goBack()
-    fun goForward() = requireSelected().session.goForward()
+    fun reload() {
+        val tab = requireSelected()
+        tab.loadFailed = false
+        tab.isLoading = true
+        notifyChanged()
+        tab.session.reload()
+    }
+
+    fun goBack() {
+        requireSelected().session.goBack()
+    }
+
+    fun goForward() {
+        requireSelected().session.goForward()
+    }
 
     fun bind(tabId: String = selectedTabId, surface: BrowserSurfaceView) {
         val tab = tabs.firstOrNull { it.id == tabId } ?: requireSelected()
@@ -121,7 +181,8 @@ class BrowserRuntimeController(context: Context) {
         tabs.forEach { block(it.id, it.session) }
     }
 
-    private fun requireSelected(): RuntimeTab = tabs.first { it.id == selectedTabId }
+    private fun requireSelected(): RuntimeTab =
+        tabs.first { it.id == selectedTabId }
 
     private fun notifyChangedIfReady() {
         if (::selectedTabId.isInitialized) notifyChanged()

@@ -13,6 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import app.taho.browser.runtime.BrowserRuntimeStore
 import app.taho.browser.runtime.BrowserSurfaceView
+import app.taho.browser.runtime.NavigationInput
+import app.taho.browser.shell.BrowserTabUiState
 import app.taho.browser.shell.BrowserUiState
 import app.taho.browser.shell.TahoBrowserApp
 
@@ -39,7 +41,32 @@ class MainActivity : ComponentActivity() {
                 state = BrowserUiState(
                     omniboxText = visibleLocation,
                     tabCount = snapshot.tabCount,
+                    isLoading = snapshot.isLoading,
+                    loadFailed = snapshot.loadFailed,
+                    isPrivate = snapshot.isPrivate,
+                    tabs = snapshot.tabs.map { tab ->
+                        BrowserTabUiState(
+                            id = tab.id,
+                            location = tab.location,
+                            isPrivate = tab.isPrivate,
+                            isLoading = tab.isLoading,
+                            loadFailed = tab.loadFailed,
+                            selected = tab.id == snapshot.selectedTabId,
+                        )
+                    },
                 ),
+                onNavigate = { input ->
+                    NavigationInput.resolve(input)?.let { uri ->
+                        controller.load(uri = uri)
+                    }
+                },
+                onBack = controller::goBack,
+                onForward = controller::goForward,
+                onReload = controller::reload,
+                onNewTab = { controller.newTab(privateMode = false) },
+                onNewPrivateTab = { controller.newTab(privateMode = true) },
+                onSelectTab = controller::selectTab,
+                onCloseTab = controller::closeTab,
                 browserContent = {
                     AndroidView(
                         factory = { context ->
