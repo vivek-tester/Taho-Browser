@@ -1,6 +1,7 @@
 package app.taho.browser.observation
 
 import app.taho.browser.capture.domain.BodySupportLimitation
+import app.taho.browser.capture.domain.CaptureBudgets
 import app.taho.browser.capture.domain.Completeness as DomainCompleteness
 import app.taho.browser.capture.domain.DurableBody
 import app.taho.browser.capture.domain.DurableBodyEncoding
@@ -36,6 +37,7 @@ import app.taho.browser.transfer.core.M4QueryInput
 import app.taho.browser.transfer.core.UlidGenerator
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 import java.net.URI
 import java.net.URLDecoder
 import java.net.URLEncoder
@@ -70,6 +72,11 @@ class M4InMemoryCaptureAssembler(
         var startAt: Double? = null,
         var requestHeaders: List<ProductionObservationMessage.HeaderValue>? = null,
         var requestBody: ByteArray? = null,
+        var requestBodyBuffer: ByteArrayOutputStream? = null,
+        var requestBodyExpectedChunk: Int = 0,
+        var requestBodyChunkCount: Int? = null,
+        var requestBodyTruncated: Boolean = false,
+        var requestBodyInvalid: Boolean = false,
         var requestFormData: Map<String, List<String>>? = null,
         var statusCode: Int? = null,
         var statusText: String? = null,
@@ -151,10 +158,18 @@ class M4InMemoryCaptureAssembler(
 
             is ProductionObservationMessage.TxRequestBody -> {
                 tx.extTabId = message.extTabId
-                tx.requestBody = message.bytes.takeIf { it.isNotEmpty() }?.copyOf()
-                tx.requestFormData = message.formData
-                    .takeIf { it.isNotEmpty() }
-                    ?.mapValues { (_, values) -> values.toList() }
+                if (message.formData.isNotEmpty()) {
+                    tx.requestBody = null
+                    tx.requestBodyBuffer = null
+                    tx.requestBodyExpectedChunk = 0
+                    tx.requestBodyChunkCount = null
+                    tx.requestBodyTruncated = false
+                    tx.requestBodyInvalid = false
+                    tx.requestFormData = message.formData
+                        .mapValues { (_, values) -> values.toList() }
+                } else if (message.bytes.isNotEmpty()) {
+                    acceptBodyChunk(tx, message)
+                }
             }
 
             is ProductionObservationMessage.TxRedirect -> {
@@ -191,6 +206,59 @@ class M4InMemoryCaptureAssembler(
 
             is ProductionObservationMessage.Hello,
             is ProductionObservationMessage.TabRegister -> Unit
+        }
+    }
+
+    private fun acceptBodyChunk(
+        tx: MutableTransaction,
+        message: ProductionObservationMessage.TxRequestBody,
+    ) {
+        val expectedCount = tx.requestBodyChunkCount
+        if (
+            message.chunkIndex != tx.requestBodyExpectedChunk ||
+            expectedCount != null && expectedCount != message.chunkCount
+        ) {
+            tx.requestBodyInvalid = true
+            tx.requestBodyBuffer = null
+            limited = true
+            return
+        }
+
+        if (tx.requestBodyChunkCount == null) {
+            tx.requestBodyChunkCount = message.chunkCount
+        }
+
+        val buffer = tx.requestBodyBuffer ?: ByteArrayOutputStream().also {
+            tx.requestBodyBuffer = it
+        }
+        val maxBytes = CaptureBudgets().maxBodyBytes
+        if (message.bytes.size.toLong() > maxBytes - buffer.size().toLong()) {
+            tx.requestBodyTruncated = true
+            tx.requestBodyInvalid = true
+            tx.requestBodyBuffer = null
+            limited = true
+            return
+        }
+
+        buffer.write(message.bytes)
+        tx.requestBodyExpectedChunk += 1
+        tx.requestBodyTruncated = tx.requestBodyTruncated || message.truncated
+
+        if (message.isFinal) {
+            if (
+                tx.requestBodyExpectedChunk != message.chunkCount ||
+                message.observedTotalBytes != null &&
+                !message.truncated &&
+                message.observedTotalBytes != buffer.size().toLong()
+            ) {
+                tx.requestBodyInvalid = true
+                tx.requestBodyBuffer = null
+                limited = true
+                return
+            }
+
+            tx.requestBody = buffer.toByteArray()
+            tx.requestBodyBuffer = null
         }
     }
 
