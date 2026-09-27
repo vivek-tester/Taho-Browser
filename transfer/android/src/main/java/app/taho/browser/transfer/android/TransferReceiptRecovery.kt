@@ -25,6 +25,16 @@ object TransferReceiptRecoveryStore {
         prefs.edit().remove(KEY_LATEST).apply()
         return TransferReceiptJson.decode(raw)
     }
+
+    fun clearIfMatches(context: Context, transferId: String) {
+        val prefs = context.applicationContext
+            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val current = prefs.getString(KEY_LATEST, null)
+            ?.let(TransferReceiptJson::decode)
+        if (current?.transferId == transferId) {
+            prefs.edit().remove(KEY_LATEST).apply()
+        }
+    }
 }
 
 class TransferReceiptReceiver : BroadcastReceiver() {
