@@ -177,6 +177,47 @@ class SecureTransferArtifactStoreTest {
         )
     }
 
+    @Test
+    fun transferJournalSurvivesUntilReceiptOrExpiry() {
+        val clock = FakeClock(now = 10_000, boot = "boot-journal")
+        val journal = TransferAttemptJournal(context, clock)
+        val id = "journal-" + System.nanoTime()
+
+        journal.begin(
+            transferId = id,
+            transport = TahoTransferTransport.DIRECT_INTENT,
+            targetPackage = TAHO_PACKAGE,
+        )
+        assertTrue(
+            journal.pendingForTesting().any { it.transferId == id },
+        )
+
+        clock.now += SecureTransferArtifactStore.ACCESS_TTL_MS + 1
+        val expired = journal.recoverExpired()
+        assertTrue(expired.any { it.transferId == id })
+        assertFalse(
+            journal.pendingForTesting().any { it.transferId == id },
+        )
+    }
+
+    @Test
+    fun transferJournalTreatsRebootAsExpired() {
+        val clock = FakeClock(now = 20_000, boot = "boot-before")
+        val journal = TransferAttemptJournal(context, clock)
+        val id = "reboot-" + System.nanoTime()
+        journal.begin(
+            transferId = id,
+            transport = TahoTransferTransport.ARTIFACT_URI,
+            targetPackage = TAHO_PACKAGE,
+        )
+
+        clock.boot = "boot-after"
+        val expired = journal.recoverExpired()
+
+        assertTrue(expired.any { it.transferId == id })
+    }
+
+
     private fun store(
         root: File,
         clock: FakeClock,
