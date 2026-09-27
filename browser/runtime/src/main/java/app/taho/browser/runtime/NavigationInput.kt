@@ -53,7 +53,7 @@ object NavigationInput {
 
     private val SCHEME = Regex("^([a-zA-Z][a-zA-Z0-9+.-]*):")
     private val LOCALHOST_WITH_PORT = Regex(
-        """^localhost:\\d+(?:[/?#].*)?$""",
+        """^localhost:\d+(?:[/?#].*)?$""",
         RegexOption.IGNORE_CASE,
     )
     private val IPV4 = Regex(
