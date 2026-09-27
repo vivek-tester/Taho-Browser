@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import org.mozilla.geckoview.AllowOrDeny
 import org.mozilla.geckoview.GeckoResult
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSessionSettings
@@ -32,6 +33,13 @@ data class BrowserAndroidPermissionRequest(
     val permissions: List<String>,
 )
 
+data class BrowserExternalNavigationRequest(
+    val id: String,
+    val tabId: String,
+    val uri: String,
+    val scheme: String,
+)
+
 data class BrowserTabSnapshot(
     val id: String,
     val title: String?,
@@ -56,6 +64,8 @@ data class BrowserSnapshot(
     val canGoForward: Boolean,
     val sitePermission: BrowserSitePermissionPrompt?,
     val androidPermissionRequest: BrowserAndroidPermissionRequest?,
+    val externalNavigationRequest: BrowserExternalNavigationRequest?,
+    val notice: String?,
     val tabs: List<BrowserTabSnapshot>,
 )
 
@@ -96,6 +106,11 @@ class BrowserRuntimeController(context: Context) {
         var launched: Boolean = false,
     )
 
+    private data class PendingExternalNavigation(
+        val request: BrowserExternalNavigationRequest,
+        var launched: Boolean = false,
+    )
+
     private val runtime = GeckoRuntimeHolder.get(context)
     private val sessionStore = BrowserSessionStore(context.applicationContext)
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -105,6 +120,8 @@ class BrowserRuntimeController(context: Context) {
 
     private var pendingSitePermission: PendingSitePermission? = null
     private var pendingAndroidPermission: PendingAndroidPermission? = null
+    private var pendingExternalNavigation: PendingExternalNavigation? = null
+    private var notice: String? = null
 
     private val persistRunnable = Runnable { persistNow() }
 
@@ -150,6 +167,8 @@ class BrowserRuntimeController(context: Context) {
             canGoForward = selected.canGoForward,
             sitePermission = pendingSitePermission?.prompt,
             androidPermissionRequest = pendingAndroidPermission?.request,
+            externalNavigationRequest = pendingExternalNavigation?.request,
+            notice = notice,
             tabs = tabs.map { tab ->
                 BrowserTabSnapshot(
                     id = tab.id,
@@ -188,6 +207,7 @@ class BrowserRuntimeController(context: Context) {
 
     fun closeTab(tabId: String) {
         rejectPermissionsForTab(tabId)
+        clearExternalNavigationForTab(tabId)
 
         if (tabs.size == 1) {
             val only = tabs.single()
@@ -239,6 +259,7 @@ class BrowserRuntimeController(context: Context) {
             replaceCrashedSession(tab, restorePreviousState = false)
         }
 
+        notice = null
         tab.loadFailed = false
         tab.crashed = false
         tab.isLoading = true
@@ -329,6 +350,28 @@ class BrowserRuntimeController(context: Context) {
         if (pending?.request?.id != requestId || pending.launched) return false
         pending.launched = true
         return true
+    }
+
+    fun claimExternalNavigationRequest(requestId: String): Boolean {
+        val pending = pendingExternalNavigation
+        if (pending?.request?.id != requestId || pending.launched) return false
+        pending.launched = true
+        return true
+    }
+
+    fun resolveExternalNavigation(requestId: String, opened: Boolean) {
+        val pending = pendingExternalNavigation
+        if (pending?.request?.id != requestId) return
+
+        pendingExternalNavigation = null
+        notice = if (opened) null else "No installed app can open this link."
+        notifyChanged()
+    }
+
+    fun dismissNotice() {
+        if (notice == null) return
+        notice = null
+        notifyChanged()
     }
 
     fun resolveAndroidPermissions(requestId: String, granted: Boolean) {
@@ -444,6 +487,49 @@ class BrowserRuntimeController(context: Context) {
         })
 
         session.setNavigationDelegate(object : GeckoSession.NavigationDelegate {
+            override fun onLoadRequest(
+                session: GeckoSession,
+                request: GeckoSession.NavigationDelegate.LoadRequest,
+            ): GeckoResult<AllowOrDeny>? {
+                val parsed = Uri.parse(request.uri)
+                val scheme = parsed.scheme?.lowercase().orEmpty()
+
+                if (
+                    request.target == GeckoSession.NavigationDelegate.TARGET_WINDOW_NEW &&
+                    scheme in INTERNAL_BROWSING_SCHEMES
+                ) {
+                    if (!request.hasUserGesture) {
+                        return GeckoResult.fromValue(AllowOrDeny.DENY)
+                    }
+
+                    val newTabId = newTab(privateMode = tab.isPrivate)
+                    load(tabId = newTabId, uri = request.uri)
+                    return GeckoResult.fromValue(AllowOrDeny.DENY)
+                }
+
+                if (scheme in EXTERNAL_SCHEMES) {
+                    if (
+                        !request.hasUserGesture ||
+                        request.isRedirect ||
+                        pendingExternalNavigation != null
+                    ) {
+                        return GeckoResult.fromValue(AllowOrDeny.DENY)
+                    }
+
+                    val external = BrowserExternalNavigationRequest(
+                        id = UUID.randomUUID().toString(),
+                        tabId = tab.id,
+                        uri = request.uri,
+                        scheme = scheme,
+                    )
+                    pendingExternalNavigation = PendingExternalNavigation(external)
+                    notifyChangedIfReady()
+                    return GeckoResult.fromValue(AllowOrDeny.DENY)
+                }
+
+                return null
+            }
+
             override fun onLocationChange(
                 session: GeckoSession,
                 url: String?,
@@ -609,6 +695,7 @@ class BrowserRuntimeController(context: Context) {
 
     private fun markCrashed(tab: RuntimeTab) {
         rejectPermissionsForTab(tab.id)
+        clearExternalNavigationForTab(tab.id)
         tab.crashed = true
         tab.isLoading = false
         tab.loadFailed = false
@@ -660,6 +747,12 @@ class BrowserRuntimeController(context: Context) {
         selectedTabId = next.id
         if (persist) persistSoon()
         notifyChanged()
+    }
+
+    private fun clearExternalNavigationForTab(tabId: String) {
+        if (pendingExternalNavigation?.request?.tabId == tabId) {
+            pendingExternalNavigation = null
+        }
     }
 
     private fun rejectPermissionsForTab(tabId: String) {
@@ -718,6 +811,19 @@ class BrowserRuntimeController(context: Context) {
     companion object {
         private const val PERSIST_DEBOUNCE_MS = 500L
         private const val MAX_ORIGIN_LENGTH = 160
+
+        private val INTERNAL_BROWSING_SCHEMES = setOf(
+            "http",
+            "https",
+            "about",
+        )
+
+        private val EXTERNAL_SCHEMES = setOf(
+            "mailto",
+            "tel",
+            "sms",
+            "geo",
+        )
 
         private val SUPPORTED_ANDROID_PERMISSIONS = setOf(
             Manifest.permission.ACCESS_COARSE_LOCATION,

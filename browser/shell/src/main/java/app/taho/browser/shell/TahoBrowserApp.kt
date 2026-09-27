@@ -85,6 +85,7 @@ data class BrowserUiState(
     val canGoBack: Boolean = false,
     val canGoForward: Boolean = false,
     val sitePermission: SitePermissionUiState? = null,
+    val notice: String? = null,
     val tabs: List<BrowserTabUiState> = emptyList(),
 )
 
@@ -102,6 +103,7 @@ fun TahoBrowserApp(
     onSelectTab: (String) -> Unit = {},
     onCloseTab: (String) -> Unit = {},
     onSitePermissionDecision: (String, Boolean) -> Unit = { _, _ -> },
+    onDismissNotice: () -> Unit = {},
     browserContent: @Composable () -> Unit = {},
 ) {
     var editing by rememberSaveable { mutableStateOf(false) }
@@ -134,6 +136,14 @@ fun TahoBrowserApp(
                     .padding(horizontal = 13.dp, vertical = 11.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                state.notice?.let { message ->
+                    BrowserNoticeBanner(
+                        message = message,
+                        onDismiss = onDismissNotice,
+                    )
+                    Spacer(Modifier.height(9.dp))
+                }
+
                 if (state.crashed) {
                     PageCrashBanner(onReload = onReload)
                     Spacer(Modifier.height(9.dp))
@@ -238,6 +248,39 @@ fun TahoBrowserApp(
                     },
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun BrowserNoticeBanner(
+    message: String,
+    onDismiss: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(TahoSheet)
+            .border(1.dp, Color.White.copy(alpha = .10f), RoundedCornerShape(14.dp))
+            .padding(start = 14.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = message,
+            modifier = Modifier.weight(1f),
+            color = TahoMuted,
+            fontFamily = FontFamily.Monospace,
+            fontSize = 10.sp,
+        )
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .clickable(onClick = onDismiss),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("×", color = TahoText, fontSize = 17.sp)
         }
     }
 }

@@ -1,6 +1,8 @@
 package app.taho.browser
 
 import android.Manifest
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
@@ -62,6 +64,7 @@ class MainActivity : ComponentActivity() {
                 ?: "Search or enter address"
             val selectedTabId = snapshot.selectedTabId
             val androidPermission = snapshot.androidPermissionRequest
+            val externalNavigation = snapshot.externalNavigationRequest
 
             androidx.compose.runtime.LaunchedEffect(androidPermission?.id) {
                 val request = androidPermission ?: return@LaunchedEffect
@@ -79,6 +82,29 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            androidx.compose.runtime.LaunchedEffect(externalNavigation?.id) {
+                val request = externalNavigation ?: return@LaunchedEffect
+                if (!controller.claimExternalNavigationRequest(request.id)) {
+                    return@LaunchedEffect
+                }
+
+                val opened = runCatching {
+                    val action = if (request.scheme == "tel") {
+                        Intent.ACTION_DIAL
+                    } else {
+                        Intent.ACTION_VIEW
+                    }
+                    val intent = Intent(action, Uri.parse(request.uri))
+                    startActivity(intent)
+                    true
+                }.getOrDefault(false)
+
+                controller.resolveExternalNavigation(
+                    requestId = request.id,
+                    opened = opened,
+                )
+            }
+
             TahoBrowserApp(
                 state = BrowserUiState(
                     omniboxText = visibleLocation,
@@ -89,6 +115,7 @@ class MainActivity : ComponentActivity() {
                     isPrivate = snapshot.isPrivate,
                     canGoBack = snapshot.canGoBack,
                     canGoForward = snapshot.canGoForward,
+                    notice = snapshot.notice,
                     sitePermission = snapshot.sitePermission?.let { permission ->
                         val copy = permissionCopy(permission.kind)
                         SitePermissionUiState(
@@ -131,6 +158,7 @@ class MainActivity : ComponentActivity() {
                 onSelectTab = controller::selectTab,
                 onCloseTab = controller::closeTab,
                 onSitePermissionDecision = controller::resolveSitePermission,
+                onDismissNotice = controller::dismissNotice,
                 browserContent = {
                     AndroidView(
                         factory = { context ->
