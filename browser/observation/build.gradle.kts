@@ -13,7 +13,9 @@ android {
     }
 }
 
+val geckoViewVersion: String by project
+
 dependencies {
     implementation(project(":capture:domain"))
-    // GeckoView stays intentionally absent until the M1 capability spike records the engine pin.
+    implementation("org.mozilla.geckoview:geckoview-omni:$geckoViewVersion")
 }
