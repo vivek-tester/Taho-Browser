@@ -26,7 +26,6 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import org.robolectric.RobolectricTestRunner
@@ -83,7 +82,7 @@ class RoomCaptureRepositoryTest {
     }
 
     @Test
-    fun privateSessionNeverPersistsSecretPayloads() {
+    fun privateSessionNeverPersistsAnyCaptureRecord() {
         repository.upsertSession(
             DurableCaptureSession(
                 id = "private",
@@ -133,7 +132,9 @@ class RoomCaptureRepositoryTest {
             isPrivate = true,
         )
         assertIs<CaptureRepositoryResult.Success<Unit>>(repository.commit(tx))
-        assertEquals(null, database.captureDao().body("private-tx", "REQUEST")?.ciphertext)
+        assertEquals(0, database.captureDao().transactionCount())
+        assertEquals(0, database.captureDao().bodyCount())
+        assertEquals(null, database.captureDao().session("private"))
     }
 
     @Test
@@ -212,6 +213,78 @@ class RoomCaptureRepositoryTest {
         assertEquals(0, database.captureDao().bodyCount())
     }
 
+
+    @Test
+    fun methodRelevanceAndTabFiltersExcludeUnresolvedRows() {
+        repository.upsertSession(session("s1", RetentionPolicy.KEEP_UNTIL_DELETED))
+        transaction("api", "s1", "https://example.test/api").also {
+            repository.commit(it)
+            it.close()
+        }
+        transaction(
+            id = "unresolved",
+            sessionId = "s1",
+            url = "https://example.test/unresolved",
+            tabId = null,
+            relevance = RelevanceCategory.BUSINESS_API,
+        ).also {
+            repository.commit(it)
+            it.close()
+        }
+
+        val result = assertIs<CaptureRepositoryResult.Success<*>>(
+            repository.list(
+                CaptureQuery(
+                    tabId = "tab-1",
+                    methods = setOf("POST"),
+                    relevance = setOf(RelevanceCategory.PRIMARY_API),
+                ),
+            ),
+        )
+        val rows = result.value as List<*>
+        assertEquals(1, rows.size)
+    }
+
+    @Test
+    fun encryptedBodyStoreReportsLowStorageAndMissingFile() {
+        val store = EncryptedBodyStore(
+            context = context,
+            cipher = FakeCipher(),
+            inlineLimitBytes = 4,
+            availableBytes = { 5L },
+        )
+        val low = store.write("large", ByteArray(8) { 1 })
+        val degraded = assertIs<BodyStoreResult.Degraded>(low)
+        assertEquals(StorageDegradationReason.LOW_STORAGE, degraded.reason)
+
+        val missing = store.read(
+            inlineIv = null,
+            inlineCiphertext = null,
+            storageRef = "does-not-exist.bin",
+        )
+        val missingDegraded = assertIs<BodyStoreResult.Degraded>(missing)
+        assertEquals(
+            StorageDegradationReason.BODY_FILE_MISSING,
+            missingDegraded.reason,
+        )
+    }
+
+    @Test
+    fun abandonedSessionsCloseButCurrentSessionRemainsActive() {
+        repository.upsertSession(session("old-active", RetentionPolicy.SESSION_ONLY))
+        repository.upsertSession(session("current", RetentionPolicy.SESSION_ONLY))
+
+        val result = assertIs<CaptureRepositoryResult.Success<Int>>(
+            repository.closeAbandonedActiveSessions(
+                currentSessionId = "current",
+                nowEpochMs = 100,
+            ),
+        )
+        assertEquals(1, result.value)
+        assertEquals("CLOSED", database.captureDao().session("old-active")?.state)
+        assertEquals("ACTIVE", database.captureDao().session("current")?.state)
+    }
+
     private fun session(
         id: String,
         retention: RetentionPolicy,
@@ -230,12 +303,14 @@ class RoomCaptureRepositoryTest {
         sessionId: String,
         url: String,
         state: DurableTransactionState = DurableTransactionState.COMPLETED,
+        tabId: String? = "tab-1",
+        relevance: RelevanceCategory = RelevanceCategory.PRIMARY_API,
     ): DurableTransaction {
         val payload = "{\"hello\":\"world\"}".encodeToByteArray()
         return DurableTransaction(
             id = id,
             captureSessionId = sessionId,
-            tahoTabId = "tab-1",
+            tahoTabId = tabId,
             attribution = "KNOWN",
             extTabId = 7,
             engineRequestId = "req-$id",
@@ -262,7 +337,7 @@ class RoomCaptureRepositoryTest {
             responseBody = null,
             state = state,
             relevance = Relevance(
-                RelevanceCategory.PRIMARY_API,
+                relevance,
                 true,
                 "matches workspace host",
                 93,

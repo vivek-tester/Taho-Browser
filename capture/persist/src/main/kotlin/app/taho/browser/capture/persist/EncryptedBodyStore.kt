@@ -20,6 +20,7 @@ class EncryptedBodyStore(
     context: Context,
     private val cipher: CaptureCipher,
     private val inlineLimitBytes: Int = 64 * 1024,
+    private val availableBytes: ((File) -> Long)? = null,
 ) {
     private val root = File(context.filesDir, "capture-bodies").apply { mkdirs() }
 
@@ -29,7 +30,8 @@ class EncryptedBodyStore(
             return encrypted(bytes) { StoredBodyPayload.Inline(it) }
         }
 
-        if (root.usableSpace in 1 until (bytes.size.toLong() * 2L)) {
+        val available = availableBytes?.invoke(root) ?: root.usableSpace
+        if (available in 1 until (bytes.size.toLong() * 2L)) {
             return BodyStoreResult.Degraded(StorageDegradationReason.LOW_STORAGE)
         }
 

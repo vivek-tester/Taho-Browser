@@ -29,8 +29,11 @@ class RoomCaptureRepository private constructor(
 
     override fun upsertSession(
         session: DurableCaptureSession,
-    ): CaptureRepositoryResult<Unit> =
-        guarded {
+    ): CaptureRepositoryResult<Unit> {
+        if (session.kind == app.taho.browser.capture.domain.CaptureSessionKind.PRIVATE) {
+            return CaptureRepositoryResult.Success(Unit)
+        }
+        return guarded {
             dao.upsertSession(
                 CaptureSessionEntity(
                     session.id,
@@ -45,11 +48,15 @@ class RoomCaptureRepository private constructor(
             )
             Unit
         }
+    }
 
     override fun commit(
         transaction: DurableTransaction,
-    ): CaptureRepositoryResult<Unit> =
-        guarded {
+    ): CaptureRepositoryResult<Unit> {
+        if (transaction.isPrivate) {
+            return CaptureRepositoryResult.Success(Unit)
+        }
+        return guarded {
             val requestHeaderCipher = encrypt(transaction.encryptedRequestHeadersSource)
             val responseHeaderCipher = encrypt(transaction.encryptedResponseHeadersSource)
 
@@ -107,6 +114,7 @@ class RoomCaptureRepository private constructor(
             }
             Unit
         }
+    }
 
     override fun list(
         query: CaptureQuery,
