@@ -7,7 +7,7 @@ val geckoViewVersion: String by project
 
 android {
     namespace = "app.taho.browser.spike"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "app.taho.browser.spike"
