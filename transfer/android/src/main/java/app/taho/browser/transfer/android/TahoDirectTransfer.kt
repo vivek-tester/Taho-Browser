@@ -22,8 +22,10 @@ object TahoDirectTransferContract {
     const val EXTRA_TRANSFER_VERSION = "app.taho.extra.TRANSFER_VERSION"
     const val EXTRA_TRANSFER_ID = "app.taho.extra.TRANSFER_ID"
     const val EXTRA_PAYLOAD = "app.taho.extra.TRANSFER_PAYLOAD"
+    const val EXTRA_CONTENT_URI = "app.taho.extra.TRANSFER_CONTENT_URI"
     const val EXTRA_RECEIPT = "app.taho.extra.TRANSFER_RECEIPT"
     const val EXTRA_RESULT_RECEIVER = "app.taho.extra.RESULT_RECEIVER"
+    const val EXTRA_RECEIPT_PENDING_INTENT = "app.taho.extra.RECEIPT_PENDING_INTENT"
 }
 
 object TahoDirectTransferIntentFactory {
