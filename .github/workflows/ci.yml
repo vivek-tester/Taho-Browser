@@ -72,15 +72,9 @@ jobs:
           :capture:persist:testDebugUnitTest
           :transfer:android:assembleDebug
 
-      - name: Print generated Room schema
-        if: always()
+      - name: Verify committed Room schema is current
         shell: bash
-        run: |
-          if [ -f capture/persist/schemas/app.taho.browser.capture.persist.CaptureDatabase/1.json ]; then
-            echo "-----BEGIN TAHO ROOM SCHEMA V1-----"
-            cat capture/persist/schemas/app.taho.browser.capture.persist.CaptureDatabase/1.json
-            echo "-----END TAHO ROOM SCHEMA V1-----"
-          fi
+        run: git diff --exit-code -- capture/persist/schemas
 
       - name: Upload gated M4 browser APK
         uses: actions/upload-artifact@v4

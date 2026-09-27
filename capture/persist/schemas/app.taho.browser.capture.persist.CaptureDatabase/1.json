@@ -1,0 +1,487 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "1cd57d046bd425b7bdce82404c0ae3d2",
+    "entities": [
+      {
+        "tableName": "capture_session",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `kind` TEXT NOT NULL, `state` TEXT NOT NULL, `label` TEXT, `targetHost` TEXT, `retention` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `closedAt` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "label",
+            "columnName": "label",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "targetHost",
+            "columnName": "targetHost",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "retention",
+            "columnName": "retention",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "closedAt",
+            "columnName": "closedAt",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_capture_session_state_createdAt",
+            "unique": false,
+            "columnNames": [
+              "state",
+              "createdAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_capture_session_state_createdAt` ON `${TABLE_NAME}` (`state`, `createdAt`)"
+          },
+          {
+            "name": "index_capture_session_retention_closedAt",
+            "unique": false,
+            "columnNames": [
+              "retention",
+              "closedAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_capture_session_retention_closedAt` ON `${TABLE_NAME}` (`retention`, `closedAt`)"
+          }
+        ]
+      },
+      {
+        "tableName": "capture_transaction",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `captureSessionId` TEXT NOT NULL, `tahoTabId` TEXT, `attribution` TEXT NOT NULL, `extTabId` INTEGER, `engineRequestId` TEXT, `method` TEXT NOT NULL, `url` TEXT NOT NULL, `queryJson` TEXT, `reqHeadersIv` BLOB, `reqHeadersCiphertext` BLOB, `reqHeadersRedacted` TEXT, `reqBodyRef` TEXT, `reqCompleteness` TEXT NOT NULL, `status` INTEGER, `statusText` TEXT, `respHeadersIv` BLOB, `respHeadersCiphertext` BLOB, `respHeadersRedacted` TEXT, `respBodyRef` TEXT, `respCompleteness` TEXT NOT NULL, `redirectsJson` TEXT NOT NULL, `state` TEXT NOT NULL, `relevanceCategory` TEXT NOT NULL, `relevanceReason` TEXT NOT NULL, `firstParty` INTEGER NOT NULL, `observationSource` TEXT NOT NULL, `provenanceJson` TEXT NOT NULL, `normalizerVersion` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `isPrivate` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`captureSessionId`) REFERENCES `capture_session`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "captureSessionId",
+            "columnName": "captureSessionId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tahoTabId",
+            "columnName": "tahoTabId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "attribution",
+            "columnName": "attribution",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "extTabId",
+            "columnName": "extTabId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "engineRequestId",
+            "columnName": "engineRequestId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "method",
+            "columnName": "method",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "url",
+            "columnName": "url",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "queryJson",
+            "columnName": "queryJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "reqHeadersIv",
+            "columnName": "reqHeadersIv",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "reqHeadersCiphertext",
+            "columnName": "reqHeadersCiphertext",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "reqHeadersRedacted",
+            "columnName": "reqHeadersRedacted",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "reqBodyRef",
+            "columnName": "reqBodyRef",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "reqCompleteness",
+            "columnName": "reqCompleteness",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "statusText",
+            "columnName": "statusText",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "respHeadersIv",
+            "columnName": "respHeadersIv",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "respHeadersCiphertext",
+            "columnName": "respHeadersCiphertext",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "respHeadersRedacted",
+            "columnName": "respHeadersRedacted",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "respBodyRef",
+            "columnName": "respBodyRef",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "respCompleteness",
+            "columnName": "respCompleteness",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "redirectsJson",
+            "columnName": "redirectsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "relevanceCategory",
+            "columnName": "relevanceCategory",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "relevanceReason",
+            "columnName": "relevanceReason",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firstParty",
+            "columnName": "firstParty",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observationSource",
+            "columnName": "observationSource",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "provenanceJson",
+            "columnName": "provenanceJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "normalizerVersion",
+            "columnName": "normalizerVersion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isPrivate",
+            "columnName": "isPrivate",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_capture_transaction_captureSessionId",
+            "unique": false,
+            "columnNames": [
+              "captureSessionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_capture_transaction_captureSessionId` ON `${TABLE_NAME}` (`captureSessionId`)"
+          },
+          {
+            "name": "index_capture_transaction_tahoTabId",
+            "unique": false,
+            "columnNames": [
+              "tahoTabId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_capture_transaction_tahoTabId` ON `${TABLE_NAME}` (`tahoTabId`)"
+          },
+          {
+            "name": "index_capture_transaction_relevanceCategory",
+            "unique": false,
+            "columnNames": [
+              "relevanceCategory"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_capture_transaction_relevanceCategory` ON `${TABLE_NAME}` (`relevanceCategory`)"
+          },
+          {
+            "name": "index_capture_transaction_state",
+            "unique": false,
+            "columnNames": [
+              "state"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_capture_transaction_state` ON `${TABLE_NAME}` (`state`)"
+          },
+          {
+            "name": "index_capture_transaction_method",
+            "unique": false,
+            "columnNames": [
+              "method"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_capture_transaction_method` ON `${TABLE_NAME}` (`method`)"
+          },
+          {
+            "name": "index_capture_transaction_extTabId_engineRequestId",
+            "unique": false,
+            "columnNames": [
+              "extTabId",
+              "engineRequestId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_capture_transaction_extTabId_engineRequestId` ON `${TABLE_NAME}` (`extTabId`, `engineRequestId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "capture_session",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "captureSessionId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "capture_body",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `transactionId` TEXT NOT NULL, `side` TEXT NOT NULL, `contentType` TEXT, `charsetName` TEXT, `encoding` TEXT NOT NULL, `storageRef` TEXT, `declaredSize` INTEGER, `capturedSize` INTEGER NOT NULL, `truncated` INTEGER NOT NULL, `representation` TEXT NOT NULL, `completeness` TEXT NOT NULL, `iv` BLOB, `ciphertext` BLOB, `limitation` TEXT, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`transactionId`) REFERENCES `capture_transaction`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "transactionId",
+            "columnName": "transactionId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "side",
+            "columnName": "side",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contentType",
+            "columnName": "contentType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "charsetName",
+            "columnName": "charsetName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "encoding",
+            "columnName": "encoding",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "storageRef",
+            "columnName": "storageRef",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "declaredSize",
+            "columnName": "declaredSize",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "capturedSize",
+            "columnName": "capturedSize",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "truncated",
+            "columnName": "truncated",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "representation",
+            "columnName": "representation",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "completeness",
+            "columnName": "completeness",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "iv",
+            "columnName": "iv",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "ciphertext",
+            "columnName": "ciphertext",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "limitation",
+            "columnName": "limitation",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_capture_body_transactionId",
+            "unique": false,
+            "columnNames": [
+              "transactionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_capture_body_transactionId` ON `${TABLE_NAME}` (`transactionId`)"
+          },
+          {
+            "name": "index_capture_body_transactionId_side",
+            "unique": true,
+            "columnNames": [
+              "transactionId",
+              "side"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_capture_body_transactionId_side` ON `${TABLE_NAME}` (`transactionId`, `side`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "capture_transaction",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "transactionId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1cd57d046bd425b7bdce82404c0ae3d2')"
+    ]
+  }
+}
