@@ -1,5 +1,7 @@
 const NATIVE_APP = "taho.capture.bulk";
 const PROTOCOL_VERSION = 1;
+const REQUEST_BODY_CHUNK_BYTES = 160 * 1024;
+const MAX_REQUEST_BODY_BYTES = 8 * 1024 * 1024;
 
 let port = null;
 let reconnectTimer = null;
@@ -118,14 +120,52 @@ browser.webRequest.onBeforeRequest.addListener(
       }));
     } else {
       const raw = requestBody && requestBody.raw;
-      if (Array.isArray(raw) && raw.length === 1 && raw[0] && raw[0].bytes) {
+      if (Array.isArray(raw) && raw.length > 0) {
         try {
-          const encoded = bytesToBase64(raw[0].bytes);
-          if (encoded.length <= 240000) {
-            emit("TX_REQ_BODY", Object.assign(base(details), {
-              bodyKind: "RAW",
-              base64: encoded
-            }));
+          const views = raw
+            .filter((part) => part && part.bytes)
+            .map((part) => new Uint8Array(part.bytes));
+          const observedTotalBytes = views.reduce(
+            (sum, view) => sum + view.byteLength,
+            0
+          );
+          if (observedTotalBytes > 0) {
+            const capturedBytes = Math.min(
+              observedTotalBytes,
+              MAX_REQUEST_BODY_BYTES
+            );
+            const captured = new Uint8Array(capturedBytes);
+            let writeOffset = 0;
+            for (const view of views) {
+              if (writeOffset >= capturedBytes) break;
+              const take = Math.min(
+                view.byteLength,
+                capturedBytes - writeOffset
+              );
+              captured.set(view.subarray(0, take), writeOffset);
+              writeOffset += take;
+            }
+
+            const chunkCount = Math.ceil(
+              capturedBytes / REQUEST_BODY_CHUNK_BYTES
+            );
+            for (let chunkIndex = 0; chunkIndex < chunkCount; chunkIndex += 1) {
+              const start = chunkIndex * REQUEST_BODY_CHUNK_BYTES;
+              const end = Math.min(
+                capturedBytes,
+                start + REQUEST_BODY_CHUNK_BYTES
+              );
+              const chunk = captured.subarray(start, end);
+              emit("TX_REQ_BODY", Object.assign(base(details), {
+                bodyKind: "RAW",
+                chunkIndex,
+                chunkCount,
+                isFinal: chunkIndex === chunkCount - 1,
+                observedTotalBytes,
+                truncated: observedTotalBytes > MAX_REQUEST_BODY_BYTES,
+                base64: bytesToBase64(chunk)
+              }));
+            }
           }
         } catch (_) {
           // Capability/unsupported bodies remain UNAVAILABLE natively.
