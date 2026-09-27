@@ -44,6 +44,7 @@ class M4ObservationIngress(
             is ProductionObservationMessage.TxRequestBody ->
                 CaptureEventClass.PRIMARY_API
 
+            is ProductionObservationMessage.TxRedirect,
             is ProductionObservationMessage.TxResponseStart,
             is ProductionObservationMessage.TxComplete,
             is ProductionObservationMessage.TxError ->
@@ -60,6 +61,7 @@ class M4ObservationIngress(
             is ProductionObservationMessage.TxStart -> message.eventId
             is ProductionObservationMessage.TxRequestHeaders -> message.eventId
             is ProductionObservationMessage.TxRequestBody -> message.eventId
+            is ProductionObservationMessage.TxRedirect -> message.eventId
             is ProductionObservationMessage.TxResponseStart -> message.eventId
             is ProductionObservationMessage.TxComplete -> message.eventId
             is ProductionObservationMessage.TxError -> message.eventId
