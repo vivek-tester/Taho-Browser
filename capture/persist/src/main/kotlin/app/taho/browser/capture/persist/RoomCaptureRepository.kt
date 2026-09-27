@@ -14,6 +14,7 @@ import app.taho.browser.capture.domain.DurableTransactionSummary
 import app.taho.browser.capture.domain.ObservationSource
 import app.taho.browser.capture.domain.Relevance
 import app.taho.browser.capture.domain.RelevanceCategory
+import app.taho.browser.capture.domain.RetentionPolicy
 import app.taho.browser.capture.domain.RetentionSweepResult
 import app.taho.browser.capture.domain.StorageDegradationReason
 import org.json.JSONArray
