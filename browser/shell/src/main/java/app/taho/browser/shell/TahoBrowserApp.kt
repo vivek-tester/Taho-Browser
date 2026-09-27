@@ -1,5 +1,6 @@
 package app.taho.browser.shell
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -114,6 +115,21 @@ fun TahoBrowserApp(
         if (state.sitePermission != null) {
             showTabs = false
             editing = false
+        }
+    }
+
+    BackHandler(
+        enabled = state.sitePermission != null ||
+            showTabs ||
+            editing ||
+            (state.canGoBack && !state.crashed),
+    ) {
+        when {
+            state.sitePermission != null ->
+                onSitePermissionDecision(state.sitePermission.id, false)
+            showTabs -> showTabs = false
+            editing -> editing = false
+            state.canGoBack && !state.crashed -> onBack()
         }
     }
 
