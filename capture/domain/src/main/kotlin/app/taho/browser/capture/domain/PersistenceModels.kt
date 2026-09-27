@@ -124,9 +124,8 @@ class DurableBody(
         require(declaredSize == null || declaredSize >= 0)
         require(capturedSize >= 0)
         if (truncated) require(completeness == Completeness.TRUNCATED)
-        if (completeness == Completeness.COMPLETE) {
-            require(payload != null || capturedSize == 0L)
-        }
+        // PRIVATE retention may keep complete metadata while deliberately
+        // omitting the secret-bearing payload at write time.
     }
 
     override fun close() {
