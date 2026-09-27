@@ -395,11 +395,11 @@ class M4InMemoryCaptureAssemblerTest {
             M4TransferPreparer.prepare(captured),
         ).value
         assertTrue(
-            prepared.encodedUtf8Bytes >
+            prepared.encodedUtf8Bytes.toLong() >
                 app.taho.browser.contract.ContractLimits.DIRECT_ENVELOPE_UTF8_BYTES,
         )
         assertTrue(
-            prepared.encodedUtf8Bytes <
+            prepared.encodedUtf8Bytes.toLong() <
                 app.taho.browser.contract.ContractLimits.ARTIFACT_PLAINTEXT_BYTES,
         )
     }
