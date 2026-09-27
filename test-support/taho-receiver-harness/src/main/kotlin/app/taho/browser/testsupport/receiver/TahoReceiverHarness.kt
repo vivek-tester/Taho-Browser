@@ -6,14 +6,21 @@ import app.taho.browser.contract.RequestTransferV1
 import app.taho.browser.contract.TransferContractValidator
 import app.taho.browser.contract.TransferErrorCode
 import app.taho.browser.contract.TransferReceiptV1
+import app.taho.browser.contract.TransferRequest
+import app.taho.browser.contract.TransferSource
+import app.taho.browser.contract.SafeProvenance
 
 data class HarnessImportedRequest(
     val requestId: String,
     val transferId: String,
-    val method: String,
-    val url: String,
+    val request: TransferRequest,
+    val source: TransferSource,
+    val provenance: SafeProvenance,
     val importedAt: Long,
-)
+) {
+    val method: String get() = request.method
+    val url: String get() = request.url
+}
 
 data class HarnessReceiverSnapshot(
     val stagedImports: List<HarnessImportedRequest>,
@@ -74,8 +81,9 @@ class TahoReceiverHarness(
         val imported = HarnessImportedRequest(
             requestId = "harness-request-" + (imports.size + 1),
             transferId = envelope.transferId,
-            method = envelope.request.method,
-            url = envelope.request.url,
+            request = envelope.request,
+            source = envelope.source,
+            provenance = envelope.provenance,
             importedAt = importedAt,
         )
         imports[envelope.transferId] = imported
