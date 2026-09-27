@@ -40,6 +40,8 @@ dependencies {
     implementation(project(":capture:domain"))
     implementation(project(":transfer:core"))
     implementation(project(":transfer:android"))
+    implementation(project(":contract:taho-transfer"))
+    implementation("org.mozilla.geckoview:geckoview-omni:$geckoViewVersion")
     implementation("androidx.activity:activity-compose:1.11.0")
     implementation("androidx.compose.ui:ui:1.9.1")
     implementation("androidx.compose.foundation:foundation:1.9.1")
