@@ -1,5 +1,7 @@
 package app.taho.browser.observation
 
+import app.taho.browser.capture.domain.DurableBodyRepresentation
+import app.taho.browser.capture.domain.DurableTransaction
 import app.taho.browser.capture.domain.SecretCategory
 import app.taho.browser.capture.domain.SecretPolicy
 import app.taho.browser.transfer.core.M4PreparationResult
@@ -174,6 +176,132 @@ class M4InMemoryCaptureAssemblerTest {
         assertTrue(assembler.allCompleted().isEmpty())
         assertTrue(assembler.isLimited())
     }
+
+    @Test
+    fun redirectChainAndFormLimitationAreRetainedInDurableEvidence() {
+        var durable: DurableTransaction? = null
+        val assembler = M4InMemoryCaptureAssembler(
+            appVersion = "0.1.0",
+            engineVersion = "geckoview-test",
+            captureSessionId = "capture-1",
+            transferIdFactory = { "01J8ZQ4M2K7X9V3B8N0P4R6T8Y" },
+            onDurableRecord = { durable = it },
+        )
+
+        accept(
+            assembler,
+            ProductionObservationMessage.TxStart(
+                "conn", 2, "e1", "r1", 7, 0, null,
+                "https://api.example.test/v1/submit",
+                "POST", "xmlhttprequest", 1000.0,
+            ),
+        )
+        accept(
+            assembler,
+            ProductionObservationMessage.TxRequestHeaders(
+                "conn", 3, "e2", "r1", 7,
+                listOf(
+                    ProductionObservationMessage.HeaderValue(
+                        "Content-Type",
+                        "application/x-www-form-urlencoded",
+                    ),
+                ),
+            ),
+        )
+        accept(
+            assembler,
+            ProductionObservationMessage.TxRequestBody(
+                connectionId = "conn",
+                sequence = 4,
+                eventId = "e3",
+                requestId = "r1",
+                extTabId = 7,
+                formData = mapOf("name" to listOf("widget")),
+            ),
+        )
+        accept(
+            assembler,
+            ProductionObservationMessage.TxRedirect(
+                "conn", 5, "e4", "r1", 7, 302,
+                "https://api.example.test/v2/submit?next=1",
+                1004.0,
+            ),
+        )
+        accept(
+            assembler,
+            ProductionObservationMessage.TxComplete(
+                "conn", 6, "e5", "r1", 7, 1010.0,
+            ),
+        )
+
+        val captured = assembler.requestsForTab("tab-a").single()
+        assertEquals(1, captured.redirectCount)
+        assertEquals(DurableBodyRepresentation.FORM.name, captured.bodyRepresentation?.name)
+        assertTrue(captured.reviewRequired)
+        assertTrue(captured.bodyLimitation?.contains("Form", ignoreCase = true) == true)
+
+        val stored = requireNotNull(durable)
+        try {
+            assertEquals(1, stored.redirects.size)
+            assertEquals(302, stored.redirects.single().statusCode)
+            assertEquals(
+                "https://api.example.test/v2/submit",
+                stored.url,
+            )
+            assertEquals(
+                DurableBodyRepresentation.FORM,
+                stored.requestBody?.representation,
+            )
+        } finally {
+            stored.close()
+        }
+    }
+
+    @Test
+    fun unresolvedRequestIsPersistableAsUnresolvedButNeverLiveTransferable() {
+        var durable: DurableTransaction? = null
+        val assembler = M4InMemoryCaptureAssembler(
+            appVersion = "0.1.0",
+            engineVersion = "geckoview-test",
+            captureSessionId = "capture-1",
+            onDurableRecord = { durable = it },
+        )
+
+        assembler.accept(
+            ProductionObservationEvent.Bulk(
+                tahoTabId = null,
+                isPrivate = false,
+                targetHost = "example.test",
+                message = ProductionObservationMessage.TxStart(
+                    "conn", 2, "e1", "r-unresolved", 77, 0, null,
+                    "https://api.example.test/data",
+                    "GET", "xmlhttprequest", 1000.0,
+                ),
+                sequenceGap = false,
+            ),
+        )
+        assembler.accept(
+            ProductionObservationEvent.Bulk(
+                tahoTabId = null,
+                isPrivate = false,
+                targetHost = "example.test",
+                message = ProductionObservationMessage.TxComplete(
+                    "conn", 3, "e2", "r-unresolved", 77, 1001.0,
+                ),
+                sequenceGap = false,
+            ),
+        )
+
+        assertTrue(assembler.allCompleted().isEmpty())
+        val stored = requireNotNull(durable)
+        try {
+            assertEquals(null, stored.tahoTabId)
+            assertEquals("UNRESOLVED", stored.attribution)
+        } finally {
+            stored.close()
+        }
+    }
+
 
     private fun accept(
         assembler: M4InMemoryCaptureAssembler,

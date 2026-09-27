@@ -285,6 +285,53 @@ class RoomCaptureRepositoryTest {
         assertEquals("ACTIVE", database.captureDao().session("current")?.state)
     }
 
+    @Test
+    fun committedRecordSurvivesDatabaseCloseAndReopen() {
+        val name = "m5-reopen-" + System.nanoTime() + ".db"
+        context.deleteDatabase(name)
+
+        val firstDb = Room.databaseBuilder(
+            context,
+            CaptureDatabase::class.java,
+            name,
+        ).allowMainThreadQueries().build()
+        val firstRepo = RoomCaptureRepository.forTesting(
+            firstDb,
+            context,
+            FakeCipher(),
+        )
+        firstRepo.upsertSession(session("reopen-session", RetentionPolicy.KEEP_UNTIL_DELETED))
+        val tx = transaction(
+            "reopen-tx",
+            "reopen-session",
+            "https://api.example.test/reopen",
+        )
+        assertIs<CaptureRepositoryResult.Success<Unit>>(firstRepo.commit(tx))
+        tx.close()
+        firstRepo.close()
+
+        val secondDb = Room.databaseBuilder(
+            context,
+            CaptureDatabase::class.java,
+            name,
+        ).allowMainThreadQueries().build()
+        val secondRepo = RoomCaptureRepository.forTesting(
+            secondDb,
+            context,
+            FakeCipher(),
+        )
+        try {
+            val result = assertIs<CaptureRepositoryResult.Success<*>>(
+                secondRepo.list(CaptureQuery(search = "reopen")),
+            )
+            assertEquals(1, (result.value as List<*>).size)
+        } finally {
+            secondRepo.close()
+            context.deleteDatabase(name)
+        }
+    }
+
+
     private fun session(
         id: String,
         retention: RetentionPolicy,

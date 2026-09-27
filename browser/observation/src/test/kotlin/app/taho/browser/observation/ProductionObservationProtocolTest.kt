@@ -104,4 +104,53 @@ class ProductionObservationProtocolTest {
             assertIs<ObservationParseResult.Rejected>(result).reason,
         )
     }
+    @Test
+    fun parsesStructuredFormBodyWithoutEchoingValuesInDiagnostics() {
+        val raw = """{
+          "type":"TX_REQ_BODY",
+          "conn":"conn-1",
+          "seq":4,
+          "id":"event-form",
+          "reqId":"request-1",
+          "tabId":7,
+          "bodyKind":"FORM",
+          "form":[
+            {"name":"username","values":["alice"]},
+            {"name":"password","values":["super-secret"]}
+          ]
+        }""".trimIndent()
+
+        val message = assertIs<ObservationParseResult.Accepted>(
+            ProductionObservationProtocol.parse(raw, ObservationLane.BULK),
+        ).message
+        val body = assertIs<ProductionObservationMessage.TxRequestBody>(message)
+
+        assertEquals(listOf("alice"), body.formData["username"])
+        assertEquals(listOf("super-secret"), body.formData["password"])
+        assertFalse(body.toString().contains("super-secret"))
+    }
+
+    @Test
+    fun parsesRedirectWithValidatedHttpDestination() {
+        val raw = """{
+          "type":"TX_REDIRECT",
+          "conn":"conn-1",
+          "seq":5,
+          "id":"event-redirect",
+          "reqId":"request-1",
+          "tabId":7,
+          "statusCode":302,
+          "redirectUrl":"https://api.example.test/v2/items?token=secret",
+          "ts":123.0
+        }""".trimIndent()
+
+        val message = assertIs<ObservationParseResult.Accepted>(
+            ProductionObservationProtocol.parse(raw, ObservationLane.BULK),
+        ).message
+        val redirect = assertIs<ProductionObservationMessage.TxRedirect>(message)
+
+        assertEquals(302, redirect.statusCode)
+        assertFalse(redirect.toString().contains("token=secret"))
+    }
+
 }
