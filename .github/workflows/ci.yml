@@ -25,6 +25,8 @@ jobs:
           :capture:domain:test
           :contract:taho-transfer:test
           :transfer:core:test
+          :test-support:http-fixtures:test
+          :test-support:taho-receiver-harness:test
 
   android-compile:
     runs-on: ubuntu-latest

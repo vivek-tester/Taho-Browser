@@ -3,6 +3,6 @@ plugins { id("org.jetbrains.kotlin.jvm") }
 kotlin { jvmToolchain(17) }
 
 dependencies {
-    testImplementation("org.json:json:20260814")
+    implementation(project(":contract:taho-transfer"))
     testImplementation(kotlin("test"))
 }

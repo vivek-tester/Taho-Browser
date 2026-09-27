@@ -1,0 +1,15 @@
+{
+  "name": "reordered-response-before-headers",
+  "events": [
+    {"type": "Start", "id": "e1"},
+    {"type": "ResponseStarted", "id": "e2"},
+    {"type": "HeadersCaptured", "id": "e3"},
+    {"type": "Completed", "id": "e4", "statusCode": 204}
+  ],
+  "expected": {
+    "state": "COMPLETED",
+    "provisionalObserved": false,
+    "diagnostics": ["MISSING_HEADERS"],
+    "requestHeaders": "COMPLETE"
+  }
+}
