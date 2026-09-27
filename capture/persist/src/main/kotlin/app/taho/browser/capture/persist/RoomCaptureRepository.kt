@@ -141,6 +141,11 @@ class RoomCaptureRepository private constructor(
     ): CaptureRepositoryResult<Int> =
         guarded { dao.markInterruptedPartial(nowEpochMs) }
 
+    override fun closeAbandonedActiveSessions(
+        nowEpochMs: Long,
+    ): CaptureRepositoryResult<Int> =
+        guarded { dao.closeAbandonedActiveSessions(nowEpochMs) }
+
     override fun closeSession(
         sessionId: String,
         closedAtEpochMs: Long,
@@ -328,8 +333,9 @@ class RoomCaptureRepository private constructor(
             }
         }.toString()
 
-    private fun summary(row: CaptureTransactionEntity): DurableTransactionSummary =
-        DurableTransactionSummary(
+    private fun summary(row: CaptureTransactionEntity): DurableTransactionSummary {
+        val requestBody = dao.body(row.id, "REQUEST")
+        return DurableTransactionSummary(
             id = row.id,
             captureSessionId = row.captureSessionId,
             tahoTabId = row.tahoTabId,
@@ -345,8 +351,12 @@ class RoomCaptureRepository private constructor(
             ),
             requestBodyCompleteness = Completeness.valueOf(row.reqCompleteness),
             responseBodyCompleteness = Completeness.valueOf(row.respCompleteness),
+            requestBodyRepresentation = requestBody?.representation
+                ?.let(app.taho.browser.capture.domain.DurableBodyRepresentation::valueOf),
+            bodyLimitation = requestBody?.limitation,
             createdAtEpochMs = row.createdAt,
         )
+    }
 
     private fun searchable(row: CaptureTransactionEntity): String =
         buildString {

@@ -44,6 +44,9 @@ public interface CaptureDao {
     @Query("UPDATE capture_transaction SET state = 'PARTIAL', updatedAt = :now WHERE state = 'STARTED'")
     int markInterruptedPartial(long now);
 
+    @Query("UPDATE capture_session SET state = 'CLOSED', closedAt = :now WHERE state = 'ACTIVE'")
+    int closeAbandonedActiveSessions(long now);
+
     @Query("DELETE FROM capture_body WHERE transactionId NOT IN (SELECT id FROM capture_transaction)")
     int deleteOrphanBodies();
 

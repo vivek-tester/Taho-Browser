@@ -218,6 +218,8 @@ data class DurableTransactionSummary(
     val relevance: Relevance,
     val requestBodyCompleteness: Completeness,
     val responseBodyCompleteness: Completeness,
+    val requestBodyRepresentation: DurableBodyRepresentation? = null,
+    val bodyLimitation: String? = null,
     val createdAtEpochMs: Long,
     val degradedReason: StorageDegradationReason? = null,
 )
@@ -241,6 +243,7 @@ interface CaptureRepository {
     fun commit(transaction: DurableTransaction): CaptureRepositoryResult<Unit>
     fun list(query: CaptureQuery): CaptureRepositoryResult<List<DurableTransactionSummary>>
     fun markInterruptedPartial(nowEpochMs: Long): CaptureRepositoryResult<Int>
+    fun closeAbandonedActiveSessions(nowEpochMs: Long): CaptureRepositoryResult<Int>
     fun closeSession(sessionId: String, closedAtEpochMs: Long): CaptureRepositoryResult<Unit>
     fun clearCaptureData(): CaptureRepositoryResult<Unit>
     fun sweepRetention(nowEpochMs: Long): CaptureRepositoryResult<RetentionSweepResult>
