@@ -37,5 +37,6 @@ dependencies {
     implementation(project(":browser:runtime"))
     implementation(project(":browser:observation"))
     implementation("org.mozilla.geckoview:geckoview-omni:$geckoViewVersion")
+    implementation("org.mozilla.geckoview:geckoview-omni:$geckoViewVersion")
     testImplementation(kotlin("test"))
 }
