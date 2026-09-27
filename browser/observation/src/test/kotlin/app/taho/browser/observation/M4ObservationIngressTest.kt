@@ -39,7 +39,7 @@ class M4ObservationIngressTest {
         )
 
         assertIs<QueueOfferResult.Accepted>(ingress.offer(auth))
-        assertEquals("e1", (ingress.poll()?.message as? ProductionObservationMessage.TxResponseStart)?.eventId)
+        assertEquals("low", (ingress.poll()?.message as? ProductionObservationMessage.TxResponseStart)?.eventId)
         assertEquals(
             "auth",
             (ingress.poll()?.message as? ProductionObservationMessage.TxRequestHeaders)?.eventId,
