@@ -63,6 +63,8 @@ data class M4CapturedRequest(
     val reviewRequired: Boolean,
     val capturedAt: Long,
     val redirectCount: Int,
+    val bodyRepresentation: BodyRepresentation? = body?.representation,
+    val bodyLimitation: String? = null,
     val observation: ObservationSource = ObservationSource.ENGINE,
 )
 
@@ -80,6 +82,8 @@ data class M4DisplayRequest(
     val headers: List<M4DisplayHeader>,
     val requestBodyCompleteness: Completeness,
     val responseBodyCompleteness: Completeness,
+    val bodyRepresentation: BodyRepresentation?,
+    val bodyLimitation: String?,
     val sensitiveCount: Int,
 )
 
@@ -138,6 +142,8 @@ object M4TransferPreparer {
             headers = displayHeaders,
             requestBodyCompleteness = input.completeness.requestBody,
             responseBodyCompleteness = input.completeness.responseBody,
+            bodyRepresentation = input.bodyRepresentation,
+            bodyLimitation = input.bodyLimitation,
             sensitiveCount = input.secretAssessment.findings.size,
         )
     }

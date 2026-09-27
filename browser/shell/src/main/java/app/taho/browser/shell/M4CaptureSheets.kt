@@ -71,6 +71,8 @@ data class M4CaptureRequestUiState(
     val headers: List<M4CaptureHeaderUiState> = emptyList(),
     val requestBodyCompleteness: M4CompletenessUi,
     val responseBodyCompleteness: M4CompletenessUi,
+    val bodyRepresentation: String? = null,
+    val bodyLimitation: String? = null,
     val sensitiveCount: Int = 0,
     val fromPrivateSession: Boolean = false,
     val transferBlockedReason: String? = null,
@@ -271,6 +273,25 @@ internal fun M4RequestInspectorSheet(
         })
         M4EvidenceRow("Request body", request.requestBodyCompleteness)
         M4EvidenceRow("Response body", request.responseBodyCompleteness)
+
+        request.bodyRepresentation?.let { representation ->
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "Body type: " + representation.lowercase(),
+                color = TahoMuted,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 9.sp,
+            )
+        }
+        request.bodyLimitation?.let { limitation ->
+            Spacer(Modifier.height(5.dp))
+            Text(
+                text = limitation,
+                color = TahoWarn,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 9.sp,
+            )
+        }
 
         if (request.headers.isNotEmpty()) {
             Spacer(Modifier.height(14.dp))
