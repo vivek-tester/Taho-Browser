@@ -1,0 +1,29 @@
+{
+  "manifest_version": 2,
+  "name": "Taho Attribution Spike",
+  "version": "0.1.0",
+  "description": "Disposable GeckoView attribution feasibility probe.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "taho-attribution-spike@browser.local"
+    }
+  },
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "permissions": [
+    "<all_urls>",
+    "webRequest",
+    "nativeMessaging",
+    "nativeMessagingFromContent",
+    "geckoViewAddons"
+  ]
+}

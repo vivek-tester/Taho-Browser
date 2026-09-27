@@ -1,0 +1,243 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://taho.local/contracts/request-transfer-v1.json",
+  "title": "Taho Request Transfer v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema",
+    "version",
+    "minimumReaderVersion",
+    "transferId",
+    "issuedAt",
+    "source",
+    "request",
+    "capture",
+    "security",
+    "provenance"
+  ],
+  "properties": {
+    "schema": { "const": "taho.request-transfer" },
+    "version": { "const": 1 },
+    "minimumReaderVersion": { "type": "integer", "minimum": 1, "maximum": 1 },
+    "transferId": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "issuedAt": { "type": "integer", "minimum": 0 },
+    "source": { "$ref": "#/$defs/source" },
+    "request": { "$ref": "#/$defs/request" },
+    "capture": { "$ref": "#/$defs/capture" },
+    "security": { "$ref": "#/$defs/security" },
+    "provenance": { "$ref": "#/$defs/provenance" }
+  },
+  "$defs": {
+    "completeness": {
+      "type": "string",
+      "enum": ["COMPLETE", "PARTIAL", "TRUNCATED", "UNAVAILABLE", "NOT_APPLICABLE"]
+    },
+    "secretPolicy": {
+      "type": "string",
+      "enum": ["PARAMETERIZE", "MASK", "EXPLICIT"]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "product",
+        "appVersion",
+        "engine",
+        "captureSessionId",
+        "observation"
+      ],
+      "properties": {
+        "product": { "type": "string", "minLength": 1 },
+        "appVersion": { "type": "string", "minLength": 1 },
+        "engine": { "type": "string", "minLength": 1 },
+        "captureSessionId": { "type": "string", "minLength": 1 },
+        "tabId": { "type": ["string", "null"] },
+        "observation": { "enum": ["ENGINE", "PAGE"] }
+      }
+    },
+    "protectedValue": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["name", "value", "redacted"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "value": { "type": "string" },
+        "redacted": { "type": "boolean" },
+        "secretCategory": { "type": ["string", "null"] },
+        "policy": {
+          "anyOf": [
+            { "$ref": "#/$defs/secretPolicy" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "multipartPart": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["name", "encoding", "size", "truncated"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "filename": { "type": ["string", "null"] },
+        "contentType": { "type": ["string", "null"] },
+        "encoding": { "enum": ["UTF8", "BASE64", "FILE_URI"] },
+        "value": { "type": ["string", "null"] },
+        "uri": { "type": ["string", "null"] },
+        "size": { "type": "integer", "minimum": 0 },
+        "truncated": { "type": "boolean" }
+      }
+    },
+    "body": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "representation",
+        "encoding",
+        "size",
+        "truncated",
+        "completeness"
+      ],
+      "properties": {
+        "representation": {
+          "enum": ["TEXT", "JSON", "FORM", "MULTIPART", "GRAPHQL", "BINARY"]
+        },
+        "contentType": { "type": ["string", "null"] },
+        "charset": { "type": ["string", "null"] },
+        "encoding": { "enum": ["UTF8", "BASE64", "FILE_URI"] },
+        "size": { "type": "integer", "minimum": 0 },
+        "declaredSize": { "type": ["integer", "null"], "minimum": 0 },
+        "truncated": { "type": "boolean" },
+        "completeness": { "$ref": "#/$defs/completeness" },
+        "content": { "type": ["string", "null"] },
+        "uri": { "type": ["string", "null"] },
+        "parts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/multipartPart" }
+        }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "method", "url", "query", "headers"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "method": { "type": "string", "minLength": 1 },
+        "url": {
+          "type": "string",
+          "pattern": "^https?://"
+        },
+        "query": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/protectedValue" }
+        },
+        "headers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/protectedValue" }
+        },
+        "body": {
+          "anyOf": [
+            { "$ref": "#/$defs/body" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "captureCompleteness": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "requestUrl",
+        "requestHeaders",
+        "requestBody",
+        "responseHeaders",
+        "responseBody",
+        "timing",
+        "tlsInfo"
+      ],
+      "properties": {
+        "requestUrl": { "$ref": "#/$defs/completeness" },
+        "requestHeaders": { "$ref": "#/$defs/completeness" },
+        "requestBody": { "$ref": "#/$defs/completeness" },
+        "responseHeaders": { "$ref": "#/$defs/completeness" },
+        "responseBody": { "$ref": "#/$defs/completeness" },
+        "timing": { "$ref": "#/$defs/completeness" },
+        "tlsInfo": { "$ref": "#/$defs/completeness" }
+      }
+    },
+    "capture": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["timestamp", "completeness"],
+      "properties": {
+        "timestamp": { "type": "integer", "minimum": 0 },
+        "durationMs": { "type": ["integer", "null"], "minimum": 0 },
+        "status": { "type": ["integer", "null"], "minimum": 100, "maximum": 999 },
+        "statusText": { "type": ["string", "null"] },
+        "initiator": { "type": ["string", "null"] },
+        "timing": {
+          "type": ["object", "null"],
+          "additionalProperties": true,
+          "properties": {
+            "ttfbMs": { "type": ["integer", "null"], "minimum": 0 },
+            "totalMs": { "type": ["integer", "null"], "minimum": 0 }
+          }
+        },
+        "completeness": { "$ref": "#/$defs/captureCompleteness" }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["location", "category", "policy"],
+      "properties": {
+        "location": { "type": "string", "minLength": 1 },
+        "category": { "type": "string", "minLength": 1 },
+        "policy": { "$ref": "#/$defs/secretPolicy" }
+      }
+    },
+    "security": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "secretPolicy",
+        "containsSensitiveData",
+        "secretCount",
+        "fromPrivateSession",
+        "reviewRequired",
+        "findings"
+      ],
+      "properties": {
+        "secretPolicy": { "$ref": "#/$defs/secretPolicy" },
+        "containsSensitiveData": { "type": "boolean" },
+        "secretCount": { "type": "integer", "minimum": 0 },
+        "fromPrivateSession": { "type": "boolean" },
+        "reviewRequired": { "type": "boolean" },
+        "findings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/finding" }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "normalizerVersion",
+        "captureEngineVersion",
+        "capturedAt",
+        "redirectCount"
+      ],
+      "properties": {
+        "normalizerVersion": { "type": "string", "minLength": 1 },
+        "captureEngineVersion": { "type": "string", "minLength": 1 },
+        "capturedAt": { "type": "integer", "minimum": 0 },
+        "redirectCount": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

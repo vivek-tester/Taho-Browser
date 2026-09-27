@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "build/**"]
+  pull_request:
+
+jobs:
+  pure-domain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+      - name: Architecture gates
+        run: gradle --no-daemon verifyArchitecture
+      - name: Test pure modules
+        run: >
+          gradle --no-daemon
+          :capture:domain:test
+          :contract:taho-transfer:test
+          :transfer:core:test
+
+  android-compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+      - name: Compile production browser and GeckoView spike
+        run: >
+          gradle --no-daemon
+          :app:assembleDebug
+          :spikes:geckoview:assembleDebug
