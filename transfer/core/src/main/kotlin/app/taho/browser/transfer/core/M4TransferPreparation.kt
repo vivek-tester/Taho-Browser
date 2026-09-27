@@ -110,6 +110,38 @@ fun interface ExplicitSecretProvider {
 }
 
 object M4TransferPreparer {
+    fun projectDisplay(input: M4CapturedRequest): M4DisplayRequest {
+        val normalized = RequestNormalizer.normalize(
+            NormalizableRequest(
+                url = input.url,
+                method = input.method.uppercase(),
+                headers = input.headers,
+            ),
+        )
+        val displayHeaders = normalized.headers.map { header ->
+            when (val value = header.value) {
+                is NormalizedHeaderValue.Public ->
+                    M4DisplayHeader(header.name, value.value, sensitive = false)
+                is NormalizedHeaderValue.Protected ->
+                    M4DisplayHeader(
+                        header.name,
+                        maskFor(value.ref.category),
+                        sensitive = true,
+                    )
+            }
+        }
+        return M4DisplayRequest(
+            method = normalized.method,
+            url = normalized.url,
+            status = input.status,
+            durationMs = input.durationMs,
+            headers = displayHeaders,
+            requestBodyCompleteness = input.completeness.requestBody,
+            responseBodyCompleteness = input.completeness.responseBody,
+            sensitiveCount = input.secretAssessment.findings.size,
+        )
+    }
+
     fun prepare(
         input: M4CapturedRequest,
         requestedPolicy: SecretPolicy = SecretPolicy.PARAMETERIZE,
@@ -282,34 +314,12 @@ object M4TransferPreparer {
             )
         }
 
-        val displayHeaders = normalized.headers.map { header ->
-            when (val value = header.value) {
-                is NormalizedHeaderValue.Public ->
-                    M4DisplayHeader(header.name, value.value, sensitive = false)
-                is NormalizedHeaderValue.Protected ->
-                    M4DisplayHeader(
-                        header.name,
-                        maskFor(value.ref.category),
-                        sensitive = true,
-                    )
-            }
-        }
-
         return M4PreparationResult.Prepared(
             M4PreparedTransfer(
                 envelope = envelope,
                 encodedJson = encoded,
                 encodedUtf8Bytes = bytes,
-                display = M4DisplayRequest(
-                    method = normalized.method,
-                    url = normalized.url,
-                    status = input.status,
-                    durationMs = input.durationMs,
-                    headers = displayHeaders,
-                    requestBodyCompleteness = input.completeness.requestBody,
-                    responseBodyCompleteness = input.completeness.responseBody,
-                    sensitiveCount = findings.size,
-                ),
+                display = projectDisplay(input),
             ),
         )
     }

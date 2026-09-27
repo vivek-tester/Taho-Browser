@@ -4,6 +4,8 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val geckoViewVersion: String by project
+
 android {
     namespace = "app.taho.browser"
     compileSdk = 37
@@ -14,9 +16,16 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
+        buildConfigField("boolean", "M1_ATTRIBUTION_VERIFIED", "false")
+        buildConfigField("String", "GECKOVIEW_VERSION", "\"$geckoViewVersion\"")
+        buildConfigField("String", "TAHO_PACKAGE_NAME", "\"com.eternal.taho\"")
+        buildConfigField("String", "TAHO_TRANSFER_ACTION", "\"\"")
     }
 
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -27,6 +36,10 @@ android {
 dependencies {
     implementation(project(":browser:shell"))
     implementation(project(":browser:runtime"))
+    implementation(project(":browser:observation"))
+    implementation(project(":capture:domain"))
+    implementation(project(":transfer:core"))
+    implementation(project(":transfer:android"))
     implementation("androidx.activity:activity-compose:1.11.0")
     implementation("androidx.compose.ui:ui:1.9.1")
     implementation("androidx.compose.foundation:foundation:1.9.1")

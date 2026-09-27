@@ -317,6 +317,9 @@ class BrowserRuntimeController(context: Context) {
         tabs.filterNot { it.crashed }.forEach { block(it.id, it.session) }
     }
 
+    fun locationForTab(tabId: String): String? =
+        tabs.firstOrNull { it.id == tabId }?.location
+
     fun resolveSitePermission(requestId: String, allow: Boolean) {
         val pending = pendingSitePermission
         if (pending?.prompt?.id != requestId) return
