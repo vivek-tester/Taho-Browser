@@ -331,10 +331,7 @@ class M4InMemoryCaptureAssembler(
 
         bodySupport?.let { support ->
             findings += support.secretAssessment.findings
-            if (
-                support.limitation != BodySupportLimitation.NONE ||
-                support.representation != DurableBodyRepresentation.JSON
-            ) {
+            if (!isM6TransferableBody(support)) {
                 reviewRequired = true
             }
         }
@@ -346,15 +343,11 @@ class M4InMemoryCaptureAssembler(
         }
 
         val transferBody = bodySupport
-            ?.takeIf {
-                it.representation == DurableBodyRepresentation.JSON &&
-                    it.transferSafeText != null &&
-                    it.limitation == BodySupportLimitation.NONE
-            }
+            ?.takeIf(::isM6TransferableBody)
             ?.let { support ->
                 val text = requireNotNull(support.transferSafeText)
                 TransferBody(
-                    representation = BodyRepresentation.JSON,
+                    representation = contractRepresentation(support.representation),
                     contentType = support.contentType,
                     charset = support.charset ?: "utf-8",
                     encoding = BodyEncoding.UTF8,
@@ -772,6 +765,36 @@ class M4InMemoryCaptureAssembler(
                 SecretSeverity.MEDIUM
         }
 
+    private fun isM6TransferableBody(
+        support: app.taho.browser.capture.domain.CapturedBodySupport,
+    ): Boolean {
+        if (
+            support.limitation != BodySupportLimitation.NONE ||
+            support.transferSafeText == null ||
+            support.completeness != DomainCompleteness.COMPLETE
+        ) {
+            return false
+        }
+
+        return when (support.representation) {
+            DurableBodyRepresentation.JSON,
+            DurableBodyRepresentation.FORM -> true
+
+            DurableBodyRepresentation.GRAPHQL -> {
+                val mime = support.contentType
+                    ?.substringBefore(';')
+                    ?.trim()
+                    ?.lowercase()
+                    .orEmpty()
+                mime == "application/json" || mime.endsWith("+json")
+            }
+
+            DurableBodyRepresentation.TEXT,
+            DurableBodyRepresentation.MULTIPART,
+            DurableBodyRepresentation.BINARY -> false
+        }
+    }
+
     private fun contractRepresentation(
         representation: DurableBodyRepresentation,
     ): BodyRepresentation =
@@ -783,10 +806,10 @@ class M4InMemoryCaptureAssembler(
         if (support == null) return null
         return when {
             support.limitation == BodySupportLimitation.NONE &&
-                support.representation == DurableBodyRepresentation.JSON -> null
+                isM6TransferableBody(support) -> null
             support.limitation == BodySupportLimitation.NONE ->
                 support.representation.name.lowercase().replaceFirstChar(Char::uppercase) +
-                    " captured; direct transfer for this body type is not enabled in M5."
+                    " captured, but this representation cannot yet be reconstructed safely in Taho."
             support.limitation == BodySupportLimitation.BODY_NOT_OBSERVED ->
                 "Request body was not exposed by GeckoView for this request."
             support.limitation == BodySupportLimitation.BODY_TRUNCATED ->
