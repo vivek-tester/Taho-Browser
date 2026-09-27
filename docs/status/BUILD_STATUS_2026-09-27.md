@@ -35,24 +35,25 @@ No production capture source is allowed to claim trusted attribution until this 
 
 ## M2 — Production foundation
 
-**Source status:** implemented; automated execution currently unavailable.
+**Status:** complete for the M2 source/build/test exit gate.
 
-Implemented:
+Implemented and automated:
 
-- native Kotlin/Compose module graph;
-- pure `:capture:domain`, `:contract:taho-transfer`, `:transfer:core`;
-- corrected transaction reducer;
-- missing/reordered/late/recovery tests;
-- bounded de-duplication;
-- write-once origin attribution;
+- native Kotlin/Compose module graph with pinned build dependencies;
+- pure `:capture:domain`, `:contract:taho-transfer`, `:transfer:core` plus pure test-support modules;
+- architecture/static dependency gates;
+- corrected transaction reducer with bounded de-duplication and write-once attribution;
+- property/unit coverage plus language-neutral fixtures for missing, reordered, duplicate and recovery sequences;
+- secret-safe byte-backed values, structural secret detection, masked display boundaries and log-sink gates;
+- versioned normalisation, immutable safe provenance, byte budgets and bounded backpressure primitives;
 - Browser→Taho v1 contract and validator;
-- architecture/static gate;
-- secret-safe byte-backed value types;
-- secret classification/name-boundary tests;
-- cookie MASK default and category-only display masking.
+- loopback-only controlled HTTP fixture service;
+- companion Taho receiver harness that validates, deduplicates and stages imports without execution or persistence;
+- CI coverage for pure modules and production Android/spike assembly.
 
-GitHub Actions jobs currently fail before obtaining a runner (`runner_id: 0`, zero executed steps).
-That is not recorded as a passing or failing compiler/test result.
+The real Project-Taho receiver is intentionally not implemented in M2. Per the product boundary, the
+harness proves the contract-side behavior without turning Taho Browser into an API client or bypassing
+the later M4 two-app integration gate.
 
 ## M3 — Browser baseline
 

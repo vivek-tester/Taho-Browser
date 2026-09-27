@@ -17,12 +17,14 @@ The build plan requires the production foundation and reducer to be established 
 6. Recovery may transition any non-terminal transaction, including STARTED, to PARTIAL with an explicit reason such as `PROCESS_DIED`.
 7. Missing `TX_START`, request headers, or response-start events create diagnostics while preserving observed evidence. They are not silently dropped.
 8. Event de-duplication is bounded to a recent in-memory window. Durable de-dup ownership remains a persistence-contract task; no unbounded event archive is introduced.
-9. GeckoView is not added until M1 records a tested engine pin and capability evidence.
+9. The pinned GeckoView dependency may be compiled for M1/M3 source validation, but production observation must not trust Gecko attribution until the M1 physical-device capability gate passes.
 10. `minSdk = 26` is provisional scaffolding until project input fixes the supported Android floor.
 
 ## Build toolchain
 
-The foundation pins AGP 8.13.2, Kotlin 2.3.21, Gradle 8.13 in CI, and JDK 17. This keeps the configured AGP and Kotlin plugin lines within their documented supported ranges.
+The canonical M2 build pins AGP 9.1.1, Kotlin 2.3.21, Gradle 9.3.1 in CI, and JDK 17. Android compilation installs the exact preview platform package `platforms;android-37.2-beta3` plus Build Tools 36.0.0 because the pinned GeckoView candidate requires Android 37 compile APIs. The GeckoView candidate itself remains pinned in `gradle.properties`.
+
+The reproducible build path is the checked-in CI workflow with those exact versions; arbitrary locally installed Gradle/SDK versions are not treated as release evidence.
 
 ## Product boundary
 

@@ -45,20 +45,8 @@ jobs:
           test -x "$SDKMANAGER"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
 
-          PLATFORM_PACKAGE="$(
-            "$SDKMANAGER" --list --channel=3 |
-              awk -F'|' '
-                /platforms;android-37/ {
-                  gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1)
-                  print $1
-                }
-              ' |
-              sort -V |
-              tail -n 1
-          )"
-
-          test -n "$PLATFORM_PACKAGE"
-          echo "Installing Android 17 platform package: $PLATFORM_PACKAGE"
+          PLATFORM_PACKAGE="platforms;android-37.2-beta3"
+          echo "Installing pinned Android 17 platform package: $PLATFORM_PACKAGE"
           "$SDKMANAGER" --channel=3 "$PLATFORM_PACKAGE" "build-tools;36.0.0"
 
           PLATFORM_DIR="${PLATFORM_PACKAGE#platforms;}"
