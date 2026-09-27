@@ -1,11 +1,36 @@
 package app.taho.browser.runtime
 
+import android.Manifest
 import android.content.Context
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import org.mozilla.geckoview.GeckoResult
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSessionSettings
 import java.util.UUID
+
+enum class BrowserSitePermissionKind {
+    LOCATION,
+    PERSISTENT_STORAGE,
+    CAMERA,
+    MICROPHONE,
+    CAMERA_AND_MICROPHONE,
+}
+
+data class BrowserSitePermissionPrompt(
+    val id: String,
+    val tabId: String,
+    val origin: String,
+    val kind: BrowserSitePermissionKind,
+    val isPrivate: Boolean,
+)
+
+data class BrowserAndroidPermissionRequest(
+    val id: String,
+    val tabId: String,
+    val permissions: List<String>,
+)
 
 data class BrowserTabSnapshot(
     val id: String,
@@ -29,6 +54,8 @@ data class BrowserSnapshot(
     val isPrivate: Boolean,
     val canGoBack: Boolean,
     val canGoForward: Boolean,
+    val sitePermission: BrowserSitePermissionPrompt?,
+    val androidPermissionRequest: BrowserAndroidPermissionRequest?,
     val tabs: List<BrowserTabSnapshot>,
 )
 
@@ -47,12 +74,37 @@ class BrowserRuntimeController(context: Context) {
         var sessionState: GeckoSession.SessionState? = null,
     )
 
+    private sealed interface PendingSitePermission {
+        val prompt: BrowserSitePermissionPrompt
+
+        data class Content(
+            override val prompt: BrowserSitePermissionPrompt,
+            val result: GeckoResult<Int>,
+        ) : PendingSitePermission
+
+        data class Media(
+            override val prompt: BrowserSitePermissionPrompt,
+            val callback: GeckoSession.PermissionDelegate.MediaCallback,
+            val video: GeckoSession.PermissionDelegate.MediaSource?,
+            val audio: GeckoSession.PermissionDelegate.MediaSource?,
+        ) : PendingSitePermission
+    }
+
+    private data class PendingAndroidPermission(
+        val request: BrowserAndroidPermissionRequest,
+        val callback: GeckoSession.PermissionDelegate.Callback,
+        var launched: Boolean = false,
+    )
+
     private val runtime = GeckoRuntimeHolder.get(context)
     private val sessionStore = BrowserSessionStore(context.applicationContext)
     private val mainHandler = Handler(Looper.getMainLooper())
     private val tabs = mutableListOf<RuntimeTab>()
     private lateinit var selectedTabId: String
     private var listener: ((BrowserSnapshot) -> Unit)? = null
+
+    private var pendingSitePermission: PendingSitePermission? = null
+    private var pendingAndroidPermission: PendingAndroidPermission? = null
 
     private val persistRunnable = Runnable { persistNow() }
 
@@ -96,6 +148,8 @@ class BrowserRuntimeController(context: Context) {
             isPrivate = selected.isPrivate,
             canGoBack = selected.canGoBack,
             canGoForward = selected.canGoForward,
+            sitePermission = pendingSitePermission?.prompt,
+            androidPermissionRequest = pendingAndroidPermission?.request,
             tabs = tabs.map { tab ->
                 BrowserTabSnapshot(
                     id = tab.id,
@@ -133,6 +187,8 @@ class BrowserRuntimeController(context: Context) {
     }
 
     fun closeTab(tabId: String) {
+        rejectPermissionsForTab(tabId)
+
         if (tabs.size == 1) {
             val only = tabs.single()
             if (only.crashed) {
@@ -239,6 +295,53 @@ class BrowserRuntimeController(context: Context) {
 
     fun forEachSession(block: (tabId: String, session: GeckoSession) -> Unit) {
         tabs.filterNot { it.crashed }.forEach { block(it.id, it.session) }
+    }
+
+    fun resolveSitePermission(requestId: String, allow: Boolean) {
+        val pending = pendingSitePermission
+        if (pending?.prompt?.id != requestId) return
+
+        pendingSitePermission = null
+        when (pending) {
+            is PendingSitePermission.Content -> {
+                pending.result.complete(
+                    if (allow) {
+                        GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW
+                    } else {
+                        GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY
+                    },
+                )
+            }
+
+            is PendingSitePermission.Media -> {
+                if (allow) {
+                    pending.callback.grant(pending.video, pending.audio)
+                } else {
+                    pending.callback.reject()
+                }
+            }
+        }
+        notifyChanged()
+    }
+
+    fun claimAndroidPermissionRequest(requestId: String): Boolean {
+        val pending = pendingAndroidPermission
+        if (pending?.request?.id != requestId || pending.launched) return false
+        pending.launched = true
+        return true
+    }
+
+    fun resolveAndroidPermissions(requestId: String, granted: Boolean) {
+        val pending = pendingAndroidPermission
+        if (pending?.request?.id != requestId) return
+
+        pendingAndroidPermission = null
+        if (granted) {
+            pending.callback.grant()
+        } else {
+            pending.callback.reject()
+        }
+        notifyChanged()
     }
 
     fun persistNow() {
@@ -378,9 +481,134 @@ class BrowserRuntimeController(context: Context) {
                 markCrashed(tab)
             }
         })
+
+        session.setPermissionDelegate(object : GeckoSession.PermissionDelegate {
+            override fun onAndroidPermissionsRequest(
+                session: GeckoSession,
+                permissions: Array<out String>?,
+                callback: GeckoSession.PermissionDelegate.Callback,
+            ) {
+                val requested = permissions.orEmpty().toList().distinct()
+                if (
+                    requested.isEmpty() ||
+                    pendingAndroidPermission != null ||
+                    requested.any { it !in SUPPORTED_ANDROID_PERMISSIONS }
+                ) {
+                    callback.reject()
+                    return
+                }
+
+                val request = BrowserAndroidPermissionRequest(
+                    id = UUID.randomUUID().toString(),
+                    tabId = tab.id,
+                    permissions = requested,
+                )
+                pendingAndroidPermission = PendingAndroidPermission(
+                    request = request,
+                    callback = callback,
+                )
+                notifyChangedIfReady()
+            }
+
+            override fun onContentPermissionRequest(
+                session: GeckoSession,
+                perm: GeckoSession.PermissionDelegate.ContentPermission,
+            ): GeckoResult<Int>? {
+                if (
+                    perm.value !=
+                    GeckoSession.PermissionDelegate.ContentPermission.VALUE_PROMPT
+                ) {
+                    return GeckoResult.fromValue(perm.value)
+                }
+
+                val kind = when (perm.permission) {
+                    GeckoSession.PermissionDelegate.PERMISSION_GEOLOCATION ->
+                        BrowserSitePermissionKind.LOCATION
+
+                    GeckoSession.PermissionDelegate.PERMISSION_PERSISTENT_STORAGE ->
+                        BrowserSitePermissionKind.PERSISTENT_STORAGE
+
+                    else -> return GeckoResult.fromValue(
+                        GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY,
+                    )
+                }
+
+                if (pendingSitePermission != null) {
+                    return GeckoResult.fromValue(
+                        GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY,
+                    )
+                }
+
+                val result = GeckoResult<Int>()
+                val prompt = BrowserSitePermissionPrompt(
+                    id = UUID.randomUUID().toString(),
+                    tabId = tab.id,
+                    origin = displayOrigin(perm.uri),
+                    kind = kind,
+                    isPrivate = tab.isPrivate,
+                )
+                pendingSitePermission = PendingSitePermission.Content(
+                    prompt = prompt,
+                    result = result,
+                )
+                notifyChangedIfReady()
+                return result
+            }
+
+            override fun onMediaPermissionRequest(
+                session: GeckoSession,
+                uri: String,
+                video: Array<out GeckoSession.PermissionDelegate.MediaSource>?,
+                audio: Array<out GeckoSession.PermissionDelegate.MediaSource>?,
+                callback: GeckoSession.PermissionDelegate.MediaCallback,
+            ) {
+                if (pendingSitePermission != null) {
+                    callback.reject()
+                    return
+                }
+
+                val camera = video
+                    ?.firstOrNull {
+                        it.source == GeckoSession.PermissionDelegate.MediaSource.SOURCE_CAMERA
+                    }
+                val microphone = audio
+                    ?.firstOrNull {
+                        it.source == GeckoSession.PermissionDelegate.MediaSource.SOURCE_MICROPHONE
+                    }
+
+                if (camera == null && microphone == null) {
+                    // Screen/device-audio capture needs a dedicated Android flow.
+                    callback.reject()
+                    return
+                }
+
+                val kind = when {
+                    camera != null && microphone != null ->
+                        BrowserSitePermissionKind.CAMERA_AND_MICROPHONE
+                    camera != null -> BrowserSitePermissionKind.CAMERA
+                    else -> BrowserSitePermissionKind.MICROPHONE
+                }
+
+                val prompt = BrowserSitePermissionPrompt(
+                    id = UUID.randomUUID().toString(),
+                    tabId = tab.id,
+                    origin = displayOrigin(uri),
+                    kind = kind,
+                    isPrivate = tab.isPrivate,
+                )
+                pendingSitePermission = PendingSitePermission.Media(
+                    prompt = prompt,
+                    callback = callback,
+                    video = camera,
+                    audio = microphone,
+                )
+                notifyChangedIfReady()
+            }
+        })
     }
 
     private fun markCrashed(tab: RuntimeTab) {
+        rejectPermissionsForTab(tab.id)
         tab.crashed = true
         tab.isLoading = false
         tab.loadFailed = false
@@ -434,6 +662,43 @@ class BrowserRuntimeController(context: Context) {
         notifyChanged()
     }
 
+    private fun rejectPermissionsForTab(tabId: String) {
+        val site = pendingSitePermission
+        if (site?.prompt?.tabId == tabId) {
+            pendingSitePermission = null
+            when (site) {
+                is PendingSitePermission.Content -> site.result.complete(
+                    GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY,
+                )
+                is PendingSitePermission.Media -> site.callback.reject()
+            }
+        }
+
+        val android = pendingAndroidPermission
+        if (android?.request?.tabId == tabId) {
+            pendingAndroidPermission = null
+            android.callback.reject()
+        }
+    }
+
+    private fun displayOrigin(raw: String): String {
+        val parsed = Uri.parse(raw)
+        val host = parsed.host ?: return raw.take(MAX_ORIGIN_LENGTH)
+        val scheme = parsed.scheme?.lowercase()
+        val port = parsed.port.takeIf { it >= 0 }
+        return buildString {
+            if (scheme == "http" || scheme == "https") {
+                append(scheme)
+                append("://")
+            }
+            append(host)
+            if (port != null) {
+                append(':')
+                append(port)
+            }
+        }.take(MAX_ORIGIN_LENGTH)
+    }
+
     private fun requireSelected(): RuntimeTab =
         tabs.first { it.id == selectedTabId }
 
@@ -452,6 +717,14 @@ class BrowserRuntimeController(context: Context) {
 
     companion object {
         private const val PERSIST_DEBOUNCE_MS = 500L
+        private const val MAX_ORIGIN_LENGTH = 160
+
+        private val SUPPORTED_ANDROID_PERMISSIONS = setOf(
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.CAMERA,
+            Manifest.permission.RECORD_AUDIO,
+        )
     }
 }
 

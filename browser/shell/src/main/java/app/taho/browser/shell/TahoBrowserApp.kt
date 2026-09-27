@@ -65,6 +65,14 @@ data class BrowserTabUiState(
     val selected: Boolean,
 )
 
+data class SitePermissionUiState(
+    val id: String,
+    val origin: String,
+    val title: String,
+    val detail: String,
+    val isPrivate: Boolean,
+)
+
 data class BrowserUiState(
     val captureState: CaptureState = CaptureState.OFF,
     val relevantCount: Int = 0,
@@ -76,6 +84,7 @@ data class BrowserUiState(
     val isPrivate: Boolean = false,
     val canGoBack: Boolean = false,
     val canGoForward: Boolean = false,
+    val sitePermission: SitePermissionUiState? = null,
     val tabs: List<BrowserTabUiState> = emptyList(),
 )
 
@@ -92,11 +101,19 @@ fun TahoBrowserApp(
     onNewPrivateTab: () -> Unit = {},
     onSelectTab: (String) -> Unit = {},
     onCloseTab: (String) -> Unit = {},
+    onSitePermissionDecision: (String, Boolean) -> Unit = { _, _ -> },
     browserContent: @Composable () -> Unit = {},
 ) {
     var editing by rememberSaveable { mutableStateOf(false) }
     var draft by rememberSaveable { mutableStateOf("") }
     var showTabs by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(state.sitePermission?.id) {
+        if (state.sitePermission != null) {
+            showTabs = false
+            editing = false
+        }
+    }
 
     TahoTheme {
         Box(
@@ -172,7 +189,7 @@ fun TahoBrowserApp(
             }
         }
 
-        if (showTabs) {
+        if (showTabs && state.sitePermission == null) {
             ModalBottomSheet(
                 onDismissRequest = { showTabs = false },
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -196,6 +213,29 @@ fun TahoBrowserApp(
                         showTabs = false
                     },
                     onCloseTab = onCloseTab,
+                )
+            }
+        }
+
+        state.sitePermission?.let { prompt ->
+            ModalBottomSheet(
+                onDismissRequest = {
+                    onSitePermissionDecision(prompt.id, false)
+                },
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                containerColor = TahoSheet,
+                contentColor = TahoText,
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                dragHandle = { SheetGrabHandle() },
+            ) {
+                SitePermissionSheet(
+                    prompt = prompt,
+                    onDeny = {
+                        onSitePermissionDecision(prompt.id, false)
+                    },
+                    onAllow = {
+                        onSitePermissionDecision(prompt.id, true)
+                    },
                 )
             }
         }
@@ -508,6 +548,105 @@ private fun TabCountButton(
             color = TahoText,
             fontFamily = FontFamily.Monospace,
             fontSize = 10.sp,
+        )
+    }
+}
+
+@Composable
+private fun SitePermissionSheet(
+    prompt: SitePermissionUiState,
+    onDeny: () -> Unit,
+    onAllow: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(start = 20.dp, end = 20.dp, bottom = 22.dp),
+    ) {
+        Text(
+            text = "Site permission",
+            color = TahoText,
+            fontSize = 19.sp,
+        )
+        Spacer(Modifier.height(7.dp))
+        Text(
+            text = prompt.origin,
+            color = TahoGoldHi,
+            fontFamily = FontFamily.Monospace,
+            fontSize = 10.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(18.dp))
+        Text(
+            text = prompt.title,
+            color = TahoText,
+            fontSize = 16.sp,
+        )
+        Spacer(Modifier.height(7.dp))
+        Text(
+            text = prompt.detail,
+            color = TahoMuted,
+            fontSize = 12.sp,
+        )
+
+        if (prompt.isPrivate) {
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = "Private tab · this prompt is not saved by Taho Browser.",
+                color = TahoFaint,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 9.sp,
+            )
+        }
+
+        Spacer(Modifier.height(22.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            PermissionAction(
+                text = "Deny",
+                primary = false,
+                modifier = Modifier.weight(1f),
+                onClick = onDeny,
+            )
+            PermissionAction(
+                text = "Allow",
+                primary = true,
+                modifier = Modifier.weight(1f),
+                onClick = onAllow,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PermissionAction(
+    text: String,
+    primary: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = modifier
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(999.dp))
+            .background(if (primary) TahoGold else Color.White.copy(alpha = .045f))
+            .border(
+                1.dp,
+                if (primary) TahoGold else Color.White.copy(alpha = .12f),
+                RoundedCornerShape(999.dp),
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            color = if (primary) TahoBg else TahoText,
+            fontFamily = FontFamily.Monospace,
+            fontSize = 11.sp,
         )
     }
 }
