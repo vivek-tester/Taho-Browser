@@ -9,8 +9,12 @@ import kotlin.test.assertTrue
 class ProductionObservationProtocolTest {
     @Test
     fun rejectsOversizeBeforeJsonParsing() {
-        val raw = """{"type":"TX_ERROR","conn":"c","seq":1,"id":"e","reqId":"r","tabId":1,"error":""" +
-            """ + "x".repeat(9000) + ""}"
+        val raw =
+            "{\"type\":\"TX_ERROR\",\"conn\":\"c\",\"seq\":1,\"id\":\"e\"," +
+                "\"reqId\":\"r\",\"tabId\":1,\"error\":\"" +
+                "x".repeat(9000) +
+                "\"}"
+
         val result = ProductionObservationProtocol.parse(raw, ObservationLane.BULK)
 
         assertEquals(
@@ -21,7 +25,9 @@ class ProductionObservationProtocolTest {
 
     @Test
     fun identityCannotArriveOnBulkLane() {
-        val raw = """{"type":"TAB_REGISTER","extTabId":3,"url":"https://example.test/"}"""
+        val raw =
+            """{"type":"TAB_REGISTER","extTabId":3,"url":"https://example.test/"}"""
+
         val result = ProductionObservationProtocol.parse(raw, ObservationLane.BULK)
 
         assertEquals(
@@ -92,6 +98,7 @@ class ProductionObservationProtocolTest {
         }""".trimIndent()
 
         val result = ProductionObservationProtocol.parse(raw, ObservationLane.BULK)
+
         assertEquals(
             ObservationRejectReason.INVALID_FIELD,
             assertIs<ObservationParseResult.Rejected>(result).reason,
