@@ -142,9 +142,10 @@ class RoomCaptureRepository private constructor(
         guarded { dao.markInterruptedPartial(nowEpochMs) }
 
     override fun closeAbandonedActiveSessions(
+        currentSessionId: String,
         nowEpochMs: Long,
     ): CaptureRepositoryResult<Int> =
-        guarded { dao.closeAbandonedActiveSessions(nowEpochMs) }
+        guarded { dao.closeAbandonedActiveSessions(currentSessionId, nowEpochMs) }
 
     override fun closeSession(
         sessionId: String,
