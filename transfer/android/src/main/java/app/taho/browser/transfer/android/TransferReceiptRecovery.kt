@@ -62,6 +62,7 @@ class TransferReceiptReceiver : BroadcastReceiver() {
             )
         }
         SecureTransferArtifactStore(appContext).settle(receipt.transferId)
+        TransferAttemptJournal(appContext).settle(receipt.transferId)
         TransferReceiptRecoveryStore.record(appContext, receipt)
     }
 
