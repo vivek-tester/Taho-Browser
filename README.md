@@ -21,6 +21,23 @@ M0/M1/M2 foundation is in progress:
 
 The production shell defaults capture to OFF until a real capture coordinator supplies engine state; it never claims capture is active merely because GeckoView is running.
 
+## Product boundary
+
+Taho Browser is **not** an API testing client. Its responsibility ends at browsing, observing,
+capturing, reviewing, normalising and explicitly transferring a request.
+
+**Taho Browser owns:** browsing, GeckoView session management, network observation, attribution,
+capture/relevance, local capture persistence, credential-safe transfer preparation and the
+Browser→Taho sender.
+
+**Project-Taho owns:** receiving the transfer, constructing the editable API request, request
+execution/replay, diagnostics/security analysis, environments, collections, test assertions,
+history and saved API-testing work.
+
+The receiver is intentionally deferred until the browser runtime/capture path is working. The
+versioned transfer contract is maintained now so both apps can implement against the same boundary
+later.
+
 ## Module graph
 
 - `:app`
