@@ -1,0 +1,29 @@
+{
+  "manifest_version": 2,
+  "name": "Taho Capture",
+  "version": "0.1.0",
+  "description": "Production request-observation extension. Native use remains gated by measured M1 attribution evidence.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "taho-capture@browser.local"
+    }
+  },
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "permissions": [
+    "<all_urls>",
+    "webRequest",
+    "nativeMessaging",
+    "nativeMessagingFromContent",
+    "geckoViewAddons"
+  ]
+}

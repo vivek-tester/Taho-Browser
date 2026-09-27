@@ -6,6 +6,10 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <queries>
+        <package android:name="com.eternal.taho" />
+    </queries>
+
     <application
         android:allowBackup="false"
         android:label="Taho Browser"

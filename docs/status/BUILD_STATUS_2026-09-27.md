@@ -98,25 +98,45 @@ procedure records that dependency explicitly.
 
 ## M4 — One real end-to-end request
 
-**Status:** intentionally not started as a production capture path.
+**Source/automated status:** gated implementation present; M4 exit gate NOT PASSED.
 
-Dependencies not yet satisfied:
+Implemented behind explicit safety gates:
 
-1. M1 trustworthy attribution device gate.
-2. M3 pinned-build/device exit evidence.
-3. Project-Taho structured receiver implementation.
+- production built-in WebExtension source and native identity/bulk handshake;
+- no selected-tab fallback: ExtTabId is accepted only after sender-session/origin validation;
+- per-message byte caps before JSON parsing plus bounded priority-aware parsed ingestion;
+- reconnect connection IDs, monotonic sequence validation and LIMITED state on gaps/drops;
+- in-memory GET/JSON POST assembly with provenance/completeness;
+- unresolved attribution excluded from per-tab request lists;
+- structural header/query/JSON-body secret classification;
+- secret-bearing or suspicious JSON bodies discarded from the transfer candidate after review;
+- versioned normalization and safe display projection;
+- masked Capture Summary → Inspector → Send-to-Taho confirmation UI;
+- Parameterize/Mask policy selection, with Explicit disabled unless a consent-safe live-secret source exists;
+- direct-transfer envelope JSON, 256 KiB budget enforcement, explicit transfer lifecycle and receipt parsing;
+- Android sender that requires an explicit package/action and never invents a Project-Taho receiver action;
+- loopback GET and JSON POST contract-slice tests through the M2 receiver harness;
+- receiver-harness assertions that import causes zero execution and zero persistence.
 
-Per the product decision, Project-Taho receiver work begins after the Browser is demonstrably running.
-The shared contract remains ready so the receiver can be implemented without redesigning the handoff.
+Production activation is intentionally blocked in the app build:
 
-## Next source work while device verification is pending
+- `M1_ATTRIBUTION_VERIFIED=false`, so the production observer remains OFF;
+- `TAHO_TRANSFER_ACTION=""`, so Send-to-Taho cannot launch an absent structured receiver.
 
-Safe work that does not assume Gecko attribution may continue in pure modules:
+Still required before M4 may be marked complete:
 
-- secret representation/property tests and static leak gates;
-- byte-budget/backpressure primitives;
-- normalization rules and safe-provenance projection;
-- contract compatibility/fuzz fixtures;
-- controlled fixture definitions for the eventual device run.
+1. Pass the M1 physical-device attribution/capability gate and explicitly enable production observation.
+2. Demonstrate the Browser on-device through the still-open M3 physical acceptance gate.
+3. Implement the real Project-Taho structured receiver/editor import path after that Browser gate, preserving
+   the unsaved/import-not-execute boundary.
+4. Configure the confirmed Project-Taho transfer action and receipt path.
+5. Run the build-plan two-app device slice with a real captured GET and JSON POST, verifying
+   method/query/headers/body/provenance and zero automatic execution.
 
-Production Gecko observation/capture wiring remains behind M1.
+The pure receiver harness and loopback contract slice are automated evidence only; they do not satisfy
+the required two-app/device M4 exit condition.
+
+## Next phase boundary
+
+Do not start M5 durability/persistence work until the M4 gate state above is explicitly resolved or
+the project chooses to continue source work while carrying the documented device dependency.

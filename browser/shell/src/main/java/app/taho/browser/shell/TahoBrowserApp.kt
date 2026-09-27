@@ -87,6 +87,7 @@ data class BrowserUiState(
     val sitePermission: SitePermissionUiState? = null,
     val notice: String? = null,
     val tabs: List<BrowserTabUiState> = emptyList(),
+    val captureRequests: List<M4CaptureRequestUiState> = emptyList(),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -104,21 +105,43 @@ fun TahoBrowserApp(
     onCloseTab: (String) -> Unit = {},
     onSitePermissionDecision: (String, Boolean) -> Unit = { _, _ -> },
     onDismissNotice: () -> Unit = {},
+    onSendToTaho: (String, M4SecretPolicyUi) -> Unit = { _, _ -> },
     browserContent: @Composable () -> Unit = {},
 ) {
     var editing by rememberSaveable { mutableStateOf(false) }
     var draft by rememberSaveable { mutableStateOf("") }
     var showTabs by rememberSaveable { mutableStateOf(false) }
+    var showCaptureSummary by rememberSaveable { mutableStateOf(false) }
+    var selectedCaptureId by rememberSaveable { mutableStateOf<String?>(null) }
+    var showTransferConfirmation by rememberSaveable { mutableStateOf(false) }
+    var selectedSecretPolicy by rememberSaveable {
+        mutableStateOf(M4SecretPolicyUi.PARAMETERIZE)
+    }
+
+    val selectedCapture = state.captureRequests.firstOrNull { it.id == selectedCaptureId }
+
+    LaunchedEffect(state.captureRequests, selectedCaptureId) {
+        if (selectedCaptureId != null && selectedCapture == null) {
+            selectedCaptureId = null
+            showTransferConfirmation = false
+        }
+    }
 
     LaunchedEffect(state.sitePermission?.id) {
         if (state.sitePermission != null) {
             showTabs = false
+            showCaptureSummary = false
+            selectedCaptureId = null
+            showTransferConfirmation = false
             editing = false
         }
     }
 
     BackHandler(
         enabled = state.sitePermission != null ||
+            showTransferConfirmation ||
+            selectedCaptureId != null ||
+            showCaptureSummary ||
             showTabs ||
             editing ||
             (state.canGoBack && !state.crashed),
@@ -126,6 +149,9 @@ fun TahoBrowserApp(
         when {
             state.sitePermission != null ->
                 onSitePermissionDecision(state.sitePermission.id, false)
+            showTransferConfirmation -> showTransferConfirmation = false
+            selectedCaptureId != null -> selectedCaptureId = null
+            showCaptureSummary -> showCaptureSummary = false
             showTabs -> showTabs = false
             editing -> editing = false
             state.canGoBack && !state.crashed -> onBack()
@@ -171,7 +197,14 @@ fun TahoBrowserApp(
                     CaptureIndicator(
                         state = state.captureState,
                         relevantCount = state.relevantCount,
-                        onClick = onCaptureClick,
+                        onClick = {
+                            showTabs = false
+                            editing = false
+                            selectedCaptureId = null
+                            showTransferConfirmation = false
+                            showCaptureSummary = true
+                            onCaptureClick()
+                        },
                     )
                     Spacer(Modifier.height(9.dp))
                 }
@@ -211,6 +244,73 @@ fun TahoBrowserApp(
                     },
                     onTabsClick = { showTabs = true },
                 )
+            }
+        }
+
+        if (showCaptureSummary && selectedCaptureId == null && state.sitePermission == null) {
+            ModalBottomSheet(
+                onDismissRequest = { showCaptureSummary = false },
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                containerColor = TahoSheet,
+                contentColor = TahoText,
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                dragHandle = { SheetGrabHandle() },
+            ) {
+                M4CaptureSummarySheet(
+                    requests = state.captureRequests,
+                    onSelect = { requestId ->
+                        selectedCaptureId = requestId
+                        selectedSecretPolicy = M4SecretPolicyUi.PARAMETERIZE
+                    },
+                )
+            }
+        }
+
+        selectedCapture?.let { request ->
+            if (!showTransferConfirmation && state.sitePermission == null) {
+                ModalBottomSheet(
+                    onDismissRequest = { selectedCaptureId = null },
+                    sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                    containerColor = TahoSheet,
+                    contentColor = TahoText,
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                    dragHandle = { SheetGrabHandle() },
+                ) {
+                    M4RequestInspectorSheet(
+                        request = request,
+                        onBack = { selectedCaptureId = null },
+                        onSendToTaho = {
+                            selectedSecretPolicy = M4SecretPolicyUi.PARAMETERIZE
+                            showTransferConfirmation = true
+                        },
+                    )
+                }
+            }
+
+            if (showTransferConfirmation && state.sitePermission == null) {
+                ModalBottomSheet(
+                    onDismissRequest = { showTransferConfirmation = false },
+                    sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                    containerColor = TahoSheet,
+                    contentColor = TahoText,
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                    dragHandle = { SheetGrabHandle() },
+                ) {
+                    M4SendConfirmationSheet(
+                        request = request,
+                        selectedPolicy = selectedSecretPolicy,
+                        onPolicySelected = { policy ->
+                            if (policy != M4SecretPolicyUi.EXPLICIT || request.explicitPolicyAllowed) {
+                                selectedSecretPolicy = policy
+                            }
+                        },
+                        onCancel = { showTransferConfirmation = false },
+                        onConfirm = {
+                            onSendToTaho(request.id, selectedSecretPolicy)
+                            showTransferConfirmation = false
+                        },
+                    )
+                }
             }
         }
 
