@@ -1,8 +1,64 @@
 const NATIVE_APP = "taho.observation";
 
-function sendNative(message) {
-  return browser.runtime.sendNativeMessage(NATIVE_APP, message).catch(() => undefined);
+let bulkPort = null;
+let reconnectTimer = null;
+let bulkSequence = 0;
+
+function scheduleReconnect() {
+  if (reconnectTimer !== null) {
+    return;
+  }
+
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    connectBulkPort();
+  }, 250);
 }
+
+function connectBulkPort() {
+  try {
+    const port = browser.runtime.connectNative(NATIVE_APP);
+    bulkPort = port;
+
+    port.onDisconnect.addListener(() => {
+      if (bulkPort === port) {
+        bulkPort = null;
+      }
+      scheduleReconnect();
+    });
+
+    port.onMessage.addListener((message) => {
+      if (message && message.kind === "ping") {
+        sendBulk({ kind: "bulk_heartbeat" });
+      }
+    });
+
+    sendBulk({ kind: "bulk_heartbeat" });
+  } catch (_) {
+    bulkPort = null;
+    scheduleReconnect();
+  }
+}
+
+function sendBulk(message) {
+  const payload = Object.assign({}, message, { seq: ++bulkSequence });
+
+  if (bulkPort) {
+    try {
+      bulkPort.postMessage(payload);
+      return Promise.resolve();
+    } catch (_) {
+      bulkPort = null;
+      scheduleReconnect();
+    }
+  }
+
+  return browser.runtime
+    .sendNativeMessage(NATIVE_APP, payload)
+    .catch(() => undefined);
+}
+
+connectBulkPort();
 
 browser.runtime.onMessage.addListener((message, sender) => {
   if (!message || message.kind !== "content_announce") {
@@ -14,7 +70,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
       ? sender.tab.id
       : null;
 
-  sendNative({
+  sendBulk({
     kind: "background_announce",
     token: message.token || null,
     jsTabId,
@@ -24,8 +80,67 @@ browser.runtime.onMessage.addListener((message, sender) => {
   return Promise.resolve({ tabId: jsTabId });
 });
 
+const FIXTURE_PATHS = new Set([
+  "/tab-a",
+  "/tab-b",
+  "/tab-p",
+  "/api-json",
+  "/graphql",
+  "/multipart",
+  "/form",
+  "/redirect-a",
+  "/redirect-b",
+  "/redirect-p",
+  "/beacon",
+  "/prefetch.txt",
+  "/preload.css",
+  "/sw.js",
+  "/sse",
+  "/ws",
+  "/bg",
+  "/failed"
+]);
+
+function safeFixtureMarker(parsed) {
+  const explicit = parsed.searchParams.get("tab");
+  if (explicit && /^(?:A|B|P|X\d{1,2})$/.test(explicit)) {
+    return explicit;
+  }
+
+  if (parsed.pathname === "/tab-a" || parsed.pathname === "/redirect-a") return "A";
+  if (parsed.pathname === "/tab-b" || parsed.pathname === "/redirect-b") return "B";
+  if (parsed.pathname === "/tab-p" || parsed.pathname === "/redirect-p") return "P";
+
+  const extra = parsed.pathname.match(/^\/extra-(\d{1,2})$/);
+  if (extra) return "X" + extra[1];
+
+  return null;
+}
+
+function fixtureTag(url) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname !== "127.0.0.1" && parsed.hostname !== "localhost") {
+      return null;
+    }
+
+    const knownPath =
+      FIXTURE_PATHS.has(parsed.pathname) ||
+      /^\/extra-\d+$/.test(parsed.pathname);
+
+    if (!knownPath) {
+      return null;
+    }
+
+    const marker = safeFixtureMarker(parsed);
+    return marker ? parsed.pathname + "#" + marker : parsed.pathname;
+  } catch (_) {
+    return null;
+  }
+}
+
 function emitWebRequest(phase, details) {
-  sendNative({
+  sendBulk({
     kind: "web_request",
     phase,
     requestId: details.requestId || null,
@@ -33,29 +148,44 @@ function emitWebRequest(phase, details) {
     frameId: Number.isInteger(details.frameId) ? details.frameId : null,
     documentId: details.documentId || null,
     resourceType: details.type || null,
-    method: details.method || null
+    method: details.method || null,
+    detailKeys: Object.keys(details || {}).sort().join(",").slice(0, 1024),
+    requestBodyPresent: Boolean(details && details.requestBody),
+    fixtureTag: fixtureTag(details && details.url)
   });
 }
 
 const registered = [];
+const failed = [];
 const filter = { urls: ["<all_urls>"] };
 
-function register(name, event) {
+function register(name, event, extraInfoSpec) {
   if (!event || typeof event.addListener !== "function") {
+    failed.push(name);
     return;
   }
-  event.addListener((details) => emitWebRequest(name, details), filter);
-  registered.push(name);
+
+  try {
+    if (extraInfoSpec) {
+      event.addListener((details) => emitWebRequest(name, details), filter, extraInfoSpec);
+    } else {
+      event.addListener((details) => emitWebRequest(name, details), filter);
+    }
+    registered.push(name);
+  } catch (_) {
+    failed.push(name);
+  }
 }
 
 if (!browser.webRequest) {
-  sendNative({
+  sendBulk({
     kind: "web_request_capability",
     available: false,
-    listeners: ""
+    listeners: "",
+    failed: "browser.webRequest"
   });
 } else {
-  register("onBeforeRequest", browser.webRequest.onBeforeRequest);
+  register("onBeforeRequest", browser.webRequest.onBeforeRequest, ["requestBody"]);
   register("onBeforeSendHeaders", browser.webRequest.onBeforeSendHeaders);
   register("onSendHeaders", browser.webRequest.onSendHeaders);
   register("onHeadersReceived", browser.webRequest.onHeadersReceived);
@@ -64,9 +194,14 @@ if (!browser.webRequest) {
   register("onCompleted", browser.webRequest.onCompleted);
   register("onErrorOccurred", browser.webRequest.onErrorOccurred);
 
-  sendNative({
+  sendBulk({
     kind: "web_request_capability",
     available: registered.length > 0,
-    listeners: registered.join(",")
+    listeners: registered.join(","),
+    failed: failed.join(",")
   });
 }
+
+setInterval(() => {
+  sendBulk({ kind: "bulk_heartbeat" });
+}, 3000);

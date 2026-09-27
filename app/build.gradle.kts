@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "app.taho.browser"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "app.taho.browser"
@@ -29,5 +29,7 @@ dependencies {
     implementation(project(":browser:runtime"))
     implementation("androidx.activity:activity-compose:1.11.0")
     implementation("androidx.compose.ui:ui:1.9.1")
+    implementation("androidx.compose.foundation:foundation:1.9.1")
+    implementation("androidx.compose.foundation:foundation-layout:1.9.1")
     implementation("androidx.core:core-ktx:1.17.0")
 }

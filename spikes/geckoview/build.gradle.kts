@@ -3,9 +3,11 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+val geckoViewVersion: String by project
+
 android {
     namespace = "app.taho.browser.spike"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "app.taho.browser.spike"
@@ -13,6 +15,16 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
+
+        buildConfigField(
+            "String",
+            "GECKOVIEW_VERSION",
+            "\"$geckoViewVersion\"",
+        )
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     compileOptions {
@@ -24,4 +36,7 @@ android {
 dependencies {
     implementation(project(":browser:runtime"))
     implementation(project(":browser:observation"))
+    implementation("org.mozilla.geckoview:geckoview-omni:$geckoViewVersion")
+    testImplementation("org.json:json:20260814")
+    testImplementation(kotlin("test"))
 }
