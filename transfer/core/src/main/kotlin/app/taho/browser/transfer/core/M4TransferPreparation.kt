@@ -315,12 +315,6 @@ object M4TransferPreparer {
                 details = violations.map { it.path + ": " + it.code.name },
             )
         }
-        if (bytes > ContractLimits.DIRECT_ENVELOPE_UTF8_BYTES) {
-            return M4PreparationResult.Blocked(
-                M4PreparationBlock.REQUIRES_LARGE_PAYLOAD_M6,
-            )
-        }
-
         return M4PreparationResult.Prepared(
             M4PreparedTransfer(
                 envelope = envelope,
