@@ -43,6 +43,14 @@ class NavigationInputTest {
     }
 
     @Test
+    fun mailtoInputIsSearchedInsteadOfBeingTreatedAsAHost() {
+        assertEquals(
+            "https://www.google.com/search?q=mailto%3Aperson%40example.com",
+            NavigationInput.resolve("mailto:person@example.com"),
+        )
+    }
+
+    @Test
     fun scriptSchemesAreNotNavigatedDirectly() {
         assertEquals(
             "https://www.google.com/search?q=javascript%3Aalert%281%29",
