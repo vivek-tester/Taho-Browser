@@ -13,6 +13,8 @@ android {
     }
 }
 
+val geckoViewVersion: String by project
+
 dependencies {
-    // GeckoView version intentionally not pinned here until M0/M1 capability evidence selects the engine pin.
+    implementation("org.mozilla.geckoview:geckoview-omni:$geckoViewVersion")
 }
