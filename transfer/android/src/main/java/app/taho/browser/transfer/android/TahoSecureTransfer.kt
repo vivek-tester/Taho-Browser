@@ -80,38 +80,14 @@ class TahoSecureTransferCoordinator(
                 uri,
                 Intent.FLAG_GRANT_READ_URI_PERMISSION,
             )
-            val intent = Intent(target.action)
-                .setPackage(target.packageName)
-                .putExtra(
-                    TahoDirectTransferContract.EXTRA_TRANSFER_VERSION,
-                    prepared.envelope.version,
-                )
-                .putExtra(
-                    TahoDirectTransferContract.EXTRA_TRANSFER_ID,
-                    transferId,
-                )
-                .putExtra(
-                    TahoDirectTransferContract.EXTRA_CONTENT_URI,
-                    uri,
-                )
-                .putExtra(
-                    TahoDirectTransferContract.EXTRA_RECEIPT_PENDING_INTENT,
-                    receiptPendingIntent,
-                )
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                .also { outgoing ->
-                    outgoing.clipData = ClipData.newUri(
-                        appContext.contentResolver,
-                        "Taho transfer",
-                        uri,
-                    )
-                    if (resultReceiver != null) {
-                        outgoing.putExtra(
-                            TahoDirectTransferContract.EXTRA_RESULT_RECEIVER,
-                            resultReceiver,
-                        )
-                    }
-                }
+            val intent = TahoArtifactTransferIntentFactory.create(
+                context = appContext,
+                target = target,
+                prepared = prepared,
+                uri = uri,
+                receiptPendingIntent = receiptPendingIntent,
+                resultReceiver = resultReceiver,
+            )
 
             return TahoTransferDispatch(
                 intent = intent,
@@ -167,4 +143,48 @@ class TahoSecureTransferCoordinator(
         if (body.encoding == BodyEncoding.FILE_URI) return true
         return body.parts.any { it.encoding == BodyEncoding.FILE_URI }
     }
+}
+
+
+object TahoArtifactTransferIntentFactory {
+    fun create(
+        context: Context,
+        target: TahoDirectTransferTarget,
+        prepared: M4PreparedTransfer,
+        uri: Uri,
+        receiptPendingIntent: PendingIntent,
+        resultReceiver: ResultReceiver? = null,
+    ): Intent =
+        Intent(target.action)
+            .setPackage(target.packageName)
+            .putExtra(
+                TahoDirectTransferContract.EXTRA_TRANSFER_VERSION,
+                prepared.envelope.version,
+            )
+            .putExtra(
+                TahoDirectTransferContract.EXTRA_TRANSFER_ID,
+                prepared.envelope.transferId,
+            )
+            .putExtra(
+                TahoDirectTransferContract.EXTRA_CONTENT_URI,
+                uri,
+            )
+            .putExtra(
+                TahoDirectTransferContract.EXTRA_RECEIPT_PENDING_INTENT,
+                receiptPendingIntent,
+            )
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            .also { outgoing ->
+                outgoing.clipData = ClipData.newUri(
+                    context.contentResolver,
+                    "Taho transfer",
+                    uri,
+                )
+                if (resultReceiver != null) {
+                    outgoing.putExtra(
+                        TahoDirectTransferContract.EXTRA_RESULT_RECEIVER,
+                        resultReceiver,
+                    )
+                }
+            }
 }
