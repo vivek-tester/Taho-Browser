@@ -1,6 +1,9 @@
 package app.taho.browser.observation
 
+import android.os.Handler
+import android.os.Looper
 import app.taho.browser.capture.domain.CaptureState
+import app.taho.browser.capture.domain.QueueOfferResult
 import app.taho.browser.capture.domain.SecretPolicy
 import app.taho.browser.transfer.core.M4CapturedRequest
 import app.taho.browser.transfer.core.M4DisplayRequest
@@ -39,6 +42,10 @@ class M4CaptureRuntime(
         sink = ::onObservation,
     )
     private val trackedSessions = mutableMapOf<String, ObservedBrowserSession>()
+    private val ingress = M4ObservationIngress()
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var drainScheduled = false
+    private var ingressLimited = false
     private var listener: ((M4CaptureRuntimeSnapshot) -> Unit)? = null
     private var snapshot = M4CaptureRuntimeSnapshot(
         state = CaptureState.OFF,
@@ -104,34 +111,59 @@ class M4CaptureRuntime(
             }
 
     private fun onObservation(event: ProductionObservationEvent) {
-        assembler.accept(event)
-
-        val nextState = when (event) {
-            ProductionObservationEvent.GateBlocked -> CaptureState.OFF
-            is ProductionObservationEvent.ExtensionFailed -> CaptureState.ERROR
-            is ProductionObservationEvent.Rejected -> CaptureState.LIMITED
-            is ProductionObservationEvent.ExtensionReady,
-            is ProductionObservationEvent.TabBound -> {
-                if (assembler.isLimited()) CaptureState.LIMITED
-                else if (assembler.allCompleted().isEmpty()) {
-                    CaptureState.OBSERVING
-                } else {
-                    CaptureState.CAPTURING
-                }
-            }
-
-            is ProductionObservationEvent.Bulk -> {
-                if (assembler.isLimited()) CaptureState.LIMITED
-                else if (assembler.allCompleted().isEmpty()) {
-                    CaptureState.OBSERVING
-                } else {
-                    CaptureState.CAPTURING
-                }
-            }
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            mainHandler.post { onObservation(event) }
+            return
         }
 
+        if (event is ProductionObservationEvent.Bulk) {
+            when (val result = ingress.offer(event)) {
+                is QueueOfferResult.Accepted -> {
+                    if (result.evictedClass != null) ingressLimited = true
+                }
+                is QueueOfferResult.Rejected -> ingressLimited = true
+            }
+            scheduleDrain()
+            if (ingressLimited) publish(CaptureState.LIMITED)
+            return
+        }
+
+        assembler.accept(event)
+        when (event) {
+            ProductionObservationEvent.GateBlocked -> publish(CaptureState.OFF)
+            is ProductionObservationEvent.ExtensionFailed -> publish(CaptureState.ERROR)
+            is ProductionObservationEvent.Rejected -> publish(CaptureState.LIMITED)
+            is ProductionObservationEvent.ExtensionReady,
+            is ProductionObservationEvent.TabBound ->
+                publish(derivedActiveState())
+            is ProductionObservationEvent.Bulk -> error("handled above")
+        }
+    }
+
+    private fun scheduleDrain() {
+        if (drainScheduled) return
+        drainScheduled = true
+        mainHandler.post {
+            drainScheduled = false
+            while (true) {
+                val event = ingress.poll() ?: break
+                assembler.accept(event)
+            }
+            if (ingress.metrics().limited) ingressLimited = true
+            publish(derivedActiveState())
+        }
+    }
+
+    private fun derivedActiveState(): CaptureState =
+        when {
+            ingressLimited || assembler.isLimited() -> CaptureState.LIMITED
+            assembler.allCompleted().isEmpty() -> CaptureState.OBSERVING
+            else -> CaptureState.CAPTURING
+        }
+
+    private fun publish(state: CaptureState) {
         snapshot = M4CaptureRuntimeSnapshot(
-            state = nextState,
+            state = state,
             requests = assembler.allCompleted(),
         )
         listener?.invoke(snapshot)
