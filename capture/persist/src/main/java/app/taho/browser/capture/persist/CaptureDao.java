@@ -35,6 +35,9 @@ public interface CaptureDao {
     @Query("SELECT COUNT(*) FROM capture_body WHERE transactionId IN (SELECT id FROM capture_transaction WHERE captureSessionId IN (:sessionIds))")
     int countBodiesForSessions(List<String> sessionIds);
 
+    @Query("SELECT storageRef FROM capture_body WHERE storageRef IS NOT NULL AND transactionId IN (SELECT id FROM capture_transaction WHERE captureSessionId IN (:sessionIds))")
+    List<String> storageRefsForSessions(List<String> sessionIds);
+
     @Query("DELETE FROM capture_session WHERE id IN (:sessionIds)")
     int deleteSessions(List<String> sessionIds);
 

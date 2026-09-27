@@ -160,7 +160,21 @@ class RoomCaptureRepository private constructor(
         closedAtEpochMs: Long,
     ): CaptureRepositoryResult<Unit> =
         guarded {
-            dao.closeSession(sessionId, closedAtEpochMs)
+            val session = dao.session(sessionId)
+            if (session == null) {
+                return@guarded Unit
+            }
+
+            if (session.retention == RetentionPolicy.SESSION_ONLY.name) {
+                val ids = listOf(sessionId)
+                val refs = dao.storageRefsForSessions(ids)
+                refs.forEach(bodyStore::delete)
+                dao.deleteSessions(ids)
+                dao.deleteOrphanBodies()
+                dao.deleteOrphanTransactions()
+            } else {
+                dao.closeSession(sessionId, closedAtEpochMs)
+            }
             Unit
         }
 
@@ -179,6 +193,9 @@ class RoomCaptureRepository private constructor(
             val ids = dao.expiredSessionIds(cutoff)
             val txCount = if (ids.isEmpty()) 0 else dao.countTransactionsForSessions(ids)
             val bodyCount = if (ids.isEmpty()) 0 else dao.countBodiesForSessions(ids)
+            if (ids.isNotEmpty()) {
+                dao.storageRefsForSessions(ids).forEach(bodyStore::delete)
+            }
             val deletedSessions = if (ids.isEmpty()) 0 else dao.deleteSessions(ids)
             dao.deleteOrphanBodies()
             dao.deleteOrphanTransactions()

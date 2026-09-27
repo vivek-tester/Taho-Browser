@@ -155,6 +155,48 @@ class RoomCaptureRepositoryTest {
     }
 
     @Test
+    fun sessionOnlyCloseDeletesImmediatelyIncludingFileBackedBodies() {
+        repository.upsertSession(session("session-only", RetentionPolicy.SESSION_ONLY))
+        val large = ByteArray(70 * 1024) { 0x41 }
+        val tx = transactionWithBody(
+            id = "large-session-only",
+            sessionId = "session-only",
+            url = "https://example.test/large",
+            payload = large,
+        )
+        assertIs<CaptureRepositoryResult.Success<Unit>>(repository.commit(tx))
+        tx.close()
+
+        val bodyRoot = java.io.File(context.filesDir, "capture-bodies")
+        assertTrue(bodyRoot.listFiles().orEmpty().isNotEmpty())
+
+        assertIs<CaptureRepositoryResult.Success<Unit>>(
+            repository.closeSession("session-only", 100),
+        )
+
+        assertEquals(0, database.captureDao().transactionCount())
+        assertEquals(0, database.captureDao().bodyCount())
+        assertEquals(null, database.captureDao().session("session-only"))
+        assertTrue(bodyRoot.listFiles().orEmpty().isEmpty())
+    }
+
+    @Test
+    fun keepUntilDeletedCloseRetainsCommittedRows() {
+        repository.upsertSession(session("workspace-close", RetentionPolicy.KEEP_UNTIL_DELETED))
+        transaction("workspace-tx", "workspace-close", "https://example.test/keep").also {
+            repository.commit(it)
+            it.close()
+        }
+
+        assertIs<CaptureRepositoryResult.Success<Unit>>(
+            repository.closeSession("workspace-close", 100),
+        )
+
+        assertEquals("CLOSED", database.captureDao().session("workspace-close")?.state)
+        assertEquals(1, database.captureDao().transactionCount())
+    }
+
+    @Test
     fun retentionDeletesClosedSessionOnlyAndPrivateSessionsButKeepsWorkspace() {
         repository.upsertSession(session("old", RetentionPolicy.SESSION_ONLY, closedAt = 1))
         repository.upsertSession(session("workspace", RetentionPolicy.KEEP_UNTIL_DELETED))
@@ -344,6 +386,55 @@ class RoomCaptureRepositoryTest {
         createdAtEpochMs = 0,
         closedAtEpochMs = closedAt,
     )
+
+    private fun transactionWithBody(
+        id: String,
+        sessionId: String,
+        url: String,
+        payload: ByteArray,
+    ): DurableTransaction =
+        DurableTransaction(
+            id = id,
+            captureSessionId = sessionId,
+            tahoTabId = "tab-1",
+            attribution = "KNOWN",
+            extTabId = 7,
+            engineRequestId = "req-$id",
+            method = "POST",
+            url = url,
+            query = emptyList(),
+            requestHeaders = emptyList(),
+            encryptedRequestHeadersSource = null,
+            requestBody = DurableBody(
+                representation = DurableBodyRepresentation.BINARY,
+                encoding = DurableBodyEncoding.BINARY,
+                contentType = "application/octet-stream",
+                charset = null,
+                declaredSize = payload.size.toLong(),
+                capturedSize = payload.size.toLong(),
+                truncated = false,
+                completeness = Completeness.COMPLETE,
+                payload = SensitivePayload.copyOf(payload),
+            ),
+            status = 200,
+            statusText = "OK",
+            responseHeaders = emptyList(),
+            encryptedResponseHeadersSource = null,
+            responseBody = null,
+            state = DurableTransactionState.COMPLETED,
+            relevance = Relevance(
+                RelevanceCategory.PRIMARY_API,
+                true,
+                "matches workspace host",
+                93,
+            ),
+            observationSource = ObservationSource.ENGINE,
+            provenanceJson = "{\"safe\":true}",
+            normalizerVersion = "request/1.0.0",
+            createdAtEpochMs = 1,
+            updatedAtEpochMs = 2,
+            isPrivate = false,
+        )
 
     private fun transaction(
         id: String,
