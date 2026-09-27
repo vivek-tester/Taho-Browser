@@ -41,8 +41,14 @@ class TransferReceiptReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         if (intent?.action != ACTION_RECEIPT) return
 
-        val expectedTransferId =
-            intent.getStringExtra(EXTRA_EXPECTED_TRANSFER_ID).orEmpty()
+        val expectedTransferId = intent.data
+            ?.takeIf {
+                it.scheme == RECEIPT_SCHEME &&
+                    it.authority == RECEIPT_AUTHORITY &&
+                    it.pathSegments.size == 1
+            }
+            ?.lastPathSegment
+            .orEmpty()
         val rawReceipt =
             intent.getStringExtra(TahoDirectTransferContract.EXTRA_RECEIPT)
                 ?: return
@@ -69,7 +75,7 @@ class TransferReceiptReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_RECEIPT =
             "app.taho.browser.action.TRANSFER_RECEIPT"
-        const val EXTRA_EXPECTED_TRANSFER_ID =
-            "app.taho.browser.extra.EXPECTED_TRANSFER_ID"
+        const val RECEIPT_SCHEME = "taho-browser-internal"
+        const val RECEIPT_AUTHORITY = "transfer-receipt"
     }
 }
