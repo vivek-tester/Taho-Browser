@@ -305,7 +305,7 @@ class M4InMemoryCaptureAssembler(
                 tx.sequenceGap
 
         val bodyless = method.equals("GET", true) || method.equals("HEAD", true)
-        val bodySupport = if (bodyless) {
+        var bodySupport = if (bodyless) {
             null
         } else {
             RequestBodySupport.classify(
@@ -313,6 +313,19 @@ class M4InMemoryCaptureAssembler(
                 contentType = contentType,
                 bytes = tx.requestBody,
                 formData = tx.requestFormData,
+            )
+        }
+        if (!bodyless && tx.requestBodyInvalid) {
+            bodySupport = bodySupport?.copy(
+                completeness = DomainCompleteness.PARTIAL,
+                transferSafeText = null,
+                limitation = BodySupportLimitation.BODY_CHUNKS_INCOMPLETE,
+            )
+        } else if (!bodyless && tx.requestBodyTruncated) {
+            bodySupport = bodySupport?.copy(
+                completeness = DomainCompleteness.TRUNCATED,
+                transferSafeText = null,
+                limitation = BodySupportLimitation.BODY_TRUNCATED,
             )
         }
 
@@ -776,6 +789,10 @@ class M4InMemoryCaptureAssembler(
                     " captured; direct transfer for this body type is not enabled in M5."
             support.limitation == BodySupportLimitation.BODY_NOT_OBSERVED ->
                 "Request body was not exposed by GeckoView for this request."
+            support.limitation == BodySupportLimitation.BODY_TRUNCATED ->
+                "Request body exceeded the 8 MiB capture ceiling and was truncated."
+            support.limitation == BodySupportLimitation.BODY_CHUNKS_INCOMPLETE ->
+                "Request body chunks were incomplete or out of order."
             support.limitation == BodySupportLimitation.MULTIPART_PARTS_UNAVAILABLE ->
                 "Multipart bytes were observed, but structured parts are unavailable on this capture path."
             support.limitation == BodySupportLimitation.OPAQUE_BINARY ->
