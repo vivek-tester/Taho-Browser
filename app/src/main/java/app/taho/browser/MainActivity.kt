@@ -94,8 +94,11 @@ class MainActivity : ComponentActivity() {
         CaptureMaintenance.schedule(this)
         transferCoordinator = TahoSecureTransferCoordinator(this)
         TransferArtifactMaintenance.schedule(this)
-        TransferReceiptRecoveryStore.consumeLatest(this)?.let { receipt ->
-            transferNotice = receiptNotice(receipt)
+        val recoveredReceipt = TransferReceiptRecoveryStore.consumeLatest(this)
+        if (recoveredReceipt != null) {
+            transferNotice = receiptNotice(recoveredReceipt)
+        } else if (transferCoordinator.recoverExpiredAttempts().isNotEmpty()) {
+            transferNotice = "A previous Taho transfer expired. The source capture is still available."
         }
         captureRuntime = M4CaptureRuntime(
             runtime = GeckoRuntimeHolder.get(this),
