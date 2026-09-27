@@ -10,6 +10,8 @@ val pureJvmModules = listOf(
     "capture/domain",
     "contract/taho-transfer",
     "transfer/core",
+    "test-support/http-fixtures",
+    "test-support/taho-receiver-harness",
 )
 
 val captureReachableModules = listOf(

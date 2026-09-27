@@ -1,0 +1,14 @@
+{
+  "name": "duplicate-event",
+  "events": [
+    {"type": "Start", "id": "e1"},
+    {"type": "HeadersCaptured", "id": "e2"},
+    {"type": "HeadersCaptured", "id": "e2"}
+  ],
+  "expected": {
+    "state": "HEADERS_CAPTURED",
+    "provisionalObserved": false,
+    "diagnostics": ["DUPLICATE_EVENT"],
+    "requestHeaders": "COMPLETE"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "missing-start",
+  "events": [
+    {"type": "ResponseStarted", "id": "e1"},
+    {"type": "HeadersCaptured", "id": "e2"},
+    {"type": "Completed", "id": "e3", "statusCode": 200}
+  ],
+  "expected": {
+    "state": "COMPLETED",
+    "provisionalObserved": true,
+    "diagnostics": ["MISSING_START", "MISSING_HEADERS"],
+    "requestHeaders": "COMPLETE"
+  }
+}

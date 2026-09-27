@@ -1,0 +1,14 @@
+{
+  "name": "process-death-recovery",
+  "events": [
+    {"type": "Start", "id": "e1"},
+    {"type": "RecoverInterrupted", "id": "e2", "reason": "PROCESS_DIED"}
+  ],
+  "expected": {
+    "state": "PARTIAL",
+    "provisionalObserved": false,
+    "diagnostics": [],
+    "terminalReason": "PROCESS_DIED",
+    "requestHeaders": "UNAVAILABLE"
+  }
+}
