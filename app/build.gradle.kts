@@ -19,7 +19,7 @@ android {
         buildConfigField("boolean", "M1_ATTRIBUTION_VERIFIED", "false")
         buildConfigField("String", "GECKOVIEW_VERSION", "\"$geckoViewVersion\"")
         buildConfigField("String", "TAHO_PACKAGE_NAME", "\"com.eternal.taho\"")
-        buildConfigField("String", "TAHO_TRANSFER_ACTION", "\"\"")
+        buildConfigField("String", "TAHO_TRANSFER_ACTION", "\"com.eternal.taho.action.IMPORT_TAHO_REQUEST\"")
     }
 
     buildFeatures {

@@ -1,10 +1,12 @@
 package app.taho.browser
 
 import android.Manifest
-import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.ResultReceiver
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -62,29 +64,6 @@ class MainActivity : ComponentActivity() {
                 requestId = requestId,
                 granted = permissionsSatisfied(requested, grants),
             )
-        }
-    }
-
-    private val tahoTransferLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult(),
-    ) { result ->
-        val expectedTransferId = pendingTransferId
-        pendingTransferId = null
-        if (expectedTransferId == null) return@registerForActivityResult
-
-        val receipt = TahoDirectTransferIntentFactory.parseReceipt(result.data)
-        transferNotice = when {
-            result.resultCode != Activity.RESULT_OK ->
-                "Send to Taho was cancelled or rejected."
-            receipt == null ->
-                "Taho returned no valid transfer receipt."
-            receipt.transferId != expectedTransferId ->
-                "Taho returned a receipt for a different transfer."
-            receipt.result.name == "IMPORTED" || receipt.result.name == "DUPLICATE" ->
-                "Taho received the request. Import does not execute it."
-            else ->
-                "Taho rejected the request" +
-                    (receipt.errorCode?.let { ": " + it.name } ?: ".")
         }
     }
 
@@ -341,17 +320,42 @@ class MainActivity : ComponentActivity() {
                     packageName = BuildConfig.TAHO_PACKAGE_NAME,
                     action = BuildConfig.TAHO_TRANSFER_ACTION,
                 )
+                val expectedTransferId = result.value.envelope.transferId
+                val receiver = object : ResultReceiver(Handler(Looper.getMainLooper())) {
+                    override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
+                        if (pendingTransferId != expectedTransferId) return
+                        pendingTransferId = null
+                        val receipt = TahoDirectTransferIntentFactory.parseReceipt(resultData)
+                        transferNotice = when {
+                            receipt == null ->
+                                "Taho returned no valid transfer receipt."
+                            receipt.transferId != expectedTransferId ->
+                                "Taho returned a receipt for a different transfer."
+                            receipt.result.name == "IMPORTED" ||
+                                receipt.result.name == "DUPLICATE" ->
+                                "Taho received the request. Import does not execute it."
+                            else ->
+                                "Taho rejected the request" +
+                                    (receipt.errorCode?.let { ": " + it.name } ?: ".")
+                        }
+                    }
+                }
                 val intent = TahoDirectTransferIntentFactory.create(
                     target = target,
                     prepared = result.value,
+                    resultReceiver = receiver,
                 )
                 if (intent.resolveActivity(packageManager) == null) {
                     transferNotice = "Compatible Project-Taho receiver is not installed."
                     return
                 }
 
-                pendingTransferId = result.value.envelope.transferId
-                tahoTransferLauncher.launch(intent)
+                pendingTransferId = expectedTransferId
+                runCatching { startActivity(intent) }
+                    .onFailure {
+                        pendingTransferId = null
+                        transferNotice = "Unable to open Project-Taho."
+                    }
             }
         }
     }
