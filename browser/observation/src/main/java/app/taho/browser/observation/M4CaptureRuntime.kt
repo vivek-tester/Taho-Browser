@@ -2,14 +2,20 @@ package app.taho.browser.observation
 
 import android.os.Handler
 import android.os.Looper
+import app.taho.browser.capture.domain.CaptureRepositoryResult
 import app.taho.browser.capture.domain.CaptureState
+import app.taho.browser.capture.domain.DurableTransaction
+import app.taho.browser.capture.domain.DurableTransactionSummary
 import app.taho.browser.capture.domain.QueueOfferResult
 import app.taho.browser.capture.domain.SecretPolicy
+import app.taho.browser.capture.domain.StorageDegradationReason
 import app.taho.browser.transfer.core.M4CapturedRequest
 import app.taho.browser.transfer.core.M4DisplayRequest
 import app.taho.browser.transfer.core.M4PreparationResult
 import app.taho.browser.transfer.core.M4TransferPreparer
 import app.taho.browser.transfer.core.UlidGenerator
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.GeckoSession
 
@@ -23,6 +29,8 @@ data class ObservedBrowserSession(
 data class M4CaptureRuntimeSnapshot(
     val state: CaptureState,
     val requests: List<M4CapturedRequest>,
+    val persistedRecords: List<DurableTransactionSummary> = emptyList(),
+    val storageDegradedReason: StorageDegradationReason? = null,
 )
 
 class M4CaptureRuntime(
@@ -30,11 +38,21 @@ class M4CaptureRuntime(
     gate: ProductionCaptureGate,
     appVersion: String,
     engineVersion: String,
+    val captureSessionId: String = UlidGenerator.next(),
+    private val sessionInitializer: ((String) -> CaptureRepositoryResult<Unit>)? = null,
+    private val durableSink: ((DurableTransaction) -> CaptureRepositoryResult<Unit>)? = null,
+    private val historyLoader: (() -> CaptureRepositoryResult<List<DurableTransactionSummary>>)? = null,
 ) {
+    private val persistenceExecutor: ExecutorService =
+        Executors.newSingleThreadExecutor { runnable ->
+            Thread(runnable, "taho-capture-persist").apply { isDaemon = true }
+        }
+
     private val assembler = M4InMemoryCaptureAssembler(
         appVersion = appVersion,
         engineVersion = engineVersion,
-        captureSessionId = UlidGenerator.next(),
+        captureSessionId = captureSessionId,
+        onDurableRecord = ::persistDurable,
     )
     private val coordinator = ProductionObservationCoordinator(
         runtime = runtime,
@@ -46,6 +64,9 @@ class M4CaptureRuntime(
     private val mainHandler = Handler(Looper.getMainLooper())
     private var drainScheduled = false
     private var ingressLimited = false
+    private var captureGateBlocked = gate != ProductionCaptureGate.ENABLED
+    private var storageDegradedReason: StorageDegradationReason? = null
+    private var persistedRecords: List<DurableTransactionSummary> = emptyList()
     private var listener: ((M4CaptureRuntimeSnapshot) -> Unit)? = null
     private var snapshot = M4CaptureRuntimeSnapshot(
         state = CaptureState.OFF,
@@ -60,7 +81,20 @@ class M4CaptureRuntime(
     }
 
     fun start() {
+        if (sessionInitializer != null || historyLoader != null) {
+            persistenceExecutor.execute {
+                val init = sessionInitializer?.invoke(captureSessionId)
+                if (init is CaptureRepositoryResult.Degraded) {
+                    reportStorageDegraded(init.reason)
+                }
+                loadHistoryOnPersistenceThread()
+            }
+        }
         coordinator.start()
+    }
+
+    fun close() {
+        persistenceExecutor.shutdown()
     }
 
     fun syncSessions(sessions: List<ObservedBrowserSession>) {
@@ -110,6 +144,50 @@ class M4CaptureRuntime(
                 )
             }
 
+    private fun persistDurable(record: DurableTransaction) {
+        val sink = durableSink
+        if (sink == null) {
+            record.close()
+            return
+        }
+
+        persistenceExecutor.execute {
+            val result = try {
+                sink(record)
+            } finally {
+                record.close()
+            }
+
+            when (result) {
+                is CaptureRepositoryResult.Success -> loadHistoryOnPersistenceThread()
+                is CaptureRepositoryResult.Degraded -> reportStorageDegraded(result.reason)
+            }
+        }
+    }
+
+    private fun loadHistoryOnPersistenceThread() {
+        val loader = historyLoader ?: return
+        when (val result = loader()) {
+            is CaptureRepositoryResult.Success -> {
+                val rows = result.value
+                mainHandler.post {
+                    persistedRecords = rows
+                    publish(derivedActiveState())
+                }
+            }
+
+            is CaptureRepositoryResult.Degraded ->
+                reportStorageDegraded(result.reason)
+        }
+    }
+
+    private fun reportStorageDegraded(reason: StorageDegradationReason) {
+        mainHandler.post {
+            storageDegradedReason = reason
+            publish(derivedActiveState())
+        }
+    }
+
     private fun onObservation(event: ProductionObservationEvent) {
         if (Looper.myLooper() != Looper.getMainLooper()) {
             mainHandler.post { onObservation(event) }
@@ -124,18 +202,23 @@ class M4CaptureRuntime(
                 is QueueOfferResult.Rejected -> ingressLimited = true
             }
             scheduleDrain()
-            if (ingressLimited) publish(CaptureState.LIMITED)
+            if (ingressLimited) publish(derivedActiveState())
             return
         }
 
         assembler.accept(event)
         when (event) {
-            ProductionObservationEvent.GateBlocked -> publish(CaptureState.OFF)
+            ProductionObservationEvent.GateBlocked -> {
+                captureGateBlocked = true
+                publish(CaptureState.OFF)
+            }
             is ProductionObservationEvent.ExtensionFailed -> publish(CaptureState.ERROR)
             is ProductionObservationEvent.Rejected -> publish(CaptureState.LIMITED)
             is ProductionObservationEvent.ExtensionReady,
-            is ProductionObservationEvent.TabBound ->
+            is ProductionObservationEvent.TabBound -> {
+                captureGateBlocked = false
                 publish(derivedActiveState())
+            }
             is ProductionObservationEvent.Bulk -> error("handled above")
         }
     }
@@ -156,7 +239,14 @@ class M4CaptureRuntime(
 
     private fun derivedActiveState(): CaptureState =
         when {
-            ingressLimited || assembler.isLimited() -> CaptureState.LIMITED
+            captureGateBlocked -> CaptureState.OFF
+            storageDegradedReason == StorageDegradationReason.KEY_INVALIDATED ||
+                storageDegradedReason == StorageDegradationReason.DATABASE_CORRUPT ->
+                CaptureState.ERROR
+            storageDegradedReason != null ||
+                ingressLimited ||
+                assembler.isLimited() ->
+                CaptureState.LIMITED
             assembler.allCompleted().isEmpty() -> CaptureState.OBSERVING
             else -> CaptureState.CAPTURING
         }
@@ -165,6 +255,8 @@ class M4CaptureRuntime(
         snapshot = M4CaptureRuntimeSnapshot(
             state = state,
             requests = assembler.allCompleted(),
+            persistedRecords = persistedRecords,
+            storageDegradedReason = storageDegradedReason,
         )
         listener?.invoke(snapshot)
     }
