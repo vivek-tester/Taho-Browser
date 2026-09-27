@@ -98,15 +98,19 @@ class AttributionSpikeProbe(
             .ensureBuiltIn(EXTENSION_LOCATION, EXTENSION_ID)
             .accept(
                 { installed ->
-                    extension = installed
-                    installed.setMessageDelegate(backgroundDelegate, NATIVE_APP)
-                    sessions.forEach { attachDelegate(installed, it) }
-                    sink(SpikeProbeEvent.ExtensionReady(installed.id))
+                    if (installed == null) {
+                        sink(SpikeProbeEvent.InstallFailed("ensureBuiltIn returned no extension"))
+                    } else {
+                        extension = installed
+                        installed.setMessageDelegate(backgroundDelegate, NATIVE_APP)
+                        sessions.forEach { attachDelegate(installed, it) }
+                        sink(SpikeProbeEvent.ExtensionReady(installed.id))
+                    }
                 },
                 { error ->
                     sink(
                         SpikeProbeEvent.InstallFailed(
-                            error.message ?: error.javaClass.simpleName,
+                            error?.message ?: error?.javaClass?.simpleName ?: "unknown error",
                         ),
                     )
                 },
