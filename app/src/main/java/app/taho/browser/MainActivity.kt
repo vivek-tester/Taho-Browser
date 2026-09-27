@@ -416,8 +416,6 @@ class MainActivity : ComponentActivity() {
                         "Explicit credential transfer is unavailable for this capture."
                     M4PreparationBlock.INVALID_CONTRACT ->
                         "Transfer blocked: request does not satisfy the Taho contract."
-                    M4PreparationBlock.REQUIRES_LARGE_PAYLOAD_M6 ->
-                        "Transfer requires the large-payload handoff path planned for M6."
                 }
             }
 
