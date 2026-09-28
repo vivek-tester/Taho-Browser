@@ -59,6 +59,11 @@ import app.taho.browser.observation.M4CaptureRuntimeSnapshot
 import app.taho.browser.observation.ObservedBrowserSession
 import app.taho.browser.observation.ProductionCaptureGate
 import app.taho.browser.runtime.BrowserAutofillPromptKind
+import app.taho.browser.runtime.BrowserCookiePolicy
+import app.taho.browser.runtime.BrowserRuntimePreferences
+import app.taho.browser.runtime.BrowserSecureDnsMode
+import app.taho.browser.runtime.BrowserTrackingLevel
+import app.taho.browser.runtime.BrowserWebColorScheme
 import app.taho.browser.runtime.BrowserAutofillStore
 import app.taho.browser.runtime.BrowserRuntimeController
 import app.taho.browser.runtime.BrowserStoredAddress
@@ -71,6 +76,11 @@ import app.taho.browser.runtime.BrowserSurfaceView
 import app.taho.browser.runtime.GeckoRuntimeHolder
 import app.taho.browser.runtime.NavigationInput
 import app.taho.browser.shell.BrowserAutofillPromptKindUi
+import app.taho.browser.shell.BrowserSettingsState
+import app.taho.browser.shell.TahoCookiePolicy
+import app.taho.browser.shell.TahoSecureDns
+import app.taho.browser.shell.TahoThemeMode
+import app.taho.browser.shell.TahoTrackingProtectionLevel
 import app.taho.browser.shell.BrowserAutofillPromptOptionUi
 import app.taho.browser.shell.BrowserAutofillPromptUiState
 import app.taho.browser.shell.BrowserTabUiState
@@ -372,9 +382,16 @@ class MainActivity : FragmentActivity() {
         captureRuntime.start()
 
         setContent {
+            val browserSettings = TahoBrowserStateStore.settings
             var snapshot by remember { mutableStateOf(controller.snapshot()) }
             var captureSnapshot by remember {
                 mutableStateOf(captureRuntime.snapshot())
+            }
+
+            androidx.compose.runtime.LaunchedEffect(browserSettings) {
+                controller.applyRuntimePreferences(
+                    browserSettings.toRuntimePreferences(),
+                )
             }
 
             DisposableEffect(controller, captureRuntime) {
@@ -964,6 +981,61 @@ class MainActivity : FragmentActivity() {
             .setAllowedAuthenticators(authenticators)
             .build()
         prompt.authenticate(promptInfo)
+    }
+
+    private fun BrowserSettingsState.toRuntimePreferences(): BrowserRuntimePreferences {
+        val secureDnsUri = when (secureDns) {
+            TahoSecureDns.CLOUDFLARE ->
+                "https://mozilla.cloudflare-dns.com/dns-query"
+            TahoSecureDns.QUAD9 ->
+                "https://dns.quad9.net/dns-query"
+            TahoSecureDns.GOOGLE ->
+                "https://dns.google/dns-query"
+            TahoSecureDns.CUSTOM ->
+                customDnsProvider.trim().takeIf(String::isNotBlank)
+            TahoSecureDns.OFF -> null
+        }
+
+        return BrowserRuntimePreferences(
+            trackingLevel = when (trackingProtectionLevel) {
+                TahoTrackingProtectionLevel.STANDARD -> BrowserTrackingLevel.STANDARD
+                TahoTrackingProtectionLevel.STRICT -> BrowserTrackingLevel.STRICT
+                TahoTrackingProtectionLevel.CUSTOM -> BrowserTrackingLevel.CUSTOM
+            },
+            blockTrackers = blockTrackers,
+            blockFingerprinting = fingerprintingProtection,
+            blockCryptomining = cryptominingProtection,
+            blockSocialTrackers = socialTrackerProtection,
+            cookiePolicy = when (cookiePolicy) {
+                TahoCookiePolicy.BLOCK_THIRD_PARTY ->
+                    BrowserCookiePolicy.BLOCK_THIRD_PARTY
+                TahoCookiePolicy.BLOCK_ALL ->
+                    BrowserCookiePolicy.BLOCK_ALL
+                TahoCookiePolicy.ALLOW_ALL ->
+                    BrowserCookiePolicy.ALLOW_ALL
+            },
+            safeBrowsingEnabled = safeBrowsingEnabled,
+            phishingProtectionEnabled = phishingProtection,
+            httpsOnlyEnabled = httpsOnlyMode,
+            globalPrivacyControlEnabled = globalPrivacyControl,
+            secureDnsMode =
+                if (secureDns == TahoSecureDns.OFF) {
+                    BrowserSecureDnsMode.OFF
+                } else {
+                    BrowserSecureDnsMode.FIRST
+                },
+            secureDnsUri = secureDnsUri,
+            javascriptEnabled = javascriptEnabled,
+            forceUserScalable = forceZoomEnabled,
+            fontScale = fontScalingPercent.coerceIn(75, 200) / 100f,
+            forceAccessibilityTree = screenReaderOptimized,
+            webColorScheme = when (themeMode) {
+                TahoThemeMode.SYSTEM -> BrowserWebColorScheme.SYSTEM
+                TahoThemeMode.DARK -> BrowserWebColorScheme.DARK
+                TahoThemeMode.LIGHT -> BrowserWebColorScheme.LIGHT
+            },
+            suspendBackgroundMedia = !backgroundAudioEnabled,
+        )
     }
 
     private fun parseCardExpiry(raw: String): Pair<String, String> {
