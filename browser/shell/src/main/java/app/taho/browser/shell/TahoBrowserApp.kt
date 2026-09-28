@@ -141,6 +141,8 @@ fun TahoBrowserApp(
     onFindInPage: (String, Boolean, (Int, Int) -> Unit) -> Unit = { _, _, callback -> callback(0, 0) },
     onClearFindInPage: () -> Unit = {},
     onSetDesktopMode: (Boolean) -> Unit = {},
+    onClearBrowserStorage: (Boolean, Boolean, (Boolean) -> Unit) -> Unit =
+        { _, _, callback -> callback(true) },
     browserContent: @Composable () -> Unit = {},
 ) {
     var editing by rememberSaveable { mutableStateOf(false) }
@@ -816,6 +818,7 @@ fun TahoBrowserApp(
                         showSettings = false
                         settingsInitialSubPage = null
                     },
+                    onClearEngineData = onClearBrowserStorage,
                     onDismiss = {
                         showSettings = false
                         settingsInitialSubPage = null
