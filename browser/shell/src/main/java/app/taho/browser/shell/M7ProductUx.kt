@@ -581,6 +581,11 @@ private fun M7Body(request: M4CaptureRequestUiState) {
                 fontFamily = FontFamily.Monospace,
                 fontSize = 9.sp,
             )
+            if (request.safeBodyPreviewTruncated) {
+                M7HonestyNote(
+                    "Preview limited to 64 KiB for UI performance. Capture completeness and transfer bytes are unchanged.",
+                )
+            }
         } else {
             val copy = when (request.requestBodyCompleteness) {
                 M4CompletenessUi.NOT_APPLICABLE -> "No request body."
@@ -635,7 +640,10 @@ private fun M7Provenance(request: M4CaptureRequestUiState) {
             fontFamily = FontFamily.Monospace,
             fontSize = 9.sp,
         )
-        M7KeyValue("source", request.sourceProduct + " " + (request.sourceVersion ?: ""))
+        M7KeyValue(
+            "source",
+            request.sourceProduct + " · " + (request.sourceVersion ?: "version unavailable"),
+        )
         M7KeyValue("capture session", request.captureSessionId ?: "— unavailable")
         M7KeyValue("tab", request.tabId ?: "— unresolved")
         M7KeyValue(
