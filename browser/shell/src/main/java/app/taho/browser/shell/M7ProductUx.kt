@@ -39,6 +39,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -162,6 +163,51 @@ internal object M7CaptureUx {
         "GRAPHQL",
         "WEBSOCKET",
     )
+}
+
+internal object M7SafeExport {
+    fun curl(request: M4CaptureRequestUiState): String {
+        val parts = mutableListOf(
+            "curl",
+            "-X",
+            shellQuote(request.method),
+            shellQuote(request.url),
+        )
+        request.headers.forEach { header ->
+            parts += "-H"
+            parts += shellQuote(header.name + ": " + header.displayValue)
+        }
+
+        val safeBody = request.safeBodyPreview?.takeIf {
+            request.requestBodyCompleteness == M4CompletenessUi.COMPLETE &&
+                !request.safeBodyPreviewTruncated
+        }
+        if (safeBody != null) {
+            parts += "--data-raw"
+            parts += shellQuote(safeBody)
+        }
+
+        val command = parts.joinToString(" ")
+        return if (
+            request.requestBodyCompleteness !in
+            setOf(M4CompletenessUi.COMPLETE, M4CompletenessUi.NOT_APPLICABLE) ||
+            request.safeBodyPreviewTruncated
+        ) {
+            command + "\n# Body omitted from masked export because the safe UI projection is incomplete."
+        } else {
+            command
+        }
+    }
+
+    fun shareText(request: M4CaptureRequestUiState): String =
+        buildString {
+            append("Taho Browser masked request\n")
+            append(curl(request))
+            append("\n\nSensitive values are masked or parameterized.")
+        }
+
+    private fun shellQuote(value: String): String =
+        "'" + value.replace("'", "'\"'\"'") + "'"
 }
 
 @Composable
@@ -365,12 +411,7 @@ private fun M7SummaryRow(
             .padding(horizontal = 14.dp, vertical = 11.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = request.method,
-                color = TahoGoldHi,
-                fontFamily = FontFamily.Monospace,
-                fontSize = 10.sp,
-            )
+            M7MethodBadge(request.method)
             Spacer(Modifier.width(8.dp))
             Text(
                 text = path,
@@ -378,7 +419,7 @@ private fun M7SummaryRow(
                 color = TahoText,
                 fontFamily = FontFamily.Monospace,
                 fontSize = 11.sp,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             request.status?.let {
@@ -400,34 +441,55 @@ private fun M7SummaryRow(
             }
         }
         Spacer(Modifier.height(5.dp))
-        Text(
-            text = host + " · " + request.relevanceCategory.replace('_', ' ').lowercase(),
-            color = TahoFaint,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 9.sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (request.sensitiveCount > 0 || bodyFlag != null || request.transactionState in setOf("FAILED", "CANCELLED", "PARTIAL")) {
-            Spacer(Modifier.height(5.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                text = buildString {
-                    if (request.sensitiveCount > 0) append("⚑ credential detected")
-                    if (bodyFlag != null) {
-                        if (isNotEmpty()) append(" · ")
-                        append(bodyFlag)
-                    }
-                    request.transactionState
-                        ?.takeIf { it in setOf("FAILED", "CANCELLED", "PARTIAL") }
-                        ?.let {
-                            if (isNotEmpty()) append(" · ")
-                            append("△ ").append(it.lowercase())
-                        }
-                },
-                color = TahoWarn,
+                text = host,
+                modifier = Modifier.weight(1f),
+                color = TahoFaint,
                 fontFamily = FontFamily.Monospace,
                 fontSize = 9.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
+            Spacer(Modifier.width(8.dp))
+            M7CategoryChip(request.relevanceCategory)
+        }
+        if (request.sensitiveCount > 0 || bodyFlag != null || request.transactionState in setOf("FAILED", "CANCELLED", "PARTIAL")) {
+            Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(9.dp),
+            ) {
+                if (request.sensitiveCount > 0) {
+                    Text(
+                        text = "⚑ credential detected",
+                        color = TahoWarn,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 9.sp,
+                    )
+                }
+                if (bodyFlag != null) {
+                    Text(
+                        text = bodyFlag,
+                        color = TahoInfo,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 9.sp,
+                    )
+                }
+                request.transactionState
+                    ?.takeIf { it in setOf("FAILED", "CANCELLED", "PARTIAL") }
+                    ?.let {
+                        Text(
+                            text = "△ " + it.lowercase(),
+                            color = TahoWarn,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 9.sp,
+                        )
+                    }
+            }
         }
     }
 }
@@ -436,6 +498,8 @@ private fun M7SummaryRow(
 internal fun M7RequestInspectorSheet(
     request: M4CaptureRequestUiState,
     onBack: () -> Unit,
+    onCopyCurl: () -> Unit,
+    onShare: () -> Unit,
     onSendToTaho: () -> Unit,
 ) {
     var selectedTab by rememberSaveable(request.id) { mutableStateOf(M7InspectorTabUi.OVERVIEW) }
@@ -450,26 +514,19 @@ internal fun M7RequestInspectorSheet(
             .navigationBarsPadding()
             .padding(start = 18.dp, end = 18.dp, bottom = 18.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .heightIn(min = 44.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .semantics { role = Role.Button; contentDescription = "Back to captured requests" }
-                    .clickable(onClick = onBack)
-                    .padding(horizontal = 12.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("‹", color = TahoGoldHi, fontSize = 20.sp)
-            }
-            Spacer(Modifier.width(5.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            M7MethodBadge(request.method)
+            Spacer(Modifier.width(9.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = request.method + "  " + path,
+                    text = path,
                     color = TahoText,
                     fontFamily = FontFamily.Monospace,
                     fontSize = 13.sp,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
@@ -481,8 +538,22 @@ internal fun M7RequestInspectorSheet(
                     color = TahoFaint,
                     fontFamily = FontFamily.Monospace,
                     fontSize = 9.sp,
-                    maxLines = 2,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
+            }
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = "Close request inspector"
+                    }
+                    .clickable(onClick = onBack),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("×", color = TahoMuted, fontSize = 18.sp)
             }
         }
 
@@ -521,11 +592,28 @@ internal fun M7RequestInspectorSheet(
         }
 
         Spacer(Modifier.height(10.dp))
-        M7PrimaryButton(
-            label = "Send to Taho ↗",
-            enabled = request.transferBlockedReason == null,
-            onClick = onSendToTaho,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            M7MiniButton(
+                label = "Copy cURL",
+                modifier = Modifier.weight(.80f),
+                onClick = onCopyCurl,
+            )
+            M7MiniButton(
+                label = "Share",
+                modifier = Modifier.weight(.62f),
+                onClick = onShare,
+            )
+            M7PrimaryButton(
+                label = "Send to Taho ↗",
+                enabled = request.transferBlockedReason == null,
+                modifier = Modifier.weight(1.35f),
+                onClick = onSendToTaho,
+            )
+        }
     }
 }
 
@@ -772,15 +860,32 @@ internal fun M7SendConfirmationSheet(
             .navigationBarsPadding()
             .padding(start = 18.dp, end = 18.dp, bottom = 20.dp),
     ) {
-        Text("Send to Taho?", color = TahoText, fontSize = 19.sp)
-        Text(
-            text = request.method + " " + host + path,
-            color = TahoMuted,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 10.sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Send to Taho?", color = TahoText, fontSize = 19.sp)
+                Text(
+                    text = request.method + " " + host + path,
+                    color = TahoMuted,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 10.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .semantics { role = Role.Button; contentDescription = "Close Send to Taho confirmation" }
+                    .clickable(onClick = onCancel),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("×", color = TahoMuted, fontSize = 18.sp)
+            }
+        }
         Spacer(Modifier.height(14.dp))
 
         M7TransferLine("✓", "URL · Method · Query — included", TahoOk)
@@ -879,7 +984,6 @@ internal fun M7SendConfirmationSheet(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(9.dp),
         ) {
-            M7SecondaryButton("Cancel", Modifier.weight(1f), onCancel)
             M7PrimaryButton(
                 label = "Send to Taho",
                 enabled = request.transferBlockedReason == null &&
@@ -887,6 +991,7 @@ internal fun M7SendConfirmationSheet(
                 modifier = Modifier.weight(1f),
                 onClick = onConfirm,
             )
+            M7SecondaryButton("Cancel", Modifier.weight(1f), onCancel)
         }
         Spacer(Modifier.height(9.dp))
         Text(
@@ -1092,6 +1197,94 @@ private fun M7TransferLine(glyph: String, copy: String, color: Color) {
         Text(glyph, color = color, fontFamily = FontFamily.Monospace, fontSize = 10.sp)
         Spacer(Modifier.width(7.dp))
         Text(copy, color = color, fontFamily = FontFamily.Monospace, fontSize = 10.sp)
+    }
+}
+
+@Composable
+private fun M7MethodBadge(method: String) {
+    val upper = method.uppercase()
+    val background = when (upper) {
+        "POST" -> TahoGold.copy(alpha = .14f)
+        "DELETE" -> TahoError.copy(alpha = .14f)
+        else -> Color.White.copy(alpha = .07f)
+    }
+    val foreground = when (upper) {
+        "POST" -> TahoGoldHi
+        "DELETE" -> TahoError
+        else -> Color(0xFFC9C5BB)
+    }
+
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(background)
+            .padding(horizontal = 7.dp, vertical = 4.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = upper,
+            color = foreground,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 9.sp,
+        )
+    }
+}
+
+@Composable
+private fun M7CategoryChip(category: String) {
+    val upper = category.uppercase()
+    val accent = when (upper) {
+        "AUTHENTICATION" -> TahoWarn
+        "PRIMARY_API" -> TahoGold
+        "STATIC_RESOURCE", "ANALYTICS", "TELEMETRY" -> TahoFaint
+        else -> Color(0xFFC9C5BB)
+    }
+    val label = upper
+        .lowercase()
+        .replace('_', ' ')
+        .split(' ')
+        .joinToString(" ") { it.replaceFirstChar(Char::uppercase) }
+
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .border(1.dp, accent.copy(alpha = .38f), RoundedCornerShape(999.dp))
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            color = accent,
+            fontFamily = FontFamily.Monospace,
+            fontSize = 8.sp,
+        )
+    }
+}
+
+@Composable
+private fun M7MiniButton(
+    label: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = modifier
+            .heightIn(min = 44.dp)
+            .clip(RoundedCornerShape(999.dp))
+            .background(Color.White.copy(alpha = .035f))
+            .border(1.dp, Color.White.copy(alpha = .10f), RoundedCornerShape(999.dp))
+            .semantics { role = Role.Button; contentDescription = label }
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            color = TahoMuted,
+            fontFamily = FontFamily.Monospace,
+            fontSize = 9.sp,
+            maxLines = 1,
+        )
     }
 }
 
