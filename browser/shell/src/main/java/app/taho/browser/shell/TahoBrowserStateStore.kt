@@ -1,5 +1,6 @@
 package app.taho.browser.shell
 
+import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -7,6 +8,8 @@ import java.security.SecureRandom
 import java.util.UUID
 
 object TahoBrowserStateStore {
+    private var persistence: TahoBrowserPersistence? = null
+
     var settings by mutableStateOf(BrowserSettingsState())
 
     var searchEngines by mutableStateOf(
@@ -19,186 +22,120 @@ object TahoBrowserStateStore {
         )
     )
 
-    var topSites by mutableStateOf(
-        listOf(
-            TopSiteItem("site-1", "GitHub", "https://github.com", "GH", isPinned = true, visitCount = 42),
-            TopSiteItem("site-2", "DuckDuckGo", "https://duckduckgo.com", "DDG", isPinned = true, visitCount = 38),
-            TopSiteItem("site-3", "MDN Web Docs", "https://developer.mozilla.org", "MDN", isPinned = true, visitCount = 29),
-            TopSiteItem("site-4", "Reddit", "https://reddit.com", "RD", isPinned = true, visitCount = 25),
-            TopSiteItem("site-5", "Hacker News", "https://news.ycombinator.com", "HN", isPinned = false, visitCount = 20),
-            TopSiteItem("site-6", "Wikipedia", "https://en.wikipedia.org", "WP", isPinned = false, visitCount = 18),
-            TopSiteItem("site-7", "ArXiv", "https://arxiv.org", "AX", isPinned = false, visitCount = 14),
-            TopSiteItem("site-8", "Taho Docs", "https://taho.app/docs", "TH", isPinned = true, visitCount = 12),
-        )
-    )
-
-    var bookmarkFolders by mutableStateOf(
-        listOf(
-            BookmarkFolderItem("f-mobile", "Mobile Bookmarks"),
-            BookmarkFolderItem("f-dev", "Developer Tools", "f-mobile"),
-            BookmarkFolderItem("f-security", "AppSec & Privacy", "f-mobile"),
-        )
-    )
-
-    var bookmarks by mutableStateOf(
-        listOf(
-            BookmarkItem("bm-1", "Taho GitHub Repository", "https://github.com/taho-browser", "f-dev", isFavorite = true),
-            BookmarkItem("bm-2", "GeckoView API Reference", "https://mozilla.github.io/geckoview/", "f-dev", isFavorite = true),
-            BookmarkItem("bm-3", "OWASP Mobile Security", "https://owasp.org/www-project-mobile-top-10/", "f-security", isFavorite = true),
-            BookmarkItem("bm-4", "Compose Multiplatform Docs", "https://jetbrains.com/compose", "f-dev", isFavorite = false),
-            BookmarkItem("bm-5", "W3C Web Standards", "https://w3.org", "f-mobile", isFavorite = false),
-        )
-    )
-
-    var readingList by mutableStateOf(
-        listOf(
-            ReadingListItem("rl-1", "Zero Trust Architecture for Native Browsers", "https://blog.taho.app/zero-trust", isRead = false),
-            ReadingListItem("rl-2", "Understanding HTTP/3 and QUIC Protocols", "https://cloudflare.com/learning/http3", isRead = true),
-            ReadingListItem("rl-3", "Android Memory Isolation in GeckoView", "https://mozilla.org/research/gecko-isolation", isRead = false),
-        )
-    )
-
-    var history by mutableStateOf(
-        listOf(
-            HistoryEntryItem("h-1", "GitHub: Taho Architecture Specifications", "https://github.com/taho/architecture", System.currentTimeMillis() - 1000 * 60 * 12),
-            HistoryEntryItem("h-2", "Kotlin Language Documentation", "https://kotlinlang.org/docs/home.html", System.currentTimeMillis() - 1000 * 60 * 45),
-            HistoryEntryItem("h-3", "MDN: Subresource Integrity (SRI)", "https://developer.mozilla.org/en-US/docs/Web/Security/SRI", System.currentTimeMillis() - 1000 * 60 * 120),
-            HistoryEntryItem("h-4", "IETF: Transport Layer Security (TLS 1.3)", "https://datatracker.ietf.org/doc/html/rfc8446", System.currentTimeMillis() - 1000 * 3600 * 5),
-            HistoryEntryItem("h-5", "Android Open Source Project Security Bulletins", "https://source.android.com/security/bulletin", System.currentTimeMillis() - 1000 * 3600 * 22),
-        )
-    )
-
-    var recentlyClosedTabs by mutableStateOf(
-        listOf(
-            RecentlyClosedTabItem("rc-1", "GeckoView JNI Bindings", "https://mozilla.org/geckoview-jni", System.currentTimeMillis() - 1000 * 60 * 10),
-            RecentlyClosedTabItem("rc-2", "Material Design 3 Compose Guidelines", "https://m3.material.io/develop/android/jetpack-compose", System.currentTimeMillis() - 1000 * 60 * 35),
-            RecentlyClosedTabItem("rc-3", "Cloudflare DNS over HTTPS Endpoint Info", "https://1.1.1.1/dns-query", System.currentTimeMillis() - 1000 * 3600 * 2),
-        )
-    )
-
-    var downloads by mutableStateOf(
-        listOf(
-            DownloadItemUi("dl-1", "taho-spec-v2.pdf", "https://taho.app/downloads/taho-spec-v2.pdf", 4520000, 4520000, TahoDownloadStatus.COMPLETED, localPath = "/storage/emulated/0/Download/taho-spec-v2.pdf", mimeType = "application/pdf"),
-            DownloadItemUi("dl-2", "geckoview-arm64.aar", "https://maven.mozilla.org/geckoview.aar", 18200000, 32000000, TahoDownloadStatus.DOWNLOADING, mimeType = "application/octet-stream"),
-            DownloadItemUi("dl-3", "ca-certificates-bundle.pem", "https://curl.se/ca/cacert.pem", 240000, 240000, TahoDownloadStatus.COMPLETED, localPath = "/storage/emulated/0/Download/cacert.pem", mimeType = "text/plain"),
-            DownloadItemUi("dl-4", "dataset-corpus.tar.gz", "https://datasets.internal/archive.tar.gz", 1200000, 89000000, TahoDownloadStatus.PAUSED, mimeType = "application/gzip"),
-        )
-    )
-
-    var savedPasswords by mutableStateOf(
-        listOf(
-            SavedPasswordUi("pw-1", "github.com", "developer@taho.app", "ghp_secureKey8920!x", isCompromised = false, isWeak = false, isReused = false),
-            SavedPasswordUi("pw-2", "console.aws.amazon.com", "admin-prod", "K9#mQ2\$vxL9@10a", isCompromised = false, isWeak = false, isReused = false),
-            SavedPasswordUi("pw-3", "legacy-forum.org", "user123", "password123", isCompromised = true, isWeak = true, isReused = true),
-            SavedPasswordUi("pw-4", "gitlab.company.net", "team-lead", "Tr0ub4dor&3Taho", isCompromised = false, isWeak = false, isReused = false),
-        )
-    )
-
-    var savedAddresses by mutableStateOf(
-        listOf(
-            SavedAddressUi("addr-1", "Home", "Taho Engineer", "742 Evergreen Terrace", "San Francisco", "CA", "94102", "United States", "+1 415 555 0199", "dev@taho.app"),
-            SavedAddressUi("addr-2", "Work / Lab", "Taho Security Division", "100 Innovation Way", "Palo Alto", "CA", "94301", "United States", "+1 650 555 0142", "secops@taho.app"),
-        )
-    )
-
-    var savedPayments by mutableStateOf(
-        listOf(
-            SavedPaymentUi("pay-1", "Taho Corporate", "•••• •••• •••• 4242", "12/28", "Visa"),
-            SavedPaymentUi("pay-2", "Dev Operations", "•••• •••• •••• 8812", "09/29", "Mastercard"),
-        )
-    )
+    // User-owned browser data starts empty. Built-in search providers above are
+    // product configuration, not fabricated browsing activity.
+    var topSites by mutableStateOf(emptyList<TopSiteItem>())
+    var bookmarkFolders by mutableStateOf(emptyList<BookmarkFolderItem>())
+    var bookmarks by mutableStateOf(emptyList<BookmarkItem>())
+    var readingList by mutableStateOf(emptyList<ReadingListItem>())
+    var history by mutableStateOf(emptyList<HistoryEntryItem>())
+    var recentlyClosedTabs by mutableStateOf(emptyList<RecentlyClosedTabItem>())
+    var downloads by mutableStateOf(emptyList<DownloadItemUi>())
+    var savedPasswords by mutableStateOf(emptyList<SavedPasswordUi>())
+    var savedAddresses by mutableStateOf(emptyList<SavedAddressUi>())
+    var savedPayments by mutableStateOf(emptyList<SavedPaymentUi>())
 
     var profiles by mutableStateOf(
         listOf(
-            BrowserProfileUi("profile_personal", "Personal", "👤", isActive = true, syncEnabled = true, syncedDevicesCount = 3),
-            BrowserProfileUi("profile_work", "Work / Development", "💼", isActive = false, syncEnabled = true, syncedDevicesCount = 2),
-            BrowserProfileUi("profile_guest", "Guest Profile", "🕶", isGuest = true, isActive = false, syncEnabled = false, syncedDevicesCount = 0),
-        )
+            BrowserProfileUi(
+                id = "profile_personal",
+                name = "Personal",
+                avatarGlyph = "👤",
+                isActive = true,
+                syncEnabled = false,
+                syncedDevicesCount = 0,
+            ),
+        ),
     )
+    var syncedDevices by mutableStateOf(emptyList<SyncedDeviceUi>())
+    var tabGroups by mutableStateOf(emptyList<TabGroupUi>())
+    var sitePermissions by mutableStateOf(emptyList<SitePermissionEntry>())
+    var siteData by mutableStateOf(emptyList<SiteDataUi>())
 
-    var syncedDevices by mutableStateOf(
-        listOf(
-            SyncedDeviceUi("dev-1", "Pixel 9 Pro (This device)", "Phone", System.currentTimeMillis()),
-            SyncedDeviceUi("dev-2", "ThinkPad X1 Carbon", "Desktop", System.currentTimeMillis() - 1000 * 60 * 8),
-            SyncedDeviceUi("dev-3", "iPad Air Workstation", "Tablet", System.currentTimeMillis() - 1000 * 3600 * 18),
-        )
-    )
-
-    var tabGroups by mutableStateOf(
-        listOf(
-            TabGroupUi("grp-1", "Research & Specs", 0xFFE2B44A),
-            TabGroupUi("grp-2", "Production APIs", 0xFF4FBFA3),
-            TabGroupUi("grp-3", "Security Audit", 0xFFE06A5A),
-        )
-    )
-
-    var sitePermissions by mutableStateOf(
-        listOf(
-            SitePermissionEntry("https://github.com", "Clipboard", "ALLOW"),
-            SitePermissionEntry("https://github.com", "Notification", "ALLOW"),
-            SitePermissionEntry("https://meet.google.com", "Camera", "ALLOW"),
-            SitePermissionEntry("https://meet.google.com", "Microphone", "ALLOW"),
-            SitePermissionEntry("https://untrusted-site.xyz", "Location", "BLOCK"),
-            SitePermissionEntry("https://untrusted-site.xyz", "Pop-ups", "BLOCK"),
-        )
-    )
-
-    var siteData by mutableStateOf(
-        listOf(
-            SiteDataUi("github.com", 14, 8420000),
-            SiteDataUi("duckduckgo.com", 6, 2100000),
-            SiteDataUi("developer.mozilla.org", 8, 4800000),
-            SiteDataUi("reddit.com", 22, 16900000),
-            SiteDataUi("arxiv.org", 4, 1200000),
-        )
-    )
-
-    var extensions by mutableStateOf(
-        listOf(
-            ExtensionUi("ext-1", "uBlock Origin", "1.58.0", "Raymond Hill", "Efficient wide-spectrum content blocker for speed and privacy.", isEnabled = true, allowedInPrivate = true, canBlockContent = true, permissions = listOf("webRequest", "storage", "tabs")),
-            ExtensionUi("ext-2", "Privacy Badger", "2024.5.17", "EFF", "Automatically learns to block invisible trackers.", isEnabled = true, allowedInPrivate = true, canBlockContent = true, permissions = listOf("webRequest", "cookies")),
-            ExtensionUi("ext-3", "Dark Reader", "4.9.82", "Alexander Shutau", "Inverts colors and applies OLED pitch black styles to all sites.", isEnabled = true, allowedInPrivate = false, canBlockContent = false, permissions = listOf("storage")),
-            ExtensionUi("ext-4", "Bitwarden Password Manager", "2024.6.1", "Bitwarden Inc.", "Secure open-source password vault integration.", isEnabled = true, allowedInPrivate = true, canBlockContent = false, permissions = listOf("activeTab", "storage")),
-        )
-    )
-
-    var installedPwas by mutableStateOf(
-        listOf(
-            InstalledPwaUi("pwa-1", "Taho Studio", "https://studio.taho.app", "TS"),
-            InstalledPwaUi("pwa-2", "GitHub Mobile Web", "https://github.com", "GH"),
-        )
-    )
-
-    var offlinePages by mutableStateOf(
-        listOf(
-            OfflinePageUi("off-1", "Zero Trust Architecture Technical Whitepaper", "https://blog.taho.app/zero-trust", System.currentTimeMillis() - 1000 * 3600 * 48, 1240000),
-            OfflinePageUi("off-2", "GeckoView Android Integration Contract", "https://mozilla.github.io/geckoview/contract", System.currentTimeMillis() - 1000 * 3600 * 72, 890000),
-        )
-    )
-
-    var collections by mutableStateOf(
-        listOf(
-            BrowserCollectionItem("col-1", "Security Audits", "OWASP mobile checklists and verification contracts", 4, 12),
-            BrowserCollectionItem("col-2", "API Specs & RFCs", "HTTP/3, QUIC, and Subresource Integrity standards", 8, 24),
-            BrowserCollectionItem("col-3", "UI & Design Systems", "Taho Display tokens and responsive layouts", 6, 2),
-        )
-    )
-
-    var websiteNotifications by mutableStateOf(
-        listOf(
-            WebsiteNotificationItem("notif-1", "github.com", "Security Alert", "Personal access token expires in 3 days."),
-            WebsiteNotificationItem("notif-2", "blog.taho.app", "New Article", "Zero Trust Architecture for Native Browsers published."),
-        )
-    )
-
-    var archivedTabs by mutableStateOf(
-        listOf(
-            TabArchiveItem("arch-1", "WebAssembly Component Model Guide", "https://component-model.bytecodealliance.org"),
-            TabArchiveItem("arch-2", "Android Keystore System Architecture", "https://developer.android.com/training/articles/keystore"),
-        )
-    )
-
+    // Extension/PWA lists must reflect engine/platform state. Until a real
+    // controller reports entries, the UI truthfully shows them as empty.
+    var extensions by mutableStateOf(emptyList<ExtensionUi>())
+    var installedPwas by mutableStateOf(emptyList<InstalledPwaUi>())
+    var offlinePages by mutableStateOf(emptyList<OfflinePageUi>())
+    var collections by mutableStateOf(emptyList<BrowserCollectionItem>())
+    var websiteNotifications by mutableStateOf(emptyList<WebsiteNotificationItem>())
+    var archivedTabs by mutableStateOf(emptyList<TabArchiveItem>())
     var readerSettings by mutableStateOf(ReaderSettingsUi())
+
+    fun initialize(context: Context) {
+        if (persistence != null) return
+        val store = TahoBrowserPersistence(context.applicationContext)
+        persistence = store
+
+        store.loadState()?.let { saved ->
+            settings = saved.settings
+            searchEngines = saved.searchEngines.ifEmpty { searchEngines }
+            topSites = saved.topSites
+            bookmarkFolders = saved.bookmarkFolders
+            bookmarks = saved.bookmarks
+            readingList = saved.readingList
+            history = saved.history
+            recentlyClosedTabs = saved.recentlyClosedTabs.filterNot { it.isPrivate }
+            downloads = saved.downloads.map { item ->
+                if (item.status == TahoDownloadStatus.DOWNLOADING) {
+                    item.copy(status = TahoDownloadStatus.FAILED)
+                } else {
+                    item
+                }
+            }
+            profiles = saved.profiles.ifEmpty { profiles }
+            syncedDevices = saved.syncedDevices
+            tabGroups = saved.tabGroups
+            sitePermissions = saved.sitePermissions
+            installedPwas = saved.installedPwas
+            offlinePages = saved.offlinePages
+            collections = saved.collections
+            websiteNotifications = saved.websiteNotifications
+            archivedTabs = saved.archivedTabs
+            readerSettings = saved.readerSettings
+        }
+
+        store.loadSensitiveState()?.let { sensitive ->
+            savedPasswords = sensitive.passwords
+            savedAddresses = sensitive.addresses
+            savedPayments = sensitive.payments
+        }
+    }
+
+    fun persistNow() {
+        val store = persistence ?: return
+        runCatching {
+            store.save(
+                state = BrowserPersistentState(
+                    settings = settings,
+                    searchEngines = searchEngines,
+                    topSites = topSites,
+                    bookmarkFolders = bookmarkFolders,
+                    bookmarks = bookmarks,
+                    readingList = readingList,
+                    history = history,
+                    recentlyClosedTabs = recentlyClosedTabs.filterNot { it.isPrivate },
+                    downloads = downloads,
+                    profiles = profiles,
+                    syncedDevices = syncedDevices,
+                    tabGroups = tabGroups,
+                    sitePermissions = sitePermissions,
+                    installedPwas = installedPwas,
+                    offlinePages = offlinePages,
+                    collections = collections,
+                    websiteNotifications = websiteNotifications,
+                    archivedTabs = archivedTabs,
+                    readerSettings = readerSettings,
+                ),
+                sensitive = BrowserSensitiveState(
+                    passwords = savedPasswords,
+                    addresses = savedAddresses,
+                    payments = savedPayments,
+                ),
+            )
+        }
+    }
+
 
     // --- State mutation helpers ---
     fun updateSettings(updater: (BrowserSettingsState) -> BrowserSettingsState) {
