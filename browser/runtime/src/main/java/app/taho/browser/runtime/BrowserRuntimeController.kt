@@ -39,6 +39,12 @@ data class BrowserExternalNavigationRequest(
     val scheme: String,
 )
 
+data class BrowserFindResult(
+    val currentIndex: Int,
+    val totalMatches: Int,
+    val found: Boolean,
+)
+
 data class BrowserTabSnapshot(
     val id: String,
     val title: String?,
@@ -302,6 +308,60 @@ class BrowserRuntimeController(context: Context) {
         if (!tab.crashed && tab.canGoForward) {
             tab.session.goForward()
         }
+    }
+
+    fun findInPage(
+        query: String,
+        backwards: Boolean = false,
+        onResult: (BrowserFindResult) -> Unit,
+    ) {
+        val tab = requireSelected()
+        if (tab.crashed || query.isBlank()) {
+            tab.session.finder.clear()
+            onResult(BrowserFindResult(currentIndex = 0, totalMatches = 0, found = false))
+            return
+        }
+
+        val finder = tab.session.finder
+        finder.setDisplayFlags(GeckoSession.FINDER_DISPLAY_HIGHLIGHT_ALL)
+        val direction = if (backwards) {
+            GeckoSession.FINDER_FIND_BACKWARDS
+        } else {
+            GeckoSession.FINDER_FIND_FORWARD
+        }
+        finder.find(query, direction).accept(
+            { result ->
+                onResult(
+                    BrowserFindResult(
+                        currentIndex = (result?.current ?: 0).coerceAtLeast(0),
+                        totalMatches = (result?.total ?: 0).coerceAtLeast(0),
+                        found = result?.found == true,
+                    ),
+                )
+            },
+            {
+                onResult(BrowserFindResult(currentIndex = 0, totalMatches = 0, found = false))
+            },
+        )
+    }
+
+    fun clearFindInPage() {
+        requireSelected().session.finder.clear()
+    }
+
+    fun setDesktopMode(enabled: Boolean) {
+        val tab = requireSelected()
+        if (tab.crashed) return
+        val settings = tab.session.settings
+        settings.setUserAgentMode(
+            if (enabled) GeckoSessionSettings.USER_AGENT_MODE_DESKTOP
+            else GeckoSessionSettings.USER_AGENT_MODE_MOBILE,
+        )
+        settings.setViewportMode(
+            if (enabled) GeckoSessionSettings.VIEWPORT_MODE_DESKTOP
+            else GeckoSessionSettings.VIEWPORT_MODE_MOBILE,
+        )
+        tab.session.reload()
     }
 
     fun bind(tabId: String = selectedTabId, surface: BrowserSurfaceView) {
