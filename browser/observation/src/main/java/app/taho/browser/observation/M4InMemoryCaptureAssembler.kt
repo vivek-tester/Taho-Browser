@@ -115,6 +115,12 @@ class M4InMemoryCaptureAssembler(
 
     fun allCompleted(): List<M4CapturedRequest> = completed.toList()
 
+    fun clearForUser() {
+        active.clear()
+        completed.clear()
+        limited = false
+    }
+
     private fun acceptBulk(event: ProductionObservationEvent.Bulk) {
         val message = event.message
         if (message is ProductionObservationMessage.Hello) return
@@ -366,6 +372,15 @@ class M4InMemoryCaptureAssembler(
         }
         val assessment = combineAssessment(findings)
         val capturedAt = System.currentTimeMillis()
+        val relevance = RelevanceClassifier.classify(
+            RelevanceInput(
+                url = parsedUrl.baseUrl,
+                resourceType = tx.resourceType,
+                method = method,
+                targetHost = tx.targetHost,
+                contentType = contentType,
+            ),
+        )
         val durable = durableTransaction(
             tx = tx,
             parsedUrl = parsedUrl,
@@ -432,6 +447,7 @@ class M4InMemoryCaptureAssembler(
                 redirectCount = tx.redirects.size,
                 bodyRepresentation = bodySupport?.representation?.let(::contractRepresentation),
                 bodyLimitation = bodyLimitation(bodySupport),
+                relevance = relevance,
             ),
         )
 

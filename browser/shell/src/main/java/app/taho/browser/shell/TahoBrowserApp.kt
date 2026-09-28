@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -52,6 +53,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import app.taho.browser.capture.domain.CaptureState
 
 data class BrowserTabUiState(
@@ -63,6 +68,7 @@ data class BrowserTabUiState(
     val loadFailed: Boolean,
     val crashed: Boolean,
     val selected: Boolean,
+    val relevantCaptureCount: Int = 0,
 )
 
 data class SitePermissionUiState(
@@ -86,6 +92,7 @@ data class BrowserUiState(
     val canGoForward: Boolean = false,
     val sitePermission: SitePermissionUiState? = null,
     val notice: String? = null,
+    val captureCapabilityNote: String? = null,
     val tabs: List<BrowserTabUiState> = emptyList(),
     val captureRequests: List<M4CaptureRequestUiState> = emptyList(),
 )
@@ -105,14 +112,19 @@ fun TahoBrowserApp(
     onCloseTab: (String) -> Unit = {},
     onSitePermissionDecision: (String, Boolean) -> Unit = { _, _ -> },
     onDismissNotice: () -> Unit = {},
+    onClearCaptureData: () -> Unit = {},
     onSendToTaho: (String, M4SecretPolicyUi) -> Unit = { _, _ -> },
     browserContent: @Composable () -> Unit = {},
 ) {
     var editing by rememberSaveable { mutableStateOf(false) }
     var draft by rememberSaveable { mutableStateOf("") }
     var showTabs by rememberSaveable { mutableStateOf(false) }
+    var showSettings by rememberSaveable { mutableStateOf(false) }
     var showCaptureSummary by rememberSaveable { mutableStateOf(false) }
     var selectedCaptureId by rememberSaveable { mutableStateOf<String?>(null) }
+    var lastSelectedCaptureId by rememberSaveable { mutableStateOf<String?>(null) }
+    var captureFilter by rememberSaveable { mutableStateOf(M7CaptureFilterUi.RELEVANT) }
+    val captureListState = rememberLazyListState()
     var showTransferConfirmation by rememberSaveable { mutableStateOf(false) }
     var selectedSecretPolicy by rememberSaveable {
         mutableStateOf(M4SecretPolicyUi.PARAMETERIZE)
@@ -125,12 +137,19 @@ fun TahoBrowserApp(
             selectedCaptureId = null
             showTransferConfirmation = false
         }
+        if (
+            lastSelectedCaptureId != null &&
+            state.captureRequests.none { it.id == lastSelectedCaptureId }
+        ) {
+            lastSelectedCaptureId = null
+        }
     }
 
     LaunchedEffect(state.sitePermission?.id) {
         if (state.sitePermission != null) {
             showTabs = false
             showCaptureSummary = false
+            showSettings = false
             selectedCaptureId = null
             showTransferConfirmation = false
             editing = false
@@ -142,6 +161,7 @@ fun TahoBrowserApp(
             showTransferConfirmation ||
             selectedCaptureId != null ||
             showCaptureSummary ||
+            showSettings ||
             showTabs ||
             editing ||
             (state.canGoBack && !state.crashed),
@@ -152,6 +172,7 @@ fun TahoBrowserApp(
             showTransferConfirmation -> showTransferConfirmation = false
             selectedCaptureId != null -> selectedCaptureId = null
             showCaptureSummary -> showCaptureSummary = false
+            showSettings -> showSettings = false
             showTabs -> showTabs = false
             editing -> editing = false
             state.canGoBack && !state.crashed -> onBack()
@@ -186,7 +207,16 @@ fun TahoBrowserApp(
                 }
 
                 if (state.crashed) {
-                    PageCrashBanner(onReload = onReload)
+                    PageCrashBanner(
+                        onReload = onReload,
+                        onViewCaptured = {
+                            showTabs = false
+                            editing = false
+                            selectedCaptureId = null
+                            showTransferConfirmation = false
+                            showCaptureSummary = true
+                        },
+                    )
                     Spacer(Modifier.height(9.dp))
                 } else if (state.loadFailed) {
                     LoadFailureBanner(onReload = onReload)
@@ -256,12 +286,18 @@ fun TahoBrowserApp(
                 shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                 dragHandle = { SheetGrabHandle() },
             ) {
-                M4CaptureSummarySheet(
+                M7CaptureSummarySheet(
                     requests = state.captureRequests,
+                    filter = captureFilter,
+                    listState = captureListState,
+                    selectedId = lastSelectedCaptureId,
+                    onFilterSelected = { captureFilter = it },
                     onSelect = { requestId ->
+                        lastSelectedCaptureId = requestId
                         selectedCaptureId = requestId
                         selectedSecretPolicy = M4SecretPolicyUi.PARAMETERIZE
                     },
+                    onClose = { showCaptureSummary = false },
                 )
             }
         }
@@ -276,7 +312,7 @@ fun TahoBrowserApp(
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                     dragHandle = { SheetGrabHandle() },
                 ) {
-                    M4RequestInspectorSheet(
+                    M7RequestInspectorSheet(
                         request = request,
                         onBack = { selectedCaptureId = null },
                         onSendToTaho = {
@@ -296,7 +332,7 @@ fun TahoBrowserApp(
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                     dragHandle = { SheetGrabHandle() },
                 ) {
-                    M4SendConfirmationSheet(
+                    M7SendConfirmationSheet(
                         request = request,
                         selectedPolicy = selectedSecretPolicy,
                         onPolicySelected = { policy ->
@@ -338,6 +374,26 @@ fun TahoBrowserApp(
                         showTabs = false
                     },
                     onCloseTab = onCloseTab,
+                    onSettings = {
+                        showTabs = false
+                        showSettings = true
+                    },
+                )
+            }
+        }
+
+        if (showSettings && state.sitePermission == null) {
+            ModalBottomSheet(
+                onDismissRequest = { showSettings = false },
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                containerColor = TahoSheet,
+                contentColor = TahoText,
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                dragHandle = { SheetGrabHandle() },
+            ) {
+                M7SettingsSheet(
+                    captureCapabilityNote = state.captureCapabilityNote,
+                    onClearCaptureData = onClearCaptureData,
                 )
             }
         }
@@ -401,7 +457,10 @@ private fun BrowserNoticeBanner(
 }
 
 @Composable
-private fun PageCrashBanner(onReload: () -> Unit) {
+private fun PageCrashBanner(
+    onReload: () -> Unit,
+    onViewCaptured: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -425,16 +484,32 @@ private fun PageCrashBanner(onReload: () -> Unit) {
                 fontSize = 9.sp,
             )
         }
-        Text(
-            text = "Reload Page",
-            modifier = Modifier
-                .clip(RoundedCornerShape(999.dp))
-                .clickable(onClick = onReload)
-                .padding(horizontal = 10.dp, vertical = 7.dp),
-            color = TahoGoldHi,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 10.sp,
-        )
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = "Reload Page",
+                modifier = Modifier
+                    .heightIn(min = 44.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .semantics { role = Role.Button; contentDescription = "Reload Page" }
+                    .clickable(onClick = onReload)
+                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                color = TahoGoldHi,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 10.sp,
+            )
+            Text(
+                text = "View Captured Requests",
+                modifier = Modifier
+                    .heightIn(min = 44.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .semantics { role = Role.Button; contentDescription = "View Captured Requests" }
+                    .clickable(onClick = onViewCaptured)
+                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                color = TahoMuted,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 9.sp,
+            )
+        }
     }
 }
 
@@ -459,7 +534,9 @@ private fun LoadFailureBanner(onReload: () -> Unit) {
         Text(
             text = "Reload",
             modifier = Modifier
+                .heightIn(min = 44.dp)
                 .clip(RoundedCornerShape(999.dp))
+                .semantics { role = Role.Button; contentDescription = "Reload" }
                 .clickable(onClick = onReload)
                 .padding(horizontal = 10.dp, vertical = 7.dp),
             color = TahoGoldHi,
@@ -555,6 +632,17 @@ private fun CaptureIndicator(
             .clip(RoundedCornerShape(999.dp))
             .background(Color(0xD1161619))
             .border(1.dp, Color.White.copy(alpha = .14f), RoundedCornerShape(999.dp))
+            .semantics {
+                role = Role.Button
+                contentDescription = when (state) {
+                    CaptureState.OBSERVING, CaptureState.CAPTURING ->
+                        M7CaptureUx.captureAnnouncement(count)
+                    CaptureState.PAUSED -> "Capture paused, " + count + " requests retained"
+                    CaptureState.LIMITED -> "Capture limited, " + count + " requests retained"
+                    CaptureState.ERROR -> "Capture unavailable"
+                    CaptureState.OFF -> ""
+                }
+            }
             .clickable(onClick = onClick)
             .heightIn(min = 44.dp)
             .padding(horizontal = 15.dp, vertical = 9.dp),
@@ -693,20 +781,31 @@ private fun TabCountButton(
     tabCount: Int,
     onClick: () -> Unit,
 ) {
+    val count = tabCount.coerceAtLeast(1)
     Box(
         modifier = Modifier
-            .size(30.dp)
-            .clip(RoundedCornerShape(9.dp))
-            .border(1.dp, Color.White.copy(alpha = .14f), RoundedCornerShape(9.dp))
+            .size(44.dp)
+            .semantics {
+                role = Role.Button
+                contentDescription = count.toString() + if (count == 1) " tab" else " tabs"
+            }
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = tabCount.coerceAtLeast(1).toString(),
-            color = TahoText,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 10.sp,
-        )
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .border(1.dp, Color.White.copy(alpha = .14f), RoundedCornerShape(9.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "⃞" + count.toString(),
+                color = TahoText,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 10.sp,
+            )
+        }
     }
 }
 
@@ -816,6 +915,7 @@ private fun TabSwitcher(
     onNewPrivateTab: () -> Unit,
     onSelectTab: (String) -> Unit,
     onCloseTab: (String) -> Unit,
+    onSettings: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -844,6 +944,9 @@ private fun TabSwitcher(
             Spacer(Modifier.width(8.dp))
             MiniAction("Private", onNewPrivateTab)
         }
+
+        Spacer(Modifier.height(8.dp))
+        MiniAction("Settings", onSettings)
 
         Spacer(Modifier.height(14.dp))
 
@@ -930,12 +1033,21 @@ private fun TabRow(
             }
             Spacer(Modifier.height(3.dp))
             Text(
-                text = when {
-                    tab.crashed -> "Page stopped responding"
-                    tab.loadFailed -> "Failed to load"
-                    tab.isLoading -> "Loading…"
-                    tab.location.isNullOrBlank() || tab.location == "about:blank" -> "New tab"
-                    else -> compactLocation(tab.location)
+                text = buildString {
+                    append(
+                        when {
+                            tab.crashed -> "Page stopped responding"
+                            tab.loadFailed -> "Failed to load"
+                            tab.isLoading -> "Loading…"
+                            tab.location.isNullOrBlank() || tab.location == "about:blank" -> "New tab"
+                            else -> compactLocation(tab.location)
+                        },
+                    )
+                    if (tab.relevantCaptureCount > 0) {
+                        append(" · ")
+                        append(tab.relevantCaptureCount)
+                        append(" captured")
+                    }
                 },
                 color = when {
                     tab.crashed -> TahoWarn

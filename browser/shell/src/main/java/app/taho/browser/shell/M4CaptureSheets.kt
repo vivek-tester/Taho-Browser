@@ -47,6 +47,7 @@ data class M4CaptureHeaderUiState(
     val name: String,
     val displayValue: String,
     val sensitive: Boolean,
+    val secretCategory: String? = null,
 ) {
     init {
         require(name.isNotBlank()) { "header name must not be blank" }
@@ -69,14 +70,35 @@ data class M4CaptureRequestUiState(
     val durationMs: Long?,
     val category: String = "API",
     val headers: List<M4CaptureHeaderUiState> = emptyList(),
+    val requestUrlCompleteness: M4CompletenessUi = M4CompletenessUi.COMPLETE,
+    val requestHeadersCompleteness: M4CompletenessUi = M4CompletenessUi.UNAVAILABLE,
     val requestBodyCompleteness: M4CompletenessUi,
+    val responseHeadersCompleteness: M4CompletenessUi = M4CompletenessUi.UNAVAILABLE,
     val responseBodyCompleteness: M4CompletenessUi,
+    val timingCompleteness: M4CompletenessUi = M4CompletenessUi.UNAVAILABLE,
+    val tlsCompleteness: M4CompletenessUi = M4CompletenessUi.UNAVAILABLE,
     val bodyRepresentation: String? = null,
     val bodyLimitation: String? = null,
     val sensitiveCount: Int = 0,
     val fromPrivateSession: Boolean = false,
     val transferBlockedReason: String? = null,
     val explicitPolicyAllowed: Boolean = false,
+    val relevanceCategory: String = category,
+    val relevantByDefault: Boolean = true,
+    val captureSessionId: String? = null,
+    val tabId: String? = null,
+    val capturedAtEpochMs: Long? = null,
+    val sourceProduct: String = "taho-browser",
+    val sourceVersion: String? = null,
+    val captureEngineVersion: String? = null,
+    val normalizerVersion: String? = null,
+    val observationSource: String? = null,
+    val redirectCount: Int = 0,
+    val transactionState: String? = null,
+    val requestBodyCapturedBytes: Long? = null,
+    val requestBodyDeclaredBytes: Long? = null,
+    val safeBodyPreview: String? = null,
+    val safeBodyPreviewTruncated: Boolean = false,
 ) {
     init {
         require(id.isNotBlank()) { "request id must not be blank" }

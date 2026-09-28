@@ -42,6 +42,7 @@ class M4CaptureRuntime(
     private val sessionInitializer: ((String) -> CaptureRepositoryResult<Unit>)? = null,
     private val durableSink: ((DurableTransaction) -> CaptureRepositoryResult<Unit>)? = null,
     private val historyLoader: (() -> CaptureRepositoryResult<List<DurableTransactionSummary>>)? = null,
+    private val clearStorage: (() -> CaptureRepositoryResult<Unit>)? = null,
 ) {
     private val persistenceExecutor: ExecutorService =
         Executors.newSingleThreadExecutor { runnable ->
@@ -131,6 +132,9 @@ class M4CaptureRuntime(
             .firstOrNull { it.transferId == transferId }
             ?.let(M4TransferPreparer::projectDisplay)
 
+    fun capturedRequest(transferId: String): M4CapturedRequest? =
+        snapshot.requests.firstOrNull { it.transferId == transferId }
+
     fun prepare(
         transferId: String,
         policy: SecretPolicy,
@@ -143,6 +147,40 @@ class M4CaptureRuntime(
                     requestedPolicy = policy,
                 )
             }
+
+    fun clearPresentationHistory() {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            mainHandler.post(::clearPresentationHistory)
+            return
+        }
+        assembler.clearForUser()
+        persistedRecords = emptyList()
+        publish(derivedActiveState())
+    }
+
+    fun clearCaptureData(
+        onComplete: (CaptureRepositoryResult<Unit>) -> Unit,
+    ) {
+        val clear = clearStorage
+        if (clear == null) {
+            mainHandler.post {
+                onComplete(CaptureRepositoryResult.Success(Unit))
+            }
+            return
+        }
+
+        persistenceExecutor.execute {
+            val result = clear()
+            mainHandler.post {
+                if (result is CaptureRepositoryResult.Success) {
+                    assembler.clearForUser()
+                    persistedRecords = emptyList()
+                    publish(derivedActiveState())
+                }
+                onComplete(result)
+            }
+        }
+    }
 
     private fun persistDurable(record: DurableTransaction) {
         val sink = durableSink

@@ -23,7 +23,10 @@ import app.taho.browser.capture.domain.CaptureRepositoryResult
 import app.taho.browser.capture.domain.CaptureSessionKind
 import app.taho.browser.capture.domain.CaptureSessionLifecycle
 import app.taho.browser.capture.domain.DurableCaptureSession
+import app.taho.browser.capture.domain.NormalizedHeaderValue
+import app.taho.browser.capture.domain.RequestNormalizer
 import app.taho.browser.capture.domain.RelevanceClassifier
+import app.taho.browser.capture.domain.RelevanceInput
 import app.taho.browser.capture.domain.RetentionPolicy
 import app.taho.browser.capture.domain.SecretPolicy
 import app.taho.browser.capture.domain.StorageDegradationReason
@@ -52,13 +55,17 @@ import app.taho.browser.transfer.android.TahoDirectTransferIntentFactory
 import app.taho.browser.transfer.android.TahoDirectTransferTarget
 import app.taho.browser.transfer.android.TahoSecureTransferCoordinator
 import app.taho.browser.transfer.android.TransferArtifactMaintenance
+import app.taho.browser.transfer.android.TahoTransferTransport
 import app.taho.browser.transfer.android.TransferReceiptRecoveryStore
 import app.taho.browser.transfer.core.M4PreparationBlock
 import app.taho.browser.transfer.core.M4PreparationResult
+import app.taho.browser.transfer.core.M4TransferPreparer
+import java.net.URI
 
 class MainActivity : ComponentActivity() {
     private companion object {
         const val TAHO_TRANSFER_REQUEST_CODE = 0x5448
+        const val MAX_BODY_PREVIEW_CHARS = 64 * 1024
     }
 
     private lateinit var controller: BrowserRuntimeController
@@ -69,6 +76,7 @@ class MainActivity : ComponentActivity() {
     private var activeAndroidPermissions: List<String> = emptyList()
     private var transferNotice by mutableStateOf<String?>(null)
     private var pendingTransferId: String? = null
+    private var transferPreparationInFlight: Boolean = false
 
     private val androidPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -117,6 +125,7 @@ class MainActivity : ComponentActivity() {
                     CaptureQuery(limit = 500),
                 )
             },
+            clearStorage = captureRepository::clearCaptureData,
         )
         captureRuntime.start()
 
@@ -144,9 +153,17 @@ class MainActivity : ComponentActivity() {
             val selectedTabId = snapshot.selectedTabId
             val androidPermission = snapshot.androidPermissionRequest
             val externalNavigation = snapshot.externalNavigationRequest
+            val targetHostsByTab = snapshot.tabs.associate { tab ->
+                tab.id to hostOf(tab.location)
+            }
             val captureRequests = captureUiRequests(
                 captureSnapshot = captureSnapshot,
                 selectedTabId = selectedTabId,
+                targetHost = targetHostsByTab[selectedTabId],
+            )
+            val captureCountsByTab = relevantCaptureCounts(
+                captureSnapshot = captureSnapshot,
+                targetHostsByTab = targetHostsByTab,
             )
 
             androidx.compose.runtime.LaunchedEffect(androidPermission?.id) {
@@ -190,7 +207,7 @@ class MainActivity : ComponentActivity() {
             TahoBrowserApp(
                 state = BrowserUiState(
                     captureState = captureSnapshot.state,
-                    relevantCount = captureRequests.size,
+                    relevantCount = captureRequests.count { it.relevantByDefault },
                     omniboxText = visibleLocation,
                     tabCount = snapshot.tabCount,
                     isLoading = snapshot.isLoading,
@@ -202,6 +219,13 @@ class MainActivity : ComponentActivity() {
                     notice = transferNotice
                         ?: captureSnapshot.storageDegradedReason?.let(::storageNotice)
                         ?: snapshot.notice,
+                    captureCapabilityNote = when {
+                        !BuildConfig.M1_ATTRIBUTION_VERIFIED ->
+                            "Production capture remains off until on-device tab attribution is verified."
+                        captureSnapshot.storageDegradedReason != null ->
+                            storageNotice(requireNotNull(captureSnapshot.storageDegradedReason))
+                        else -> null
+                    },
                     sitePermission = snapshot.sitePermission?.let { permission ->
                         val copy = permissionCopy(permission.kind)
                         SitePermissionUiState(
@@ -222,6 +246,7 @@ class MainActivity : ComponentActivity() {
                             loadFailed = tab.loadFailed,
                             crashed = tab.crashed,
                             selected = tab.id == snapshot.selectedTabId,
+                            relevantCaptureCount = captureCountsByTab[tab.id] ?: 0,
                         )
                     },
                     captureRequests = captureRequests,
@@ -252,6 +277,7 @@ class MainActivity : ComponentActivity() {
                         controller.dismissNotice()
                     }
                 },
+                onClearCaptureData = ::clearCaptureData,
                 onSendToTaho = ::sendToTaho,
                 browserContent = {
                     AndroidView(
@@ -326,9 +352,45 @@ class MainActivity : ComponentActivity() {
         captureRuntime.syncSessions(observed)
     }
 
+    private fun relevantCaptureCounts(
+        captureSnapshot: M4CaptureRuntimeSnapshot,
+        targetHostsByTab: Map<String, String?>,
+    ): Map<String, Int> {
+        val liveTransactionIds = captureSnapshot.requests.map { it.transactionId }.toSet()
+        val counts = mutableMapOf<String, Int>()
+
+        captureSnapshot.requests.forEach { request ->
+            val tabId = request.tabId ?: return@forEach
+            val relevance = request.relevance ?: RelevanceClassifier.classify(
+                RelevanceInput(
+                    url = request.url,
+                    resourceType = request.initiator,
+                    method = request.method,
+                    targetHost = targetHostsByTab[tabId],
+                    contentType = request.body?.contentType,
+                ),
+            )
+            if (RelevanceClassifier.isRelevantByDefault(relevance)) {
+                counts[tabId] = (counts[tabId] ?: 0) + 1
+            }
+        }
+
+        captureSnapshot.persistedRecords
+            .asSequence()
+            .filter { it.id !in liveTransactionIds }
+            .filter { RelevanceClassifier.isRelevantByDefault(it.relevance) }
+            .forEach { stored ->
+                val tabId = stored.tahoTabId ?: return@forEach
+                counts[tabId] = (counts[tabId] ?: 0) + 1
+            }
+
+        return counts
+    }
+
     private fun captureUiRequests(
         captureSnapshot: M4CaptureRuntimeSnapshot,
         selectedTabId: String,
+        targetHost: String?,
     ): List<M4CaptureRequestUiState> {
         val liveTransactionIds = captureSnapshot.requests
             .map { it.transactionId }
@@ -338,6 +400,15 @@ class MainActivity : ComponentActivity() {
             .filter { it.tabId == selectedTabId }
             .mapNotNull { request ->
                 val display = captureRuntime.display(request.transferId) ?: return@mapNotNull null
+                val relevance = request.relevance ?: RelevanceClassifier.classify(
+                    RelevanceInput(
+                        url = request.url,
+                        resourceType = request.initiator,
+                        method = request.method,
+                        targetHost = targetHost,
+                        contentType = request.body?.contentType,
+                    ),
+                )
                 M4CaptureRequestUiState(
                     id = request.transferId,
                     method = display.method,
@@ -346,16 +417,36 @@ class MainActivity : ComponentActivity() {
                     durationMs = display.durationMs,
                     category = request.initiator ?: "API",
                     headers = display.headers.map { header ->
+                        val source = request.headers.firstOrNull { candidate ->
+                            candidate.name.equals(header.name, ignoreCase = true) &&
+                                candidate.value is NormalizedHeaderValue.Protected
+                        }
+                        val secretCategory =
+                            (source?.value as? NormalizedHeaderValue.Protected)
+                                ?.ref
+                                ?.category
+                                ?.name
                         M4CaptureHeaderUiState(
                             name = header.name,
                             displayValue = header.displayValue,
                             sensitive = header.sensitive,
+                            secretCategory = secretCategory,
                         )
                     },
+                    requestUrlCompleteness =
+                        M4CompletenessUi.valueOf(request.completeness.requestUrl.name),
+                    requestHeadersCompleteness =
+                        M4CompletenessUi.valueOf(request.completeness.requestHeaders.name),
                     requestBodyCompleteness =
                         M4CompletenessUi.valueOf(display.requestBodyCompleteness.name),
+                    responseHeadersCompleteness =
+                        M4CompletenessUi.valueOf(request.completeness.responseHeaders.name),
                     responseBodyCompleteness =
                         M4CompletenessUi.valueOf(display.responseBodyCompleteness.name),
+                    timingCompleteness =
+                        M4CompletenessUi.valueOf(request.completeness.timing.name),
+                    tlsCompleteness =
+                        M4CompletenessUi.valueOf(request.completeness.tlsInfo.name),
                     bodyRepresentation = display.bodyRepresentation?.name,
                     bodyLimitation = display.bodyLimitation,
                     sensitiveCount = display.sensitiveCount,
@@ -367,6 +458,21 @@ class MainActivity : ComponentActivity() {
                         else -> null
                     },
                     explicitPolicyAllowed = false,
+                    relevanceCategory = relevance.category.name,
+                    relevantByDefault = RelevanceClassifier.isRelevantByDefault(relevance),
+                    captureSessionId = request.captureSessionId,
+                    tabId = request.tabId,
+                    capturedAtEpochMs = request.capturedAt,
+                    sourceVersion = request.appVersion,
+                    captureEngineVersion = request.engineVersion,
+                    normalizerVersion = RequestNormalizer.VERSION,
+                    observationSource = request.observation.name,
+                    redirectCount = request.redirectCount,
+                    requestBodyCapturedBytes = request.body?.size,
+                    requestBodyDeclaredBytes = request.body?.declaredSize,
+                    safeBodyPreview = request.body?.content?.take(MAX_BODY_PREVIEW_CHARS),
+                    safeBodyPreviewTruncated =
+                        (request.body?.content?.length ?: 0) > MAX_BODY_PREVIEW_CHARS,
                 )
             }
 
@@ -374,7 +480,6 @@ class MainActivity : ComponentActivity() {
             .asSequence()
             .filter { it.tahoTabId == selectedTabId }
             .filter { it.id !in liveTransactionIds }
-            .filter { RelevanceClassifier.isRelevantByDefault(it.relevance) }
             .map { stored ->
                 M4CaptureRequestUiState(
                     id = "stored:" + stored.id,
@@ -394,8 +499,14 @@ class MainActivity : ComponentActivity() {
                     fromPrivateSession = false,
                     transferBlockedReason =
                         "Stored capture survived lifecycle/process recovery. " +
-                            "Direct re-transfer from durable ciphertext is deferred to M6.",
+                            "Re-transfer from durable encrypted storage is not exposed by the current Browser UI.",
                     explicitPolicyAllowed = false,
+                    relevanceCategory = stored.relevance.category.name,
+                    relevantByDefault = RelevanceClassifier.isRelevantByDefault(stored.relevance),
+                    captureSessionId = stored.captureSessionId,
+                    tabId = stored.tahoTabId,
+                    capturedAtEpochMs = stored.createdAtEpochMs,
+                    transactionState = stored.state.name,
                 )
             }
             .toList()
@@ -407,82 +518,135 @@ class MainActivity : ComponentActivity() {
         transferId: String,
         policy: M4SecretPolicyUi,
     ) {
-        val domainPolicy = SecretPolicy.valueOf(policy.name)
-        when (val result = captureRuntime.prepare(transferId, domainPolicy)) {
-            null -> transferNotice = "The captured request is no longer available."
+        if (transferPreparationInFlight || pendingTransferId != null) {
+            transferNotice = "A Taho transfer is already in progress."
+            return
+        }
+        if (BuildConfig.TAHO_TRANSFER_ACTION.isBlank()) {
+            transferNotice =
+                "Project-Taho structured receiver is not configured yet. Nothing was sent."
+            return
+        }
 
-            is M4PreparationResult.Blocked -> {
-                transferNotice = when (result.reason) {
-                    M4PreparationBlock.REVIEW_REQUIRED ->
-                        "Transfer blocked: sensitive data still requires review."
-                    M4PreparationBlock.EXPLICIT_SECRET_UNAVAILABLE ->
-                        "Explicit credential transfer is unavailable for this capture."
-                    M4PreparationBlock.INVALID_CONTRACT ->
-                        "Transfer blocked: request does not satisfy the Taho contract."
+        val captured = captureRuntime.capturedRequest(transferId)
+        if (captured == null) {
+            transferNotice = "The captured request is no longer available."
+            return
+        }
+
+        val target = TahoDirectTransferTarget(
+            packageName = BuildConfig.TAHO_PACKAGE_NAME,
+            action = BuildConfig.TAHO_TRANSFER_ACTION,
+        )
+        if (!transferCoordinator.isTargetAvailable(target)) {
+            transferNotice = "Taho API Testing isn't installed."
+            return
+        }
+
+        val domainPolicy = SecretPolicy.valueOf(policy.name)
+        val expectedTransferId = captured.transferId
+        val receiver = object : ResultReceiver(Handler(Looper.getMainLooper())) {
+            override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
+                if (pendingTransferId != expectedTransferId) return
+                pendingTransferId = null
+                val receipt = TahoDirectTransferIntentFactory.parseReceipt(resultData)
+                if (receipt?.transferId == expectedTransferId) {
+                    transferCoordinator.settle(expectedTransferId)
+                    TransferReceiptRecoveryStore.clearIfMatches(
+                        this@MainActivity,
+                        expectedTransferId,
+                    )
+                }
+                transferNotice = when {
+                    receipt == null ->
+                        "Taho returned no valid transfer receipt."
+                    receipt.transferId != expectedTransferId ->
+                        "Taho returned a receipt for a different transfer."
+                    else -> receiptNotice(receipt)
                 }
             }
+        }
 
-            is M4PreparationResult.Prepared -> {
-                if (BuildConfig.TAHO_TRANSFER_ACTION.isBlank()) {
-                    transferNotice =
-                        "Project-Taho structured receiver is not configured yet. Nothing was sent."
-                    return
-                }
+        transferPreparationInFlight = true
+        transferNotice = "Preparing request for Taho…"
 
-                val target = TahoDirectTransferTarget(
-                    packageName = BuildConfig.TAHO_PACKAGE_NAME,
-                    action = BuildConfig.TAHO_TRANSFER_ACTION,
+        Thread({
+            val preparation = runCatching {
+                M4TransferPreparer.prepare(
+                    input = captured,
+                    requestedPolicy = domainPolicy,
                 )
-                if (!transferCoordinator.isTargetAvailable(target)) {
-                    transferNotice = "Compatible Project-Taho receiver is not installed."
-                    return
+            }.getOrElse {
+                runOnUiThread {
+                    transferPreparationInFlight = false
+                    transferNotice =
+                        "Taho could not receive this request. Your captured request remains in Taho Browser."
                 }
+                return@Thread
+            }
 
-                val expectedTransferId = result.value.envelope.transferId
-                val receiver = object : ResultReceiver(Handler(Looper.getMainLooper())) {
-                    override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
-                        if (pendingTransferId != expectedTransferId) return
-                        pendingTransferId = null
-                        val receipt = TahoDirectTransferIntentFactory.parseReceipt(resultData)
-                        if (receipt?.transferId == expectedTransferId) {
-                            transferCoordinator.settle(expectedTransferId)
-                            TransferReceiptRecoveryStore.clearIfMatches(
-                                this@MainActivity,
-                                expectedTransferId,
-                            )
-                        }
-                        transferNotice = when {
-                            receipt == null ->
-                                "Taho returned no valid transfer receipt."
-                            receipt.transferId != expectedTransferId ->
-                                "Taho returned a receipt for a different transfer."
-                            else -> receiptNotice(receipt)
+            when (preparation) {
+                is M4PreparationResult.Blocked -> {
+                    runOnUiThread {
+                        transferPreparationInFlight = false
+                        transferNotice = when (preparation.reason) {
+                            M4PreparationBlock.REVIEW_REQUIRED ->
+                                "Transfer blocked: sensitive data still requires review."
+                            M4PreparationBlock.EXPLICIT_SECRET_UNAVAILABLE ->
+                                "Explicit credential transfer is unavailable for this capture."
+                            M4PreparationBlock.INVALID_CONTRACT ->
+                                "Transfer blocked: request does not satisfy the Taho contract."
                         }
                     }
                 }
 
-                val dispatch = runCatching {
-                    transferCoordinator.prepareDispatch(
-                        target = target,
-                        prepared = result.value,
-                        resultReceiver = receiver,
-                    )
-                }.getOrElse {
-                    transferNotice = "Unable to prepare a secure transfer."
-                    return
-                }
+                is M4PreparationResult.Prepared -> {
+                    val dispatch = runCatching {
+                        transferCoordinator.prepareDispatch(
+                            target = target,
+                            prepared = preparation.value,
+                            resultReceiver = receiver,
+                        )
+                    }.getOrElse {
+                        runOnUiThread {
+                            transferPreparationInFlight = false
+                            transferNotice =
+                                "Taho could not receive this request. Your captured request remains in Taho Browser."
+                        }
+                        return@Thread
+                    }
 
-                pendingTransferId = expectedTransferId
-                runCatching {
-                    @Suppress("DEPRECATION")
-                    startActivityForResult(dispatch.intent, TAHO_TRANSFER_REQUEST_CODE)
-                }.onFailure {
-                    pendingTransferId = null
-                    transferCoordinator.cancel(expectedTransferId)
-                    transferNotice = "Unable to open Project-Taho."
+                    runOnUiThread {
+                        transferPreparationInFlight = false
+                        if (isDestroyed) {
+                            transferCoordinator.cancel(expectedTransferId)
+                            return@runOnUiThread
+                        }
+                        pendingTransferId = expectedTransferId
+                        transferNotice = if (
+                            dispatch.transport == TahoTransferTransport.ARTIFACT_URI
+                        ) {
+                            "This request is large. Using secure file transfer…"
+                        } else {
+                            "Sending to Taho…"
+                        }
+
+                        runCatching {
+                            @Suppress("DEPRECATION")
+                            startActivityForResult(
+                                dispatch.intent,
+                                TAHO_TRANSFER_REQUEST_CODE,
+                            )
+                        }.onFailure {
+                            pendingTransferId = null
+                            transferCoordinator.cancel(expectedTransferId)
+                            transferNotice =
+                                "Taho could not receive this request. Your captured request remains in Taho Browser."
+                        }
+                    }
                 }
             }
-        }
+        }, "taho-transfer-prepare").start()
     }
 
     private fun receiptNotice(
@@ -500,9 +664,28 @@ class MainActivity : ComponentActivity() {
             receipt.errorCode?.name == "TAHO_TRANSFER_ACCESS_DENIED" ->
                 "Taho could not be given access to the transfer."
             else ->
-                "Taho rejected the request" +
-                    (receipt.errorCode?.let { ": " + it.name } ?: ".")
+                "Taho could not import this request. No network request was sent."
         }
+
+    private fun clearCaptureData() {
+        captureRuntime.clearCaptureData { result ->
+            when (result) {
+                is CaptureRepositoryResult.Success -> {
+                    transferNotice =
+                        "Captured requests cleared. Websites and login sessions were preserved."
+                }
+
+                is CaptureRepositoryResult.Degraded -> {
+                    transferNotice = storageNotice(result.reason)
+                }
+            }
+        }
+    }
+
+    private fun hostOf(location: String?): String? =
+        location
+            ?.takeIf { it.startsWith("http://") || it.startsWith("https://") }
+            ?.let { runCatching { URI(it).host }.getOrNull() }
 
     private fun storageNotice(reason: StorageDegradationReason): String =
         when (reason) {

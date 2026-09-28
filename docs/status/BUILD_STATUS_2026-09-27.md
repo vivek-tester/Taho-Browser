@@ -177,3 +177,86 @@ Still required for the full M5 exit gate:
 - measured Gecko support confirmation for the request-body types advertised as supported/limited.
 
 M6 secure large-payload handoff is not included.
+
+
+## M6 — Secure large-payload handoff
+
+**Source status:** merged into both repositories; Browser automated evidence passed; two-app/device exit evidence remains open.
+
+Merged heads when M6 was integrated:
+
+- Taho Browser: `19d21bc38ded848754bbe72f6fb57f63aa30faae`;
+- Project-Taho: `720abfa930c8a434c99bad5c425e7c45990b5220`.
+
+Implemented:
+
+- direct-vs-artifact routing at the direct-envelope budget;
+- AES-GCM encrypted app-private transfer artifacts;
+- grant-scoped, target-bound, one-time `content://` reads;
+- elapsed-realtime expiry, reboot fail-closed behavior and abandoned-artifact cleanup;
+- URI grant revocation on settlement/cancellation;
+- transfer attempt journal and receipt recovery;
+- 5 MiB no-oversized-extras coverage;
+- dedicated Project-Taho Browser-import entry point with caller/grant/bounds validation;
+- duplicate-safe ephemeral imports that remain idle, unsaved and unexecuted.
+
+Browser CI passed for the M6 implementation. Project-Taho Actions remained infrastructure-blocked before runner assignment (`steps: []`, `runner_id: 0`), so no Project-Taho compiler/test result is claimed from those runs.
+
+Still required for full M6/device acceptance:
+
+- real two-app 5 MiB transfer on Android;
+- grant/expiry/reboot/interruption verification on device;
+- Project-Taho executed CI or equivalent local build evidence;
+- inherited M1/M3/M4/M5 physical gates.
+
+## M7 — Product UX
+
+**Source/automated status:** complete candidate on `build/m7-product-ux`; physical UX/device exit evidence remains required.
+
+Implemented from the supplied Compose/UI authority:
+
+- browser-first bottom chrome with attributed per-tab relevant capture counts;
+- capture Summary with Relevant / All / Auth / API filters, read-only dimmed noise and truthful empty states;
+- tall request Inspector with Overview / Headers / Body / Response / Timing tabs;
+- evidence-backed COMPLETE / PARTIAL / TRUNCATED / UNAVAILABLE / NOT_APPLICABLE rendering;
+- safe 64 KiB body preview cap that does not alter capture completeness or transfer bytes;
+- masked header display, secret-category-aware policy preview and cookie-mask default;
+- capture provenance including source/version/session/tab/time/engine/normalizer/redirect evidence where available;
+- explicit Send-to-Taho confirmation, private-session warning and import-not-execute copy;
+- Settings with capture-data clear independent of browser/site state;
+- clear operations serialized through the capture persistence executor;
+- failure/edge copy for missing Taho, large secure transfer, unsupported schema, transfer/import failure and page crash;
+- TalkBack labels and 44–48dp interaction targets for the key M7 controls;
+- Summary filter, scroll position and selection retained across Summary → Inspector → Summary;
+- large transfer serialization/artifact preparation moved off the UI thread;
+- prepared transfer cleanup if the originating Activity is destroyed before launch;
+- no mock capture facts, no invented timing/TLS/body evidence and no timed success transition.
+
+Automated implementation evidence at code head
+`8fd75a35936afd46b87dfa5b71655144f7060604`: Actions run `36379006124` PASS.
+
+That run passed:
+
+- architecture/static gates;
+- pure capture/contract/transfer/test-support suites;
+- M7 filter/accessibility/policy-preview unit coverage;
+- hostname-boundary regression (`evil-example.com` is not first-party for `example.com`);
+- Browser runtime/shell/observation/persistence/transfer Android unit tests;
+- production Browser and pinned GeckoView debug assembly;
+- committed Room schema check;
+- M7 Browser APK artifact upload.
+
+Gate G source review: the browser remains browser-first; capture inspection is progressive and does not turn Browser into an API executor.
+
+Gate H source review: UI claims derive from captured completeness/capability state. Production capture remains disabled while `M1_ATTRIBUTION_VERIFIED=false`; unavailable response-body/TLS/timing evidence is shown as unavailable rather than fabricated.
+
+Still required before the full M7 exit can be claimed:
+
+- D10 physical slow-storage/no-jank evidence;
+- D15 rotation during active capture, transfer and mid-sheet;
+- D16 TalkBack browse → inspect → transfer walkthrough;
+- D17 1.3× text scale plus reduced-motion walkthrough;
+- measured/device capability checks inherited from M1/M5;
+- the broader physical M3/M4/M6 two-app acceptance gates.
+
+M8 release hardening has not started.
