@@ -68,6 +68,7 @@ import app.taho.browser.shell.M4SecretPolicyUi
 import app.taho.browser.shell.M7TransferPhaseUi
 import app.taho.browser.shell.ReaderPageContentUi
 import app.taho.browser.shell.SitePermissionUiState
+import app.taho.browser.shell.SiteSecurityUiState
 import app.taho.browser.shell.TahoBrowserApp
 import app.taho.browser.shell.TahoBrowserStateStore
 import app.taho.browser.transfer.android.TahoDirectTransferIntentFactory
@@ -324,6 +325,17 @@ class MainActivity : ComponentActivity() {
                     isPrivate = snapshot.isPrivate,
                     canGoBack = snapshot.canGoBack,
                     canGoForward = snapshot.canGoForward,
+                    securityInfo = snapshot.security?.let { security ->
+                        SiteSecurityUiState(
+                            isSecure = security.isSecure,
+                            isException = security.isException,
+                            host = security.host,
+                            certificateSubject = security.certificateSubject,
+                            certificateIssuer = security.certificateIssuer,
+                            activeMixedContentLoaded = security.activeMixedContentLoaded,
+                            passiveMixedContentLoaded = security.passiveMixedContentLoaded,
+                        )
+                    },
                     isTahoInstalled = isTahoInstalled,
                     retentionMode = captureRetentionMode,
                     notice = if (isOffline) {
