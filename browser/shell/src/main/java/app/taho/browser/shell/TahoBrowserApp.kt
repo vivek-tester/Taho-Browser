@@ -145,6 +145,7 @@ data class BrowserUiState(
     val loadFailed: Boolean = false,
     val crashed: Boolean = false,
     val isPrivate: Boolean = false,
+    val isPictureInPicture: Boolean = false,
     val canGoBack: Boolean = false,
     val canGoForward: Boolean = false,
     val securityInfo: SiteSecurityUiState? = null,
@@ -468,14 +469,15 @@ fun TahoBrowserApp(
             val isTopToolbar = TahoBrowserStateStore.settings.toolbarPosition == TahoToolbarPosition.TOP
             val toolbarAlignment = if (isTopToolbar) Alignment.TopCenter else Alignment.BottomCenter
 
-            Column(
-                modifier = Modifier
-                    .align(toolbarAlignment)
-                    .fillMaxWidth()
-                    .then(if (isTopToolbar) Modifier.statusBarsPadding() else Modifier.navigationBarsPadding())
-                    .padding(horizontal = 13.dp, vertical = 11.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
+            if (!state.isPictureInPicture) {
+                Column(
+                    modifier = Modifier
+                        .align(toolbarAlignment)
+                        .fillMaxWidth()
+                        .then(if (isTopToolbar) Modifier.statusBarsPadding() else Modifier.navigationBarsPadding())
+                        .padding(horizontal = 13.dp, vertical = 11.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
                 if (isTopToolbar) {
                     Omnibox(
                         value = state.omniboxText,
@@ -707,6 +709,8 @@ fun TahoBrowserApp(
                         },
                     )
                 }
+            }
+
             }
 
             M7TransferProgressOverlay(
