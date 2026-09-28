@@ -533,7 +533,9 @@ private fun LoadFailureBanner(onReload: () -> Unit) {
         Text(
             text = "Reload",
             modifier = Modifier
+                .heightIn(min = 44.dp)
                 .clip(RoundedCornerShape(999.dp))
+                .semantics { role = Role.Button; contentDescription = "Reload" }
                 .clickable(onClick = onReload)
                 .padding(horizontal = 10.dp, vertical = 7.dp),
             color = TahoGoldHi,
@@ -778,20 +780,31 @@ private fun TabCountButton(
     tabCount: Int,
     onClick: () -> Unit,
 ) {
+    val count = tabCount.coerceAtLeast(1)
     Box(
         modifier = Modifier
-            .size(30.dp)
-            .clip(RoundedCornerShape(9.dp))
-            .border(1.dp, Color.White.copy(alpha = .14f), RoundedCornerShape(9.dp))
+            .size(44.dp)
+            .semantics {
+                role = Role.Button
+                contentDescription = count.toString() + if (count == 1) " tab" else " tabs"
+            }
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = "⃞" + tabCount.coerceAtLeast(1).toString(),
-            color = TahoText,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 10.sp,
-        )
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .border(1.dp, Color.White.copy(alpha = .14f), RoundedCornerShape(9.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "⃞" + count.toString(),
+                color = TahoText,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 10.sp,
+            )
+        }
     }
 }
 
