@@ -24,6 +24,7 @@ import app.taho.browser.capture.domain.CaptureSessionKind
 import app.taho.browser.capture.domain.CaptureSessionLifecycle
 import app.taho.browser.capture.domain.DurableCaptureSession
 import app.taho.browser.capture.domain.NormalizedHeaderValue
+import app.taho.browser.capture.domain.RequestNormalizer
 import app.taho.browser.capture.domain.RelevanceClassifier
 import app.taho.browser.capture.domain.RelevanceInput
 import app.taho.browser.capture.domain.RetentionPolicy
@@ -461,6 +462,7 @@ class MainActivity : ComponentActivity() {
                     capturedAtEpochMs = request.capturedAt,
                     sourceVersion = request.appVersion,
                     captureEngineVersion = request.engineVersion,
+                    normalizerVersion = RequestNormalizer.VERSION,
                     observationSource = request.observation.name,
                     redirectCount = request.redirectCount,
                     requestBodyCapturedBytes = request.body?.size,
