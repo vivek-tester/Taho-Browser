@@ -211,6 +211,10 @@ fun TahoBrowserApp(
     onSetExtensionPrivate: (String, Boolean) -> Unit = { _, _ -> },
     onUpdateExtension: (String) -> Unit = {},
     onUninstallExtension: (String) -> Unit = {},
+    onSearchExtensionMarketplace: (
+        String,
+        (List<ExtensionMarketplaceItemUi>, String?) -> Unit,
+    ) -> Unit = { _, callback -> callback(emptyList(), "Marketplace search is unavailable.") },
     onExtractReaderContent: ((ReaderPageContentUi?) -> Unit) -> Unit = { callback -> callback(null) },
     onPrintPage: () -> Boolean = { false },
     onAddToHomeScreen: (String, String) -> Unit = { _, _ -> },
@@ -1018,6 +1022,7 @@ fun TahoBrowserApp(
                     onSetExtensionPrivate = onSetExtensionPrivate,
                     onUpdateExtension = onUpdateExtension,
                     onUninstallExtension = onUninstallExtension,
+                    onSearchExtensionMarketplace = onSearchExtensionMarketplace,
                     onExportFullBackup = onExportFullBackup,
                     onRestoreFullBackup = onRestoreFullBackup,
                     onCheckForUpdates = onCheckForUpdates,
