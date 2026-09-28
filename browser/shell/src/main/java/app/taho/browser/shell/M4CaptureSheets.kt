@@ -92,6 +92,7 @@ data class M4CaptureRequestUiState(
     val requestBodyCapturedBytes: Long? = null,
     val requestBodyDeclaredBytes: Long? = null,
     val safeBodyPreview: String? = null,
+    val safeBodyPreviewTruncated: Boolean = false,
 ) {
     init {
         require(id.isNotBlank()) { "request id must not be blank" }
