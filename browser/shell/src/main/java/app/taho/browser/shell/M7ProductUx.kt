@@ -171,6 +171,7 @@ internal fun M7CaptureSummarySheet(
     selectedId: String?,
     onFilterSelected: (M7CaptureFilterUi) -> Unit,
     onSelect: (String) -> Unit,
+    onClose: () -> Unit,
 ) {
     val relevantCount = requests.count { it.relevantByDefault }
     val visible = M7CaptureUx.filtered(requests, filter)
@@ -182,14 +183,31 @@ internal fun M7CaptureSummarySheet(
             .navigationBarsPadding()
             .padding(start = 18.dp, end = 18.dp, bottom = 20.dp),
     ) {
-        Text("Captured", color = TahoText, fontSize = 19.sp)
-        Text(
-            text = relevantCount.toString() +
-                if (relevantCount == 1) " relevant request · filtered" else " relevant requests · filtered",
-            color = TahoMuted,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 10.sp,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Captured", color = TahoText, fontSize = 19.sp)
+                Text(
+                    text = relevantCount.toString() +
+                        if (relevantCount == 1) " relevant request · filtered" else " relevant requests · filtered",
+                    color = TahoMuted,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 10.sp,
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .semantics { role = Role.Button; contentDescription = "Close captured requests" }
+                    .clickable(onClick = onClose),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("×", color = TahoMuted, fontSize = 18.sp)
+            }
+        }
         Spacer(Modifier.height(12.dp))
         Row(
             modifier = Modifier
