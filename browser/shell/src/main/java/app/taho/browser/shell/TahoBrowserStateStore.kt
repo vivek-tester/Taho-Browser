@@ -498,6 +498,33 @@ object TahoBrowserStateStore {
         updateSavedPassword(id, existing?.domain ?: "", username, pass)
     }
 
+    fun upsertAutofillLogin(id: String, domain: String, username: String, pass: String) {
+        val normalizedDomain = domain
+            .removePrefix("https://")
+            .removePrefix("http://")
+            .substringBefore('/')
+            .lowercase()
+        val existing = savedPasswords.firstOrNull { it.id == id }
+            ?: savedPasswords.firstOrNull {
+                it.domain.equals(normalizedDomain, ignoreCase = true) &&
+                    it.username == username
+            }
+
+        if (existing == null) {
+            addSavedPassword(normalizedDomain, username, pass)
+        } else {
+            updateSavedPassword(existing.id, normalizedDomain, username, pass)
+        }
+        persistNow()
+    }
+
+    fun markSavedPasswordUsed(id: String) {
+        savedPasswords = savedPasswords.map { item ->
+            if (item.id == id) item.copy(lastUsedAt = System.currentTimeMillis()) else item
+        }
+        persistNow()
+    }
+
     fun updateSavedPassword(id: String, domain: String, username: String, pass: String) {
         val weak = pass.length < 8 || pass.all { it.isLetter() } || pass.all { it.isDigit() }
         val reused = savedPasswords.any { it.id != id && it.password == pass }
@@ -544,18 +571,89 @@ object TahoBrowserStateStore {
         savedAddresses = savedAddresses.filterNot { it.id == id }
     }
 
+    fun upsertSavedAddress(
+        id: String,
+        label: String,
+        fullName: String,
+        street: String,
+        city: String,
+        state: String,
+        zipCode: String,
+        country: String,
+        phone: String,
+        email: String,
+    ) {
+        val incoming = SavedAddressUi(
+            id = id,
+            label = label.ifBlank { "Web form" },
+            fullName = fullName,
+            street = street,
+            city = city,
+            state = state,
+            zipCode = zipCode,
+            country = country,
+            phone = phone,
+            email = email,
+        )
+        val index = savedAddresses.indexOfFirst { it.id == id }
+        savedAddresses = if (index >= 0) {
+            savedAddresses.toMutableList().also { it[index] = incoming }
+        } else {
+            savedAddresses + incoming
+        }
+        persistNow()
+    }
+
     fun addSavedPayment(cardHolder: String, cardNumber: String, cardExpiry: String, cardType: String) {
-        val cleanNumber = cardNumber.replace(" ", "").replace("-", "")
-        val masked = if (cleanNumber.length >= 4) {
-            "•••• •••• •••• " + cleanNumber.takeLast(4)
-        } else "•••• 0000"
+        val cleanNumber = cardNumber.filter(Char::isDigit)
+        require(cleanNumber.length in 12..19) { "Invalid payment card length" }
         savedPayments = savedPayments + SavedPaymentUi(
             id = UUID.randomUUID().toString(),
             cardHolder = cardHolder,
-            cardNumberMasked = masked,
+            // This legacy-named field lives only inside BrowserSensitiveState,
+            // which is AES-GCM encrypted. New records keep the real number here
+            // so GeckoView can perform real form autofill; UI must always mask it.
+            cardNumberMasked = cleanNumber,
             cardExpiry = cardExpiry,
-            cardType = cardType.ifBlank { "Visa" },
+            cardType = cardType.ifBlank { "Card" },
         )
+        persistNow()
+    }
+
+    fun upsertSavedPayment(
+        id: String,
+        cardHolder: String,
+        cardNumber: String,
+        cardExpiry: String,
+        cardType: String = "Card",
+    ) {
+        val cleanNumber = cardNumber.filter(Char::isDigit)
+        if (cleanNumber.length !in 12..19) return
+        val incoming = SavedPaymentUi(
+            id = id,
+            cardHolder = cardHolder,
+            cardNumberMasked = cleanNumber,
+            cardExpiry = cardExpiry,
+            cardType = cardType.ifBlank { "Card" },
+        )
+        val index = savedPayments.indexOfFirst { it.id == id }
+        savedPayments = if (index >= 0) {
+            savedPayments.toMutableList().also { it[index] = incoming }
+        } else {
+            savedPayments + incoming
+        }
+        persistNow()
+    }
+
+    fun paymentCardNumberOrNull(payment: SavedPaymentUi): String? =
+        payment.cardNumberMasked
+            .filter(Char::isDigit)
+            .takeIf { it.length in 12..19 }
+
+    fun maskedPaymentNumber(payment: SavedPaymentUi): String {
+        val digits = payment.cardNumberMasked.filter(Char::isDigit)
+        return if (digits.length >= 4) "•••• •••• •••• " + digits.takeLast(4)
+        else "••••"
     }
 
     fun removeSavedPayment(id: String) {
