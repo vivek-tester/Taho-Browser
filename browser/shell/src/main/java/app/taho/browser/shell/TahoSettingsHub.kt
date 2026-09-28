@@ -102,6 +102,8 @@ fun TahoSettingsHubSheet(
     onDownloadRetry: (DownloadItemUi) -> Unit = {},
     onDownloadOpen: (DownloadItemUi) -> Unit = {},
     onDownloadDelete: (DownloadItemUi) -> Unit = {},
+    onOpenOfflinePage: (OfflinePageUi) -> Unit = {},
+    onDeleteOfflinePage: (OfflinePageUi) -> Unit = {},
     onDismiss: () -> Unit,
 ) {
     var currentSubPage by rememberSaveable { mutableStateOf(initialSubPage) }
@@ -208,7 +210,11 @@ fun TahoSettingsHubSheet(
                     onClearEngineData = onClearEngineData,
                     onDone = { currentSubPage = SettingsSubPage.MAIN },
                 )
-                SettingsSubPage.BOOKMARKS -> SettingsBookmarksPage(onNavigate = { onDismiss(); onNavigateUrl(it) })
+                SettingsSubPage.BOOKMARKS -> SettingsBookmarksPage(
+                    onNavigate = { onDismiss(); onNavigateUrl(it) },
+                    onOpenOfflinePage = onOpenOfflinePage,
+                    onDeleteOfflinePage = onDeleteOfflinePage,
+                )
                 SettingsSubPage.HISTORY -> SettingsHistoryPage(onNavigate = { onDismiss(); onNavigateUrl(it) })
                 SettingsSubPage.DOWNLOADS -> SettingsDownloadsPage(
                     onPauseResume = onDownloadPauseResume,
@@ -852,7 +858,11 @@ private fun SettingsClearDataPage(
 // 5. BOOKMARKS & READING LIST
 // -------------------------------------------------------------
 @Composable
-private fun SettingsBookmarksPage(onNavigate: (String) -> Unit) {
+private fun SettingsBookmarksPage(
+    onNavigate: (String) -> Unit,
+    onOpenOfflinePage: (OfflinePageUi) -> Unit,
+    onDeleteOfflinePage: (OfflinePageUi) -> Unit,
+) {
     var bookmarkSearch by rememberSaveable { mutableStateOf("") }
     var activeTab by rememberSaveable { mutableStateOf("BOOKMARKS") } // "BOOKMARKS", "READING_LIST", "OFFLINE_PAGES"
     var selectedFolder by rememberSaveable { mutableStateOf<String?>(null) }
@@ -1205,16 +1215,30 @@ private fun SettingsBookmarksPage(onNavigate: (String) -> Unit) {
                                 .clip(TahoBlockShape)
                                 .background(TahoSurfaceRow)
                                 .border(1.dp, TahoHairline, TahoBlockShape)
-                                .clickable { onNavigate(page.url) }
+                                .clickable { onOpenOfflinePage(page) }
                                 .padding(horizontal = 14.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(page.title, color = TahoText, fontFamily = TahoMono, fontSize = 11.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text("${page.url} · ${page.sizeBytes / 1024} KB cached", color = TahoFaint, fontFamily = TahoMono, fontSize = 8.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(
+                                    "${page.url} · ${page.sizeBytes / 1024} KB PDF snapshot",
+                                    color = TahoFaint,
+                                    fontFamily = TahoMono,
+                                    fontSize = 8.5.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
                             }
-                            Text("×", color = TahoMuted, fontSize = 16.sp, modifier = Modifier.clickable { TahoBrowserStateStore.removeOfflinePage(page.id) }.padding(6.dp))
+                            Text(
+                                "×",
+                                color = TahoMuted,
+                                fontSize = 16.sp,
+                                modifier = Modifier
+                                    .clickable { onDeleteOfflinePage(page) }
+                                    .padding(6.dp),
+                            )
                         }
                     }
                 }
