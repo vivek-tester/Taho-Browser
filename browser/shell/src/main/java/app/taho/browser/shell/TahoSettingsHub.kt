@@ -1612,10 +1612,10 @@ private fun SettingsAutofillPage() {
     ) {
         SettingsSectionTitle("AUTOFILL SETTINGS")
         SettingsToggleRow("Autofill Addresses & Forms", "Save and fill addresses automatically on web forms", settings.addressAutofillEnabled) {
-            TahoBrowserStateStore.updateSettings { it.copy(addressAutofillEnabled = !it.saveFormDataEnabled) }
+            TahoBrowserStateStore.updateSettings { it.copy(addressAutofillEnabled = !it.addressAutofillEnabled) }
         }
         SettingsToggleRow("Autofill Payment Cards", "Securely fill payment details on checkout forms", settings.paymentAutofillEnabled) {
-            TahoBrowserStateStore.updateSettings { it.copy(paymentAutofillEnabled = !it.saveCreditCardsEnabled) }
+            TahoBrowserStateStore.updateSettings { it.copy(paymentAutofillEnabled = !it.paymentAutofillEnabled) }
         }
 
         Spacer(Modifier.height(18.dp))
