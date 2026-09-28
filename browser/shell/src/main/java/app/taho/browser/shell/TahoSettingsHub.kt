@@ -104,6 +104,12 @@ fun TahoSettingsHubSheet(
     onDownloadDelete: (DownloadItemUi) -> Unit = {},
     onOpenOfflinePage: (OfflinePageUi) -> Unit = {},
     onDeleteOfflinePage: (OfflinePageUi) -> Unit = {},
+    onRefreshExtensions: () -> Unit = {},
+    onInstallExtension: (String) -> Unit = {},
+    onSetExtensionEnabled: (String, Boolean) -> Unit = { _, _ -> },
+    onSetExtensionPrivate: (String, Boolean) -> Unit = { _, _ -> },
+    onUpdateExtension: (String) -> Unit = {},
+    onUninstallExtension: (String) -> Unit = {},
     onDismiss: () -> Unit,
 ) {
     var currentSubPage by rememberSaveable { mutableStateOf(initialSubPage) }
@@ -229,7 +235,18 @@ fun TahoSettingsHubSheet(
                 )
                 SettingsSubPage.AUTOFILL -> SettingsAutofillPage()
                 SettingsSubPage.PROFILES_SYNC -> SettingsProfilesSyncPage()
-                SettingsSubPage.EXTENSIONS -> SettingsExtensionsPage()
+                SettingsSubPage.EXTENSIONS -> SettingsExtensionsPage(
+                    onRefresh = onRefreshExtensions,
+                    onInstall = onInstallExtension,
+                    onSetEnabled = onSetExtensionEnabled,
+                    onSetPrivate = onSetExtensionPrivate,
+                    onUpdate = onUpdateExtension,
+                    onUninstall = onUninstallExtension,
+                    onBrowseMarketplace = {
+                        onDismiss()
+                        onNavigateUrl("https://addons.mozilla.org/android/")
+                    },
+                )
                 SettingsSubPage.ACCESSIBILITY -> SettingsAccessibilityPage()
                 SettingsSubPage.LANGUAGES -> SettingsLanguagesPage()
                 SettingsSubPage.DEFAULT_BROWSER -> SettingsDefaultBrowserPage()
@@ -2066,16 +2083,109 @@ private fun SettingsProfilesSyncPage() {
 // 11. EXTENSIONS & WEB APPS
 // -------------------------------------------------------------
 @Composable
-private fun SettingsExtensionsPage() {
+private fun SettingsExtensionsPage(
+    onRefresh: () -> Unit,
+    onInstall: (String) -> Unit,
+    onSetEnabled: (String, Boolean) -> Unit,
+    onSetPrivate: (String, Boolean) -> Unit,
+    onUpdate: (String) -> Unit,
+    onUninstall: (String) -> Unit,
+    onBrowseMarketplace: () -> Unit,
+) {
     val exts = TahoBrowserStateStore.extensions
     val pwas = TahoBrowserStateStore.installedPwas
+    var xpiUrl by rememberSaveable { mutableStateOf("") }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
-        SettingsSectionTitle("BROWSER EXTENSIONS (${exts.size})")
+        SettingsSectionTitle("MOZILLA WEBEXTENSIONS")
+        Text(
+            "Installed extensions below come directly from GeckoView. New packages are validated and must be Mozilla-signed before Gecko installs them.",
+            color = TahoMuted,
+            fontFamily = TahoMono,
+            fontSize = 9.5.sp,
+        )
+        Spacer(Modifier.height(10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            M7SecondaryButton(
+                "Browse Mozilla Add-ons",
+                Modifier.weight(1f),
+                onClick = onBrowseMarketplace,
+            )
+            M7SecondaryButton(
+                "Refresh",
+                Modifier.weight(0.55f),
+                onClick = onRefresh,
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+        BasicTextField(
+            value = xpiUrl,
+            onValueChange = { xpiUrl = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(TahoBlockShape)
+                .background(TahoSurfaceControl)
+                .border(1.dp, TahoHairline, TahoBlockShape)
+                .padding(10.dp),
+            singleLine = true,
+            textStyle = TextStyle(
+                color = TahoText,
+                fontFamily = TahoMono,
+                fontSize = 10.sp,
+            ),
+            cursorBrush = SolidColor(TahoGold),
+            decorationBox = { inner ->
+                Box {
+                    if (xpiUrl.isBlank()) {
+                        Text(
+                            "https://…/addon.xpi",
+                            color = TahoFaint,
+                            fontFamily = TahoMono,
+                            fontSize = 10.sp,
+                        )
+                    }
+                    inner()
+                }
+            },
+        )
+        Spacer(Modifier.height(7.dp))
+        M7PrimaryButton(
+            label = "Install Signed XPI",
+            showArrow = false,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = xpiUrl.trim().startsWith("https://"),
+        ) {
+            onInstall(xpiUrl.trim())
+        }
+
+        Spacer(Modifier.height(18.dp))
+        SettingsSectionTitle("INSTALLED EXTENSIONS (${exts.size})")
+        if (exts.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(TahoBlockShape)
+                    .background(TahoSurfaceRow)
+                    .border(1.dp, TahoHairline, TahoBlockShape)
+                    .padding(14.dp),
+            ) {
+                Text(
+                    "No user-visible Gecko extensions are installed.",
+                    color = TahoFaint,
+                    fontFamily = TahoMono,
+                    fontSize = 10.sp,
+                )
+            }
+        }
+
         exts.forEach { ext ->
             Column(
                 modifier = Modifier
@@ -2091,30 +2201,87 @@ private fun SettingsExtensionsPage() {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(ext.name, color = TahoText, fontFamily = TahoMono, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                        Text("v${ext.version} by ${ext.author}", color = TahoFaint, fontFamily = TahoMono, fontSize = 8.5.sp)
+                        Text(
+                            ext.name,
+                            color = TahoText,
+                            fontFamily = TahoMono,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            "v${ext.version} by ${ext.author}",
+                            color = TahoFaint,
+                            fontFamily = TahoMono,
+                            fontSize = 8.5.sp,
+                        )
                     }
                     Box(
                         modifier = Modifier
                             .clip(TahoPillShape)
                             .background(if (ext.isEnabled) TahoOk else TahoSurfaceControl)
-                            .clickable { TahoBrowserStateStore.toggleExtension(ext.id) }
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                            .clickable { onSetEnabled(ext.id, !ext.isEnabled) }
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
                     ) {
-                        Text(if (ext.isEnabled) "ACTIVE" else "DISABLED", color = if (ext.isEnabled) TahoBg else TahoFaint, fontFamily = TahoMono, fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            if (ext.isEnabled) "ACTIVE" else "DISABLED",
+                            color = if (ext.isEnabled) TahoBg else TahoFaint,
+                            fontFamily = TahoMono,
+                            fontSize = 8.5.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
                     }
                 }
-                Spacer(Modifier.height(6.dp))
-                Text(ext.description, color = TahoMuted, fontFamily = TahoMono, fontSize = 9.5.sp)
-                Spacer(Modifier.height(8.dp))
+
+                if (ext.description.isNotBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        ext.description,
+                        color = TahoMuted,
+                        fontFamily = TahoMono,
+                        fontSize = 9.5.sp,
+                    )
+                }
+
+                if (ext.permissions.isNotEmpty()) {
+                    Spacer(Modifier.height(7.dp))
+                    Text(
+                        "Permissions: " + ext.permissions.take(6).joinToString(", "),
+                        color = TahoFaint,
+                        fontFamily = TahoMono,
+                        fontSize = 8.5.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+
+                Spacer(Modifier.height(9.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Text("Private Mode: ${if (ext.allowedInPrivate) "Allowed" else "Blocked"}", color = TahoFaint, fontFamily = TahoMono, fontSize = 8.5.sp)
-                    Text(if (ext.allowedInPrivate) "Disallow" else "Allow in Private", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 8.5.sp, modifier = Modifier.clickable {
-                        TahoBrowserStateStore.toggleExtensionPrivate(ext.id)
-                    })
+                    Text(
+                        if (ext.allowedInPrivate) "Private: Allowed" else "Private: Blocked",
+                        color = TahoGoldHi,
+                        fontFamily = TahoMono,
+                        fontSize = 8.5.sp,
+                        modifier = Modifier.clickable {
+                            onSetPrivate(ext.id, !ext.allowedInPrivate)
+                        },
+                    )
+                    Text(
+                        "Check Update",
+                        color = TahoMuted,
+                        fontFamily = TahoMono,
+                        fontSize = 8.5.sp,
+                        modifier = Modifier.clickable { onUpdate(ext.id) },
+                    )
+                    Text(
+                        "Uninstall",
+                        color = TahoError,
+                        fontFamily = TahoMono,
+                        fontSize = 8.5.sp,
+                        modifier = Modifier.clickable { onUninstall(ext.id) },
+                    )
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -2131,7 +2298,12 @@ private fun SettingsExtensionsPage() {
                     .border(1.dp, TahoHairline, TahoBlockShape)
                     .padding(14.dp),
             ) {
-                Text("No Progressive Web Apps currently installed. You can install PWAs from web pages with a manifest.", color = TahoFaint, fontFamily = TahoMono, fontSize = 10.sp)
+                Text(
+                    "No Taho web apps installed. Install is offered only when Gecko validates a Web App Manifest for the current page.",
+                    color = TahoFaint,
+                    fontFamily = TahoMono,
+                    fontSize = 10.sp,
+                )
             }
         } else {
             pwas.forEach { pwa ->
@@ -2146,12 +2318,28 @@ private fun SettingsExtensionsPage() {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(pwa.name, color = TahoText, fontFamily = TahoMono, fontSize = 11.5.sp, fontWeight = FontWeight.Medium)
-                        Text(pwa.url, color = TahoFaint, fontFamily = TahoMono, fontSize = 8.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            pwa.name,
+                            color = TahoText,
+                            fontFamily = TahoMono,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Text(
+                            pwa.url,
+                            color = TahoFaint,
+                            fontFamily = TahoMono,
+                            fontSize = 8.5.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
-                    Text("Uninstall", color = TahoError, fontFamily = TahoMono, fontSize = 9.5.sp, modifier = Modifier.clickable {
-                        TahoBrowserStateStore.uninstallPwa(pwa.id)
-                    }.padding(4.dp))
+                    Text(
+                        "Installed",
+                        color = TahoOk,
+                        fontFamily = TahoMono,
+                        fontSize = 9.sp,
+                    )
                 }
                 Spacer(Modifier.height(6.dp))
             }
