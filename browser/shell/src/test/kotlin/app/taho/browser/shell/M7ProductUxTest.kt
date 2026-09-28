@@ -12,6 +12,7 @@ class M7ProductUxTest {
         relevant: Boolean,
         sensitiveCount: Int = 0,
         completeness: M4CompletenessUi = M4CompletenessUi.COMPLETE,
+        headers: List<M4CaptureHeaderUiState> = emptyList(),
     ) = M4CaptureRequestUiState(
         id = id,
         method = "POST",
@@ -19,6 +20,7 @@ class M7ProductUxTest {
         status = 200,
         durationMs = 10,
         category = category,
+        headers = headers,
         requestBodyCompleteness = completeness,
         responseBodyCompleteness = M4CompletenessUi.UNAVAILABLE,
         sensitiveCount = sensitiveCount,
@@ -101,10 +103,18 @@ class M7ProductUxTest {
             category = "AUTHENTICATION",
             relevant = true,
             sensitiveCount = 1,
+            headers = listOf(
+                M4CaptureHeaderUiState(
+                    name = "Authorization",
+                    displayValue = "Bearer ••••••••",
+                    sensitive = true,
+                    secretCategory = "BEARER_TOKEN",
+                ),
+            ),
         )
 
         assertEquals(
-            "Authorization: Bearer {{AUTH_TOKEN}}",
+            "Authorization: {{AUTH_TOKEN}}",
             M7CaptureUx.policyPreview(protected, M4SecretPolicyUi.PARAMETERIZE),
         )
         assertEquals(
@@ -116,6 +126,29 @@ class M7ProductUxTest {
                 .contains("unavailable"),
         )
         assertFalse(protected.explicitPolicyAllowed)
+    }
+
+    @Test
+    fun cookieUsesMaskEvenWhenParameterizeIsSelected() {
+        val cookie = request(
+            id = "cookie",
+            category = "AUTHENTICATION",
+            relevant = true,
+            sensitiveCount = 1,
+            headers = listOf(
+                M4CaptureHeaderUiState(
+                    name = "Cookie",
+                    displayValue = "••••••••",
+                    sensitive = true,
+                    secretCategory = "COOKIE",
+                ),
+            ),
+        )
+
+        assertEquals(
+            "Cookie: ••••••••",
+            M7CaptureUx.policyPreview(cookie, M4SecretPolicyUi.PARAMETERIZE),
+        )
     }
 
     @Test
