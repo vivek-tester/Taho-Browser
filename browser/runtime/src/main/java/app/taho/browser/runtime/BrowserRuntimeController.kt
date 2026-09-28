@@ -277,13 +277,17 @@ class BrowserRuntimeController(context: Context) {
         olderThanEpochMs: Long,
         pinnedTabIds: Set<String> = emptySet(),
     ): Int {
-        val candidates = tabs
-            .filter { tab ->
-                tab.id != selectedTabId &&
-                    tab.id !in pinnedTabIds &&
-                    tab.lastAccessedAtEpochMs < olderThanEpochMs
-            }
-            .map { it.id }
+        val candidates = BrowserTabRetentionPolicy.staleTabIds(
+            tabs = tabs.map { tab ->
+                BrowserTabRetentionCandidate(
+                    id = tab.id,
+                    lastAccessedAtEpochMs = tab.lastAccessedAtEpochMs,
+                    selected = tab.id == selectedTabId,
+                    pinned = tab.id in pinnedTabIds,
+                )
+            },
+            olderThanEpochMs = olderThanEpochMs,
+        )
 
         candidates.forEach(::closeTab)
         return candidates.size
