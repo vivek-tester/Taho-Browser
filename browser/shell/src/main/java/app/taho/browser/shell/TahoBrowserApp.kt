@@ -309,10 +309,7 @@ fun TahoBrowserApp(
                 if (isStartPage && !showReaderMode) {
                     TahoStartPage(
                         isPrivate = state.isPrivate,
-                        onNavigate = { url ->
-                            onNavigate(url)
-                            TahoBrowserStateStore.recordHistory(url, url)
-                        },
+                        onNavigate = onNavigate,
                         onOpenTabs = { showTabs = true },
                         onOpenSettings = {
                             settingsInitialSubPage = SettingsSubPage.MAIN
@@ -364,7 +361,6 @@ fun TahoBrowserApp(
                             val input = draft.trim()
                             if (input.isNotEmpty()) {
                                 onNavigate(input)
-                                TahoBrowserStateStore.recordHistory(input, input)
                             }
                             editing = false
                         },
@@ -500,7 +496,6 @@ fun TahoBrowserApp(
                             val input = draft.trim()
                             if (input.isNotEmpty()) {
                                 onNavigate(input)
-                                TahoBrowserStateStore.recordHistory(input, input)
                             }
                             editing = false
                         },
