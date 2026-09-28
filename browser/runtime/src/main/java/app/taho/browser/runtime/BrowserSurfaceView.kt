@@ -20,12 +20,18 @@ class BrowserSurfaceView @JvmOverloads constructor(
     }
 
     fun bind(session: GeckoSession) {
-        if (geckoView.session === session) return
+        if (geckoView.session === session) {
+            session.setPrintDelegate(geckoView.printDelegate)
+            return
+        }
+        geckoView.session?.setPrintDelegate(null)
         if (geckoView.session != null) geckoView.releaseSession()
         geckoView.setSession(session)
+        session.setPrintDelegate(geckoView.printDelegate)
     }
 
     fun unbind() {
+        geckoView.session?.setPrintDelegate(null)
         if (geckoView.session != null) geckoView.releaseSession()
     }
 
