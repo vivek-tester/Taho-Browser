@@ -4,7 +4,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 object BrowserSessionCodec {
-    private const val SCHEMA_VERSION = 1
+    private const val SCHEMA_VERSION = 2
 
     fun encode(state: PersistedBrowserState): String {
         val root = JSONObject()
@@ -17,6 +17,7 @@ object BrowserSessionCodec {
                     putNullable("title", tab.title)
                     putNullable("location", tab.location)
                     putNullable("sessionState", tab.serializedSessionState)
+                    tab.lastAccessedAtEpochMs?.let { put("lastAccessedAtEpochMs", it) }
                 },
             )
         }
@@ -30,7 +31,8 @@ object BrowserSessionCodec {
     fun decode(raw: String): PersistedBrowserState? =
         runCatching {
             val root = JSONObject(raw)
-            if (root.optInt("version", -1) != SCHEMA_VERSION) {
+            val version = root.optInt("version", -1)
+            if (version !in 1..SCHEMA_VERSION) {
                 return null
             }
 
@@ -49,6 +51,9 @@ object BrowserSessionCodec {
                             title = item.optNullableString("title"),
                             location = item.optNullableString("location"),
                             serializedSessionState = item.optNullableString("sessionState"),
+                            lastAccessedAtEpochMs = item
+                                .takeIf { version >= 2 && it.has("lastAccessedAtEpochMs") }
+                                ?.optLong("lastAccessedAtEpochMs"),
                         ),
                     )
                 }
