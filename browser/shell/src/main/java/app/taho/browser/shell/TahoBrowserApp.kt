@@ -138,6 +138,9 @@ fun TahoBrowserApp(
     onInstallTaho: () -> Unit = {},
     onRetentionModeChanged: (String) -> Unit = {},
     onReplayRequest: (String) -> Unit = {},
+    onFindInPage: (String, Boolean, (Int, Int) -> Unit) -> Unit = { _, _, callback -> callback(0, 0) },
+    onClearFindInPage: () -> Unit = {},
+    onSetDesktopMode: (Boolean) -> Unit = {},
     browserContent: @Composable () -> Unit = {},
 ) {
     var editing by rememberSaveable { mutableStateOf(false) }
@@ -153,6 +156,7 @@ fun TahoBrowserApp(
     var findInPageActive by rememberSaveable { mutableStateOf(false) }
     var findInPageQuery by rememberSaveable { mutableStateOf("") }
     var currentFindMatchIndex by rememberSaveable { mutableStateOf(0) }
+    var findMatchCount by rememberSaveable { mutableStateOf(0) }
     var isDesktopMode by rememberSaveable { mutableStateOf(false) }
     var settingsInitialSubPage by rememberSaveable { mutableStateOf<SettingsSubPage?>(null) }
     var showCaptureSummary by rememberSaveable { mutableStateOf(false) }
@@ -436,29 +440,45 @@ fun TahoBrowserApp(
                 }
 
                 if (findInPageActive) {
-                    val totalMatches = if (findInPageQuery.isBlank()) 0 else 3
                     TahoFindInPageBar(
                         query = findInPageQuery,
-                        onQueryChange = {
-                            findInPageQuery = it
-                            currentFindMatchIndex = 0
+                        onQueryChange = { query ->
+                            findInPageQuery = query
+                            if (query.isBlank()) {
+                                currentFindMatchIndex = 0
+                                findMatchCount = 0
+                                onClearFindInPage()
+                            } else {
+                                onFindInPage(query, false) { current, total ->
+                                    currentFindMatchIndex = (current - 1).coerceAtLeast(0)
+                                    findMatchCount = total.coerceAtLeast(0)
+                                }
+                            }
                         },
-                        matchCount = totalMatches,
+                        matchCount = findMatchCount,
                         currentMatchIndex = currentFindMatchIndex,
                         onPrevious = {
-                            if (totalMatches > 0) {
-                                currentFindMatchIndex = (currentFindMatchIndex - 1 + totalMatches) % totalMatches
+                            if (findInPageQuery.isNotBlank()) {
+                                onFindInPage(findInPageQuery, true) { current, total ->
+                                    currentFindMatchIndex = (current - 1).coerceAtLeast(0)
+                                    findMatchCount = total.coerceAtLeast(0)
+                                }
                             }
                         },
                         onNext = {
-                            if (totalMatches > 0) {
-                                currentFindMatchIndex = (currentFindMatchIndex + 1) % totalMatches
+                            if (findInPageQuery.isNotBlank()) {
+                                onFindInPage(findInPageQuery, false) { current, total ->
+                                    currentFindMatchIndex = (current - 1).coerceAtLeast(0)
+                                    findMatchCount = total.coerceAtLeast(0)
+                                }
                             }
                         },
                         onClose = {
+                            onClearFindInPage()
                             findInPageActive = false
                             findInPageQuery = ""
                             currentFindMatchIndex = 0
+                            findMatchCount = 0
                         },
                     )
                     Spacer(Modifier.height(8.dp))
@@ -848,10 +868,12 @@ fun TahoBrowserApp(
                     onShare = { showShareQr = true },
                     onFindInPage = { findInPageActive = true },
                     onToggleDesktopMode = {
+                        val nextDesktop = !effectiveDesktop
                         currentTab?.location?.let { loc ->
                             TahoBrowserStateStore.toggleDesktopModeForOrigin(loc)
                         }
-                        isDesktopMode = !effectiveDesktop
+                        isDesktopMode = nextDesktop
+                        onSetDesktopMode(nextDesktop)
                     },
                     onReaderMode = { showReaderMode = true },
                     onTranslate = { showTranslationBar = true },
