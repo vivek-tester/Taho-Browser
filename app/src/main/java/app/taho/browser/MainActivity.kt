@@ -127,6 +127,7 @@ class MainActivity : FragmentActivity() {
     private lateinit var captureRepository: RoomCaptureRepository
     private lateinit var transferCoordinator: TahoSecureTransferCoordinator
     private lateinit var updateChecker: BrowserUpdateChecker
+    private lateinit var backupManager: BrowserBackupManager
     private var activeAndroidPermissionRequestId: String? = null
     private var pendingNotificationSitePermissionId: String? = null
     private var activeAndroidPermissions: List<String> = emptyList()
@@ -378,6 +379,7 @@ class MainActivity : FragmentActivity() {
         CaptureMaintenance.schedule(this)
         transferCoordinator = TahoSecureTransferCoordinator(this)
         updateChecker = BrowserUpdateChecker(this)
+        backupManager = BrowserBackupManager(this)
         TransferArtifactMaintenance.schedule(this)
 
         runCatching {
@@ -910,6 +912,33 @@ class MainActivity : FragmentActivity() {
                 onRestorePageTranslation = { callback ->
                     controller.restoreOriginalPageTranslation { success, error ->
                         runOnUiThread { callback(success, error) }
+                    }
+                },
+                onExportFullBackup = { uri, passphrase, callback ->
+                    backupManager.exportTo(uri, passphrase.toCharArray()) { result ->
+                        callback(result.success, result.message)
+                    }
+                },
+                onRestoreFullBackup = { uri, passphrase, callback ->
+                    backupManager.restoreFrom(uri, passphrase.toCharArray()) { result ->
+                        if (result.success) {
+                            controller.applyRuntimePreferences(
+                                TahoBrowserStateStore.settings.toRuntimePreferences(),
+                            )
+                            extensionManager.refresh()
+                        }
+                        val summary = result.restoreSummary
+                        val message = if (result.success && summary != null) {
+                            result.message +
+                                " Bookmarks: " + summary.bookmarks +
+                                ", history: " + summary.historyEntries +
+                                ", passwords: " + summary.passwords +
+                                ", downloads: " + summary.downloads +
+                                ", offline pages: " + summary.offlinePages + "."
+                        } else {
+                            result.message
+                        }
+                        callback(result.success, message)
                     }
                 },
                 onCheckForUpdates = { callback ->
