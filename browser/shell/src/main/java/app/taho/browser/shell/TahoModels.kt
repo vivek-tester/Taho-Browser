@@ -125,6 +125,26 @@ data class SavedPaymentUi(
     val cardType: String,
 ) : Serializable
 
+data class BrowserProfileLocalData(
+    val topSites: List<TopSiteItem> = emptyList(),
+    val bookmarkFolders: List<BookmarkFolderItem> = emptyList(),
+    val bookmarks: List<BookmarkItem> = emptyList(),
+    val readingList: List<ReadingListItem> = emptyList(),
+    val history: List<HistoryEntryItem> = emptyList(),
+    val recentlyClosedTabs: List<RecentlyClosedTabItem> = emptyList(),
+    val downloads: List<DownloadItemUi> = emptyList(),
+    val savedPasswords: List<SavedPasswordUi> = emptyList(),
+    val savedAddresses: List<SavedAddressUi> = emptyList(),
+    val savedPayments: List<SavedPaymentUi> = emptyList(),
+    val tabGroups: List<TabGroupUi> = emptyList(),
+    val sitePermissions: List<SitePermissionEntry> = emptyList(),
+    val installedPwas: List<InstalledPwaUi> = emptyList(),
+    val offlinePages: List<OfflinePageUi> = emptyList(),
+    val collections: List<BrowserCollectionItem> = emptyList(),
+    val websiteNotifications: List<WebsiteNotificationItem> = emptyList(),
+    val archivedTabs: List<TabArchiveItem> = emptyList(),
+) : Serializable
+
 data class BrowserProfileUi(
     val id: String,
     val name: String,
