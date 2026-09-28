@@ -312,7 +312,7 @@ fun TahoSiteInfoSheet(
     url: String,
     securityInfo: SiteSecurityUiState?,
     onDismiss: () -> Unit,
-    onClearSiteData: (String) -> Unit,
+    onClearSiteData: (String, (Boolean) -> Unit) -> Unit,
 ) {
     val host = runCatching { URI(url).host }.getOrNull() ?: url
     val isHttps = url.startsWith("https://")
@@ -324,6 +324,7 @@ fun TahoSiteInfoSheet(
     val siteData = TahoBrowserStateStore.siteData.find { it.origin.contains(host, ignoreCase = true) }
 
     var showResetDialog by rememberSaveable { mutableStateOf(false) }
+    var siteDataNotice by rememberSaveable { mutableStateOf<String?>(null) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -595,8 +596,15 @@ fun TahoSiteInfoSheet(
                                 .background(TahoError.copy(alpha = 0.15f))
                                 .border(1.dp, TahoError.copy(alpha = 0.35f), TahoPillShape)
                                 .clickable {
-                                    onClearSiteData(host)
-                                    TahoBrowserStateStore.clearSiteDataForOrigin(host)
+                                    siteDataNotice = null
+                                    onClearSiteData(host) { success ->
+                                        if (success) {
+                                            TahoBrowserStateStore.clearSiteDataForOrigin(host)
+                                            siteDataNotice = "Site data cleared."
+                                        } else {
+                                            siteDataNotice = "Site data could not be cleared."
+                                        }
+                                    }
                                 }
                                 .padding(horizontal = 10.dp, vertical = 6.dp),
                         ) {
@@ -604,6 +612,16 @@ fun TahoSiteInfoSheet(
                         }
                     }
                 }
+            }
+
+            siteDataNotice?.let { notice ->
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = notice,
+                    color = if (notice == "Site data cleared.") TahoOk else TahoError,
+                    fontFamily = TahoMono,
+                    fontSize = 9.5.sp,
+                )
             }
 
             Spacer(Modifier.height(20.dp))
