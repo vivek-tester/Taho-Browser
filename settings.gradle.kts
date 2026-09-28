@@ -29,3 +29,6 @@ include(":spikes:geckoview")
 include(":test-support:http-fixtures")
 include(":test-support:taho-receiver-harness")
 include(":test-support:m4-slice")
+
+include(":sync:core")
+include(":sync:server")
