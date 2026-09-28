@@ -122,6 +122,7 @@ class MainActivity : FragmentActivity() {
     private lateinit var captureRepository: RoomCaptureRepository
     private lateinit var transferCoordinator: TahoSecureTransferCoordinator
     private var activeAndroidPermissionRequestId: String? = null
+    private var pendingNotificationSitePermissionId: String? = null
     private var activeAndroidPermissions: List<String> = emptyList()
     private var transferNotice by mutableStateOf<String?>(null)
     private var transferPhase by mutableStateOf(M7TransferPhaseUi.NOT_STARTED)
@@ -136,6 +137,7 @@ class MainActivity : FragmentActivity() {
     private lateinit var downloadManager: BrowserDownloadManager
     private lateinit var offlinePageManager: OfflinePageManager
     private lateinit var extensionManager: BrowserExtensionManager
+    private lateinit var webNotificationManager: BrowserWebNotificationManager
     private var pendingExtensionPermissionRequest by
         mutableStateOf<BrowserExtensionPermissionRequest?>(null)
     private var pendingExtensionPermissionDecision: ((Boolean) -> Unit)? = null
@@ -146,6 +148,16 @@ class MainActivity : FragmentActivity() {
         }
         override fun onLost(network: Network) {
             runOnUiThread { isOffline = true }
+        }
+    }
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        val requestId = pendingNotificationSitePermissionId
+        pendingNotificationSitePermissionId = null
+        if (requestId != null && ::controller.isInitialized) {
+            controller.resolveSitePermission(requestId, granted)
         }
     }
 
@@ -326,6 +338,22 @@ class MainActivity : FragmentActivity() {
             },
         )
         extensionManager.refresh()
+        webNotificationManager = BrowserWebNotificationManager(
+            context = this,
+            runtime = GeckoRuntimeHolder.get(this),
+            notificationsEnabled = {
+                TahoBrowserStateStore.settings.notificationsEnabled
+            },
+            onRecorded = { origin, title, text ->
+                runOnUiThread {
+                    TahoBrowserStateStore.addWebsiteNotification(
+                        origin = origin,
+                        title = title.ifBlank { origin },
+                        message = text,
+                    )
+                }
+            },
+        )
         if (savedInstanceState == null && !isIncomingWebIntent(intent)) {
             applyStartupBehavior()
         }
@@ -711,7 +739,29 @@ class MainActivity : FragmentActivity() {
                     committedHistoryLocationByTab.remove(tabId)
                     controller.closeTab(tabId)
                 },
-                onSitePermissionDecision = controller::resolveSitePermission,
+                onSitePermissionDecision = { requestId, allow ->
+                    val prompt = snapshot.sitePermission
+                    val isNotification =
+                        prompt?.id == requestId &&
+                            prompt.kind == BrowserSitePermissionKind.NOTIFICATIONS
+                    if (!allow || !isNotification) {
+                        controller.resolveSitePermission(requestId, allow)
+                    } else if (
+                        android.os.Build.VERSION.SDK_INT <
+                        android.os.Build.VERSION_CODES.TIRAMISU ||
+                        ContextCompat.checkSelfPermission(
+                            this@MainActivity,
+                            Manifest.permission.POST_NOTIFICATIONS,
+                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                    ) {
+                        controller.resolveSitePermission(requestId, true)
+                    } else {
+                        pendingNotificationSitePermissionId = requestId
+                        notificationPermissionLauncher.launch(
+                            Manifest.permission.POST_NOTIFICATIONS,
+                        )
+                    }
+                },
                 onAutofillPromptDecision = controller::resolveAutofillPrompt,
                 onCopyCurl = ::copyMaskedCurl,
                 onShare = ::shareMaskedRequest,
@@ -1120,6 +1170,9 @@ class MainActivity : FragmentActivity() {
         pendingExtensionPermissionRequest = null
         if (::extensionManager.isInitialized) {
             extensionManager.close()
+        }
+        if (::webNotificationManager.isInitialized) {
+            webNotificationManager.close()
         }
         super.onDestroy()
     }
@@ -1685,6 +1738,10 @@ class MainActivity : FragmentActivity() {
             BrowserSitePermissionKind.PERSISTENT_STORAGE ->
                 "Allow persistent site storage?" to
                     "This site wants to keep site data persistently on this device."
+
+            BrowserSitePermissionKind.NOTIFICATIONS ->
+                "Allow website notifications?" to
+                    "This site wants to create Android notifications through Taho Browser."
 
             BrowserSitePermissionKind.CAMERA ->
                 "Allow camera access?" to
