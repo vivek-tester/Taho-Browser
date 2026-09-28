@@ -770,6 +770,85 @@ object TahoBrowserStateStore {
         settings = settings.copy(perSiteTrackingExceptions = current)
     }
 
+    fun createBackupSnapshot(): BrowserBackupSnapshot =
+        BrowserBackupSnapshot(
+            settings = settings,
+            searchEngines = searchEngines,
+            topSites = topSites,
+            bookmarkFolders = bookmarkFolders,
+            bookmarks = bookmarks,
+            readingList = readingList,
+            history = history,
+            recentlyClosedTabs = recentlyClosedTabs.filterNot { it.isPrivate },
+            downloads = downloads,
+            savedPasswords = savedPasswords,
+            savedAddresses = savedAddresses,
+            savedPayments = savedPayments,
+            profiles = profiles,
+            tabGroups = tabGroups,
+            sitePermissions = sitePermissions,
+            installedPwas = installedPwas,
+            offlinePages = offlinePages,
+            collections = collections,
+            websiteNotifications = websiteNotifications,
+            archivedTabs = archivedTabs,
+            readerSettings = readerSettings,
+        )
+
+    fun restoreBackupSnapshot(snapshot: BrowserBackupSnapshot): BrowserBackupRestoreSummary {
+        require(snapshot.schemaVersion == BrowserBackupSnapshot.CURRENT_SCHEMA_VERSION) {
+            "Unsupported browser backup schema"
+        }
+
+        settings = snapshot.settings
+        searchEngines = snapshot.searchEngines.ifEmpty { searchEngines }
+        topSites = snapshot.topSites
+        bookmarkFolders = snapshot.bookmarkFolders
+        bookmarks = snapshot.bookmarks
+        readingList = snapshot.readingList
+        history = snapshot.history
+        recentlyClosedTabs = snapshot.recentlyClosedTabs.filterNot { it.isPrivate }
+        downloads = snapshot.downloads.map { item ->
+            if (item.status == TahoDownloadStatus.DOWNLOADING || item.status == TahoDownloadStatus.PAUSED) {
+                item.copy(status = TahoDownloadStatus.FAILED)
+            } else {
+                item
+            }
+        }
+        savedPasswords = snapshot.savedPasswords
+        savedAddresses = snapshot.savedAddresses
+        savedPayments = snapshot.savedPayments
+        profiles = snapshot.profiles.ifEmpty { profiles }
+        syncedDevices = emptyList()
+        tabGroups = snapshot.tabGroups
+        sitePermissions = snapshot.sitePermissions
+        installedPwas = snapshot.installedPwas
+        offlinePages = snapshot.offlinePages
+        collections = snapshot.collections
+        websiteNotifications = snapshot.websiteNotifications
+        archivedTabs = snapshot.archivedTabs
+        readerSettings = snapshot.readerSettings
+
+        // Extension inventory is engine-owned and refreshed from Gecko.
+        extensions = emptyList()
+        // Per-origin site-data metrics are runtime evidence, not portable state.
+        siteData = emptyList()
+        // Tab IDs are process/session-scoped; never restore old pin IDs.
+        pinnedTabIds = emptySet()
+        persistPinnedTabs()
+        persistNow()
+
+        return BrowserBackupRestoreSummary(
+            bookmarks = bookmarks.size,
+            historyEntries = history.size,
+            passwords = savedPasswords.size,
+            addresses = savedAddresses.size,
+            paymentCards = savedPayments.size,
+            downloads = downloads.size,
+            offlinePages = offlinePages.size,
+        )
+    }
+
     // --- Data Import & Export Helpers ---
     fun exportBookmarksHtml(): String {
         val sb = StringBuilder()
