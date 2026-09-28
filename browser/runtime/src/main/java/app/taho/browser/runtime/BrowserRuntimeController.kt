@@ -460,6 +460,13 @@ class BrowserRuntimeController(context: Context) {
         }
     }
 
+    private fun isHttpNavigation(raw: String): Boolean =
+        runCatching {
+            val uri = java.net.URI(raw)
+            (uri.scheme.equals("https", true) || uri.scheme.equals("http", true)) &&
+                !uri.host.isNullOrBlank()
+        }.getOrDefault(false)
+
     private fun isSafeDohUri(raw: String): Boolean =
         runCatching {
             val uri = java.net.URI(raw)
@@ -666,6 +673,14 @@ class BrowserRuntimeController(context: Context) {
         tab.crashed = false
         tab.isLoading = true
         notifyChangedIfReady()
+        if (
+            appliedRuntimePreferences?.speculativePreconnectEnabled == true &&
+            isHttpNavigation(uri)
+        ) {
+            runCatching {
+                runtime.webExecutor.speculativeConnect(uri)
+            }
+        }
         tab.session.loadUri(uri)
     }
 
