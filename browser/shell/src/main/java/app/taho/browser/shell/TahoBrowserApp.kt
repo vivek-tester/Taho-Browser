@@ -219,6 +219,17 @@ fun TahoBrowserApp(
     ) -> Unit = { _, callback -> callback(false, null, "Translation is unavailable.") },
     onRestorePageTranslation: ((Boolean, String?) -> Unit) -> Unit =
         { callback -> callback(false, "Translation is unavailable.") },
+    onCheckForUpdates: ((BrowserUpdateStatusUi) -> Unit) -> Unit =
+        { callback ->
+            callback(
+                BrowserUpdateStatusUi(
+                    latestVersion = null,
+                    releaseUrl = null,
+                    updateAvailable = false,
+                    error = "Update checking is unavailable.",
+                ),
+            )
+        },
     browserContent: @Composable () -> Unit = {},
 ) {
     var editing by rememberSaveable { mutableStateOf(false) }
@@ -998,6 +1009,7 @@ fun TahoBrowserApp(
                     onSetExtensionPrivate = onSetExtensionPrivate,
                     onUpdateExtension = onUpdateExtension,
                     onUninstallExtension = onUninstallExtension,
+                    onCheckForUpdates = onCheckForUpdates,
                     onDismiss = {
                         showSettings = false
                         settingsInitialSubPage = null
