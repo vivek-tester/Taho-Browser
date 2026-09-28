@@ -1,0 +1,33 @@
+# Build outputs
+build/
+app/build/
+browser/observation/build/
+browser/runtime/build/
+browser/shell/build/
+capture/domain/build/
+capture/persist/build/
+contract/taho-transfer/build/
+test-support/http-fixtures/build/
+test-support/m4-slice/build/
+test-support/taho-receiver-harness/build/
+transfer/android/build/
+transfer/core/build/
+spikes/geckoview/build/
+
+# Gradle
+.gradle/
+gradle/wrapper/gradle-wrapper.jar
+
+# Local properties
+local.properties
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Agents working directory
+.agents/

@@ -151,7 +151,12 @@ internal fun filterByQuery(
     if (q.isEmpty()) return requests
     return requests.filter { request ->
         val uri = runCatching { java.net.URI(request.url) }.getOrNull()
+        val contentType = request.headers.firstOrNull {
+            it.name.equals("content-type", ignoreCase = true)
+        }?.displayValue.orEmpty()
         val haystack = buildString {
+            append(request.id)
+            append(' ')
             append(uri?.host.orEmpty())
             append(' ')
             append(uri?.rawPath.orEmpty())
@@ -161,6 +166,12 @@ internal fun filterByQuery(
             request.status?.let { append(it) }
             append(' ')
             append(request.relevanceCategory)
+            append(' ')
+            append(contentType)
+            request.bodyRepresentation?.let {
+                append(' ')
+                append(it)
+            }
         }.lowercase()
         q.lowercase().split(Regex("\\s+")).all { term -> haystack.contains(term) }
     }

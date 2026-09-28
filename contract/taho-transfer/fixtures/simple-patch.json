@@ -1,0 +1,72 @@
+{
+  "schema": "taho.request-transfer",
+  "version": 1,
+  "minimumReaderVersion": 1,
+  "transferId": "01J8ZQ4M2K7X9V3B8N0P4R6T8H",
+  "issuedAt": 1758912345678,
+  "source": {
+    "product": "taho-browser",
+    "appVersion": "0.1.0",
+    "engine": "geckoview-156.0.20260921121718",
+    "captureSessionId": "01J8ZQ4M2K7X9V3B8N0P4R6T8A",
+    "tabId": "01J8ZQ4M2K7X9V3B8N0P4R6T8B",
+    "observation": "ENGINE"
+  },
+  "request": {
+    "id": "01J8ZQ4M2K7X9V3B8N0P4R6T8C",
+    "method": "PATCH",
+    "url": "https://api.example.com/v1/items/42",
+    "query": [],
+    "headers": [
+      {
+        "name": "Content-Type",
+        "value": "application/json",
+        "redacted": false
+      }
+    ],
+    "body": {
+      "representation": "JSON",
+      "contentType": "application/json",
+      "charset": "utf-8",
+      "encoding": "UTF8",
+      "size": 14,
+      "declaredSize": 14,
+      "truncated": false,
+      "completeness": "COMPLETE",
+      "content": "{\"price\":20}",
+      "uri": null,
+      "parts": []
+    }
+  },
+  "capture": {
+    "timestamp": 1758912345678,
+    "durationMs": 75,
+    "status": 200,
+    "statusText": "OK",
+    "initiator": "SCRIPT",
+    "timing": { "ttfbMs": 55, "totalMs": 75 },
+    "completeness": {
+      "requestUrl": "COMPLETE",
+      "requestHeaders": "COMPLETE",
+      "requestBody": "COMPLETE",
+      "responseHeaders": "COMPLETE",
+      "responseBody": "UNAVAILABLE",
+      "timing": "COMPLETE",
+      "tlsInfo": "UNAVAILABLE"
+    }
+  },
+  "security": {
+    "secretPolicy": "PARAMETERIZE",
+    "containsSensitiveData": false,
+    "secretCount": 0,
+    "fromPrivateSession": false,
+    "reviewRequired": false,
+    "findings": []
+  },
+  "provenance": {
+    "normalizerVersion": "norm/1.0.0",
+    "captureEngineVersion": "geckoview-156.0.20260921121718",
+    "capturedAt": 1758912345678,
+    "redirectCount": 0
+  }
+}

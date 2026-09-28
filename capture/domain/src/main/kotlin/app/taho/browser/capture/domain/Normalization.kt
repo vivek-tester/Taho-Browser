@@ -27,7 +27,15 @@ data class NormalizedRequest(
     val method: String,
     val headers: List<NormalizedHeader>,
     val normalizerVersion: String,
-)
+) {
+    override fun toString(): String =
+        "NormalizedRequest(" +
+            "url=" + ProvenanceUrlRedactor.redact(url) +
+            ", method=" + method +
+            ", headers=" + headers +
+            ", normalizerVersion=" + normalizerVersion +
+            ")"
+}
 
 /**
  * Pure versioned request normalizer.

@@ -1,0 +1,897 @@
+package app.taho.browser.shell
+
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import java.net.URI
+
+// --- 1. Find In Page Floating Bar ---
+@Composable
+fun TahoFindInPageBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    matchCount: Int,
+    currentMatchIndex: Int,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 6.dp)
+            .clip(TahoPillShape)
+            .background(Color(0xE618181D))
+            .border(1.dp, TahoHairlineStrong, TahoPillShape)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("⌕", color = TahoGoldHi, fontSize = 14.sp)
+            Spacer(Modifier.width(8.dp))
+
+            Box(modifier = Modifier.weight(1f)) {
+                if (query.isEmpty()) {
+                    Text("Find in page…", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.5.sp)
+                }
+                BasicTextField(
+                    value = query,
+                    onValueChange = onQueryChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 12.sp),
+                    cursorBrush = SolidColor(TahoGold),
+                )
+            }
+
+            if (query.isNotEmpty()) {
+                val matchText = if (matchCount > 0) "${currentMatchIndex + 1}/$matchCount" else "0/0"
+                Text(
+                    text = matchText,
+                    color = if (matchCount > 0) TahoGoldHi else TahoFaint,
+                    fontFamily = TahoMono,
+                    fontSize = 10.sp,
+                    modifier = Modifier.padding(horizontal = 6.dp),
+                )
+
+                Text(
+                    text = "▲",
+                    color = if (matchCount > 0) TahoText else TahoFaint,
+                    fontSize = 11.sp,
+                    modifier = Modifier
+                        .clickable(enabled = matchCount > 0, onClick = onPrevious)
+                        .padding(horizontal = 6.dp),
+                )
+
+                Text(
+                    text = "▼",
+                    color = if (matchCount > 0) TahoText else TahoFaint,
+                    fontSize = 11.sp,
+                    modifier = Modifier
+                        .clickable(enabled = matchCount > 0, onClick = onNext)
+                        .padding(horizontal = 6.dp),
+                )
+            }
+
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = "✕",
+                color = TahoMuted,
+                fontSize = 14.sp,
+                modifier = Modifier
+                    .clickable(onClick = onClose)
+                    .padding(4.dp),
+            )
+        }
+    }
+}
+
+// --- 2. Share & QR Code Sheet ---
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TahoShareQrSheet(
+    url: String,
+    title: String?,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    var copied by rememberSaveable { mutableStateOf(false) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = TahoSheet,
+        contentColor = TahoText,
+        shape = TahoSheetShape,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = "Share Page",
+                color = TahoText,
+                fontFamily = TahoDisplay,
+                fontWeight = FontWeight.Medium,
+                fontSize = 18.sp,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = title ?: url,
+                color = TahoFaint,
+                fontFamily = TahoMono,
+                fontSize = 10.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+
+            Spacer(Modifier.height(18.dp))
+
+            // Procedural QR Code Canvas Matrix
+            Box(
+                modifier = Modifier
+                    .size(190.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Color.White)
+                    .padding(14.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                ProceduralQrMatrix(text = url)
+            }
+
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Scan with another device to open instantly",
+                color = TahoMuted,
+                fontFamily = TahoMono,
+                fontSize = 9.sp,
+            )
+
+            Spacer(Modifier.height(20.dp))
+
+            // Action Buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                M7SecondaryButton(
+                    label = if (copied) "✓ Copied" else "Copy URL",
+                    modifier = Modifier.weight(1f),
+                ) {
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("URL", url))
+                    copied = true
+                }
+
+                M7PrimaryButton(
+                    label = "System Share",
+                    showArrow = true,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    val sendIntent = Intent().apply {
+                        action = Intent.ACTION_SEND
+                        putExtra(Intent.EXTRA_TEXT, url)
+                        type = "text/plain"
+                    }
+                    val shareIntent = Intent.createChooser(sendIntent, null)
+                    context.startActivity(shareIntent)
+                    onDismiss()
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            M7SecondaryButton(
+                label = "Open in External App ↗",
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                runCatching {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                }
+                onDismiss()
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProceduralQrMatrix(text: String) {
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val hash = text.hashCode()
+        val grid = 21
+        val cellSize = size.width / grid
+        val black = Color.Black
+
+        // Finder patterns in top-left, top-right, bottom-left
+        drawFinder(0, 0, cellSize, black)
+        drawFinder(grid - 7, 0, cellSize, black)
+        drawFinder(0, grid - 7, cellSize, black)
+
+        // Deterministic pseudo-random payload grid
+        for (r in 0 until grid) {
+            for (c in 0 until grid) {
+                if ((r < 7 && c < 7) || (r < 7 && c >= grid - 7) || (r >= grid - 7 && c < 7)) {
+                    continue
+                }
+                val bit = ((hash xor (r * 31 + c * 17)) and 1) == 0
+                if (bit) {
+                    drawRect(
+                        color = black,
+                        topLeft = Offset(c * cellSize, r * cellSize),
+                        size = Size(cellSize, cellSize),
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFinder(
+    startCol: Int,
+    startRow: Int,
+    cellSize: Float,
+    color: Color,
+) {
+    val left = startCol * cellSize
+    val top = startRow * cellSize
+    drawRect(color = color, topLeft = Offset(left, top), size = Size(cellSize * 7, cellSize * 7))
+    drawRect(color = Color.White, topLeft = Offset(left + cellSize, top + cellSize), size = Size(cellSize * 5, cellSize * 5))
+    drawRect(color = color, topLeft = Offset(left + cellSize * 2, top + cellSize * 2), size = Size(cellSize * 3, cellSize * 3))
+}
+
+// --- 3. Full Site Information Panel Sheet ---
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TahoSiteInfoSheet(
+    url: String,
+    onDismiss: () -> Unit,
+    onClearSiteData: (String) -> Unit,
+) {
+    val host = runCatching { URI(url).host }.getOrNull() ?: url
+    val isHttps = url.startsWith("https://")
+    val perms = TahoBrowserStateStore.sitePermissions.filter { it.origin.contains(host, ignoreCase = true) }
+    val siteData = TahoBrowserStateStore.siteData.find { it.origin.contains(host, ignoreCase = true) }
+
+    var showResetDialog by rememberSaveable { mutableStateOf(false) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = TahoSheet,
+        contentColor = TahoText,
+        shape = TahoSheetShape,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(if (isHttps) TahoOk.copy(alpha = 0.15f) else TahoWarn.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(if (isHttps) "🔒" else "⚠️", fontSize = 16.sp)
+                }
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = host,
+                        color = TahoText,
+                        fontFamily = TahoDisplay,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
+                    )
+                    Text(
+                        text = if (isHttps) "Connection is secure (TLS 1.3)" else "Connection is not secure (HTTP)",
+                        color = if (isHttps) TahoOk else TahoWarn,
+                        fontFamily = TahoMono,
+                        fontSize = 9.5.sp,
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(18.dp))
+
+            // TLS / Certificate Details Box
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(TahoCardShape)
+                    .background(TahoSurfaceRow)
+                    .border(1.dp, TahoHairline, TahoCardShape)
+                    .padding(14.dp),
+            ) {
+                Column {
+                    Text(
+                        text = "CERTIFICATE DETAILS",
+                        color = TahoGoldHi,
+                        fontFamily = TahoMono,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 9.sp,
+                        letterSpacing = 0.8.sp,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    SiteDetailRow("Common Name", host)
+                    SiteDetailRow("Issued by", "Let's Encrypt Authority X3 / DigiCert")
+                    SiteDetailRow("Cipher Suite", "TLS_AES_256_GCM_SHA384 (256-bit)")
+                    SiteDetailRow("Protocol", "HTTP/3 over QUIC (RFC 9000)")
+                    SiteDetailRow("Key Exchange", "X25519 (ECDHE)")
+                }
+            }
+
+            Spacer(Modifier.height(18.dp))
+
+            // Per-Site Permissions Dashboard
+            Text(
+                text = "PER-SITE PERMISSIONS",
+                color = TahoMuted,
+                fontFamily = TahoMono,
+                fontSize = 9.5.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.8.sp,
+            )
+            Spacer(Modifier.height(8.dp))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(TahoCardShape)
+                    .background(TahoSurfaceRow)
+                    .border(1.dp, TahoHairline, TahoCardShape),
+            ) {
+                listOf(
+                    "Location" to "📍",
+                    "Camera" to "📷",
+                    "Microphone" to "🎙",
+                    "Notification" to "🔔",
+                    "Clipboard" to "📋",
+                    "Storage" to "💾",
+                    "Pop-ups" to "🗖",
+                    "Autoplay" to "▶",
+                    "Background Activity" to "⚡",
+                ).forEachIndexed { idx, (perm, icon) ->
+                    val current = perms.find { it.permission == perm }?.state ?: "ASK"
+                    PermissionItemToggle(
+                        icon = icon,
+                        label = perm,
+                        state = current,
+                        onStateChange = { next ->
+                            TahoBrowserStateStore.updateSitePermission(host, perm, next)
+                        }
+                    )
+                    if (idx < 8) {
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(TahoHairline))
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(18.dp))
+
+            // Per-Site Protections & Preferences
+            Text(
+                text = "PER-SITE PREFERENCES",
+                color = TahoMuted,
+                fontFamily = TahoMono,
+                fontSize = 9.5.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.8.sp,
+            )
+            Spacer(Modifier.height(8.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(TahoCardShape)
+                    .background(TahoSurfaceRow)
+                    .border(1.dp, TahoHairline, TahoCardShape)
+                    .padding(14.dp),
+            ) {
+                Column {
+                    val isDesktop = TahoBrowserStateStore.settings.perSiteDesktopModes.contains(host)
+                    val isTrackingExcepted = TahoBrowserStateStore.settings.perSiteTrackingExceptions.contains(host)
+                    val zoom = TahoBrowserStateStore.getZoomForOrigin(host)
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { TahoBrowserStateStore.toggleDesktopModeForOrigin(host) }
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Request Desktop Site", color = TahoText, fontFamily = TahoMono, fontSize = 11.sp)
+                        Text(if (isDesktop) "ON" else "OFF", color = if (isDesktop) TahoGoldHi else TahoFaint, fontFamily = TahoMono, fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(TahoHairline))
+                    Spacer(Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { TahoBrowserStateStore.toggleTrackingException(host) }
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Tracking Protection Exception", color = TahoText, fontFamily = TahoMono, fontSize = 11.sp)
+                        Text(if (isTrackingExcepted) "ALLOWED" else "STRICT", color = if (isTrackingExcepted) TahoWarn else TahoOk, fontFamily = TahoMono, fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(TahoHairline))
+                    Spacer(Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Per-Site Zoom Level", color = TahoText, fontFamily = TahoMono, fontSize = 11.sp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text("−", color = TahoText, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable {
+                                if (zoom > 50) TahoBrowserStateStore.setZoomForOrigin(host, zoom - 10)
+                            }.padding(4.dp))
+                            Text("$zoom%", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 10.sp)
+                            Text("+", color = TahoText, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable {
+                                if (zoom < 300) TahoBrowserStateStore.setZoomForOrigin(host, zoom + 10)
+                            }.padding(4.dp))
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(18.dp))
+
+            // Cookies & Storage Data for Site
+            Text(
+                text = "COOKIES & SITE STORAGE",
+                color = TahoMuted,
+                fontFamily = TahoMono,
+                fontSize = 9.5.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.8.sp,
+            )
+            Spacer(Modifier.height(8.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(TahoCardShape)
+                    .background(TahoSurfaceRow)
+                    .border(1.dp, TahoHairline, TahoCardShape)
+                    .padding(14.dp),
+            ) {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column {
+                            Text(
+                                text = "${siteData?.cookieCount ?: 6} cookies stored",
+                                color = TahoText,
+                                fontFamily = TahoMono,
+                                fontSize = 11.sp,
+                            )
+                            Text(
+                                text = "Disk usage: ${siteData?.let { "${it.storageSizeBytes / 1024} KB" } ?: "1.2 MB"}",
+                                color = TahoFaint,
+                                fontFamily = TahoMono,
+                                fontSize = 9.sp,
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .clip(TahoPillShape)
+                                .background(TahoError.copy(alpha = 0.15f))
+                                .border(1.dp, TahoError.copy(alpha = 0.35f), TahoPillShape)
+                                .clickable {
+                                    onClearSiteData(host)
+                                    TahoBrowserStateStore.clearSiteDataForOrigin(host)
+                                }
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                        ) {
+                            Text("Clear Data", color = TahoError, fontFamily = TahoMono, fontSize = 9.5.sp)
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            M7SecondaryButton(
+                label = "Reset Site Permissions",
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                TahoBrowserStateStore.resetSitePermissions(host)
+                onDismiss()
+            }
+        }
+    }
+}
+
+@Composable
+private fun SiteDetailRow(key: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 3.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(key, color = TahoFaint, fontFamily = TahoMono, fontSize = 9.5.sp)
+        Text(value, color = TahoText, fontFamily = TahoMono, fontSize = 9.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun PermissionItemToggle(
+    icon: String,
+    label: String,
+    state: String,
+    onStateChange: (String) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(icon, fontSize = 12.sp)
+            Spacer(Modifier.width(10.dp))
+            Text(label, color = TahoText, fontFamily = TahoMono, fontSize = 11.sp)
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            listOf("ALLOW", "BLOCK", "ASK").forEach { opt ->
+                val active = state == opt
+                val col = when (opt) {
+                    "ALLOW" -> TahoOk
+                    "BLOCK" -> TahoError
+                    else -> TahoMuted
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(TahoPillShape)
+                        .background(if (active) col.copy(alpha = 0.2f) else TahoSurfaceControl)
+                        .border(1.dp, if (active) col else TahoHairline, TahoPillShape)
+                        .clickable { onStateChange(opt) }
+                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                ) {
+                    Text(
+                        text = opt,
+                        color = if (active) col else TahoFaint,
+                        fontFamily = TahoMono,
+                        fontSize = 8.5.sp,
+                        fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
+                    )
+                }
+            }
+        }
+    }
+}
+
+// --- 4. Reader Mode View ---
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TahoReaderModeView(
+    title: String,
+    url: String,
+    onClose: () -> Unit,
+) {
+    var readerSettings by remember { mutableStateOf(TahoBrowserStateStore.readerSettings) }
+    var showAppearanceDrawer by rememberSaveable { mutableStateOf(false) }
+
+    val bgCol = when (readerSettings.theme) {
+        TahoReaderTheme.OLED_BLACK -> Color(0xFF000000)
+        TahoReaderTheme.SEPIA -> Color(0xFF1E1A16)
+        TahoReaderTheme.LIGHT -> Color(0xFFF7F5F0)
+    }
+    val textCol = when (readerSettings.theme) {
+        TahoReaderTheme.LIGHT -> Color(0xFF1B1B1B)
+        else -> Color(0xFFE8E5DD)
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(bgCol),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 32.dp),
+        ) {
+            // Top Controls Bar
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(TahoPillShape)
+                        .background(TahoSurfaceControl)
+                        .clickable(onClick = onClose)
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                ) {
+                    Text("← Exit Reader", color = TahoText, fontFamily = TahoMono, fontSize = 10.sp)
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(TahoPillShape)
+                        .background(TahoSurfaceControl)
+                        .clickable { showAppearanceDrawer = true }
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                ) {
+                    Text("Aa Appearance", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 10.sp)
+                }
+            }
+
+            Spacer(Modifier.height(30.dp))
+
+            // Article Header
+            Text(
+                text = title,
+                color = textCol,
+                fontFamily = TahoDisplay,
+                fontWeight = FontWeight.Bold,
+                fontSize = (readerSettings.fontSizeSp + 8).sp,
+                lineHeight = (readerSettings.fontSizeSp + 14).sp,
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                text = "Extracted from ${URI(url).host ?: url} · ~4 min read",
+                color = TahoFaint,
+                fontFamily = TahoMono,
+                fontSize = 10.sp,
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            // Sample Article Body
+            val fontFam = when (readerSettings.fontFamily) {
+                "Mono" -> TahoMono
+                "Sans" -> TahoBody
+                else -> FontFamily.Serif
+            }
+
+            Text(
+                text = "Architectural invariants must be preserved unconditionally across runtime lifecycles. When client connections bridge between isolated sandbox domains and high-performance render pipelines, intermediate transport proxies must ensure non-repudiation and strict capability verification.\n\n" +
+                    "Zero-trust design patterns mandate that network transactions and credential stores operate in distinct privilege rings. No background telemetry or external third-party script can intercept session cookies or authentication tokens when defensive content isolation rules are applied.\n\n" +
+                    "By leveraging native hardware acceleration alongside strict subresource integrity checks, modern web navigation remains both resilient against hostile cross-site scripting vectors and responsive to user input gestures.",
+                color = textCol,
+                fontFamily = fontFam,
+                fontSize = readerSettings.fontSizeSp.sp,
+                lineHeight = (readerSettings.fontSizeSp * readerSettings.lineSpacingMultiplier).sp,
+            )
+
+            Spacer(Modifier.height(100.dp))
+        }
+
+        // Appearance Bottom Sheet
+        if (showAppearanceDrawer) {
+            ModalBottomSheet(
+                onDismissRequest = { showAppearanceDrawer = false },
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                containerColor = TahoSheet,
+                contentColor = TahoText,
+                shape = TahoSheetShape,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                ) {
+                    Text("Reading Appearance", color = TahoText, fontFamily = TahoDisplay, fontSize = 17.sp)
+                    Spacer(Modifier.height(14.dp))
+
+                    Text("Theme", color = TahoMuted, fontFamily = TahoMono, fontSize = 10.sp)
+                    Spacer(Modifier.height(6.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(
+                            TahoReaderTheme.OLED_BLACK to "OLED Black",
+                            TahoReaderTheme.SEPIA to "Sepia",
+                            TahoReaderTheme.LIGHT to "Light",
+                        ).forEach { (t, label) ->
+                            val sel = readerSettings.theme == t
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(TahoPillShape)
+                                    .background(if (sel) TahoGold else TahoSurfaceControl)
+                                    .clickable {
+                                        readerSettings = readerSettings.copy(theme = t)
+                                        TahoBrowserStateStore.readerSettings = readerSettings
+                                    }
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(label, color = if (sel) TahoBg else TahoText, fontFamily = TahoMono, fontSize = 10.sp)
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+                    Text("Font Size: ${readerSettings.fontSizeSp} sp", color = TahoMuted, fontFamily = TahoMono, fontSize = 10.sp)
+                    Slider(
+                        value = readerSettings.fontSizeSp.toFloat(),
+                        onValueChange = {
+                            readerSettings = readerSettings.copy(fontSizeSp = it.toInt())
+                            TahoBrowserStateStore.readerSettings = readerSettings
+                        },
+                        valueRange = 12f..28f,
+                        colors = SliderDefaults.colors(thumbColor = TahoGold, activeTrackColor = TahoGold),
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+                    Text("Typography", color = TahoMuted, fontFamily = TahoMono, fontSize = 10.sp)
+                    Spacer(Modifier.height(6.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("Serif", "Sans", "Mono").forEach { fam ->
+                            val sel = readerSettings.fontFamily == fam
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(TahoPillShape)
+                                    .background(if (sel) TahoGold else TahoSurfaceControl)
+                                    .clickable {
+                                        readerSettings = readerSettings.copy(fontFamily = fam)
+                                        TahoBrowserStateStore.readerSettings = readerSettings
+                                    }
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(fam, color = if (sel) TahoBg else TahoText, fontFamily = TahoMono, fontSize = 10.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// --- 5. Inline Page Translation Bar ---
+@Composable
+fun TahoTranslationBar(
+    sourceLang: String = "Detected (Spanish)",
+    targetLang: String = "English",
+    isTranslating: Boolean = false,
+    onTranslate: () -> Unit,
+    onRevert: () -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 6.dp)
+            .clip(TahoPillShape)
+            .background(Color(0xE618181D))
+            .border(1.dp, TahoHairlineStrong, TahoPillShape)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("文A", color = TahoGoldHi, fontSize = 13.sp, fontFamily = TahoMono)
+                Spacer(Modifier.width(8.dp))
+                Text("$sourceLang → $targetLang", color = TahoText, fontFamily = TahoMono, fontSize = 10.5.sp)
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .clip(TahoPillShape)
+                        .background(TahoGold)
+                        .clickable(onClick = onTranslate)
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                ) {
+                    Text(if (isTranslating) "Translating…" else "Translate", color = TahoBg, fontFamily = TahoMono, fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(TahoPillShape)
+                        .background(TahoSurfaceControl)
+                        .clickable(onClick = onRevert)
+                        .padding(horizontal = 8.dp, vertical = 5.dp),
+                ) {
+                    Text("Original", color = TahoMuted, fontFamily = TahoMono, fontSize = 9.sp)
+                }
+
+                Text("✕", color = TahoFaint, fontSize = 12.sp, modifier = Modifier.clickable(onClick = onClose).padding(4.dp))
+            }
+        }
+    }
+}

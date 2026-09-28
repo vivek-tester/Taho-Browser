@@ -61,4 +61,34 @@ public interface CaptureDao {
 
     @Query("SELECT COUNT(*) FROM capture_body")
     int bodyCount();
+
+    @Query("DELETE FROM capture_transaction WHERE id = :id")
+    int deleteTransaction(String id);
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void upsertTab(TabEntity tab);
+
+    @Query("SELECT * FROM tab WHERE id = :id LIMIT 1")
+    TabEntity getTab(String id);
+
+    @Query("SELECT * FROM tab ORDER BY displayIndex ASC")
+    List<TabEntity> listTabs();
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void insertStreamFrame(StreamFrameEntity frame);
+
+    @Query("SELECT * FROM stream_frame WHERE transactionId = :transactionId ORDER BY at ASC")
+    List<StreamFrameEntity> listFramesForTransaction(String transactionId);
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void upsertTransferRecord(TransferRecordEntity record);
+
+    @Query("SELECT * FROM transfer_record WHERE transferId = :transferId LIMIT 1")
+    TransferRecordEntity getTransferRecord(String transferId);
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void upsertMeta(MetaEntity meta);
+
+    @Query("SELECT * FROM meta WHERE `key` = :key LIMIT 1")
+    MetaEntity getMeta(String key);
 }

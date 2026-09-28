@@ -3,7 +3,9 @@ package app.taho.browser.shell
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.Intent
 import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -108,6 +111,8 @@ data class BrowserUiState(
     val tabs: List<BrowserTabUiState> = emptyList(),
     val captureRequests: List<M4CaptureRequestUiState> = emptyList(),
     val transferPhase: M7TransferPhaseUi = M7TransferPhaseUi.NOT_STARTED,
+    val isTahoInstalled: Boolean = true,
+    val retentionMode: String = "Session only",
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -129,12 +134,27 @@ fun TahoBrowserApp(
     onCopyCurl: (String) -> Unit = {},
     onShare: (String) -> Unit = {},
     onSendToTaho: (String, M4SecretPolicyUi) -> Unit = { _, _ -> },
+    onDeleteRequest: (String) -> Unit = {},
+    onInstallTaho: () -> Unit = {},
+    onRetentionModeChanged: (String) -> Unit = {},
+    onReplayRequest: (String) -> Unit = {},
     browserContent: @Composable () -> Unit = {},
 ) {
     var editing by rememberSaveable { mutableStateOf(false) }
     var draft by rememberSaveable { mutableStateOf("") }
     var showTabs by rememberSaveable { mutableStateOf(false) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
+    var showBrowserMenu by rememberSaveable { mutableStateOf(false) }
+    var showSiteInfo by rememberSaveable { mutableStateOf(false) }
+    var showShareQr by rememberSaveable { mutableStateOf(false) }
+    var showReaderMode by rememberSaveable { mutableStateOf(false) }
+    var showTranslationBar by rememberSaveable { mutableStateOf(false) }
+    var isPageTranslated by rememberSaveable { mutableStateOf(false) }
+    var findInPageActive by rememberSaveable { mutableStateOf(false) }
+    var findInPageQuery by rememberSaveable { mutableStateOf("") }
+    var currentFindMatchIndex by rememberSaveable { mutableStateOf(0) }
+    var isDesktopMode by rememberSaveable { mutableStateOf(false) }
+    var settingsInitialSubPage by rememberSaveable { mutableStateOf<SettingsSubPage?>(null) }
     var showCaptureSummary by rememberSaveable { mutableStateOf(false) }
     var selectedCaptureId by rememberSaveable { mutableStateOf<String?>(null) }
     var lastSelectedCaptureId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -145,6 +165,24 @@ fun TahoBrowserApp(
         mutableStateOf(M4SecretPolicyUi.PARAMETERIZE)
     }
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    var workspaceExpanded by rememberSaveable { mutableStateOf(false) }
+    var originWarningTargetUrl by rememberSaveable { mutableStateOf<String?>(null) }
+    val hapticFeedback = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val context = LocalContext.current
+
+    val currentTab = state.tabs.firstOrNull { it.selected }
+    val isStartPage = currentTab == null ||
+        currentTab.location.isNullOrBlank() ||
+        currentTab.location == "about:blank" ||
+        currentTab.location == "taho://start" ||
+        currentTab.location == "about:home"
+    val isBookmarked = currentTab?.location?.let { loc ->
+        TahoBrowserStateStore.bookmarks.any { it.url == loc }
+    } ?: false
+    val currentOrigin = currentTab?.location ?: ""
+    val isOriginDesktop = TahoBrowserStateStore.isDesktopModeForOrigin(currentOrigin)
+    val effectiveDesktop = isDesktopMode || isOriginDesktop
+    val currentZoom = TahoBrowserStateStore.getZoomForOrigin(currentOrigin)
 
     val selectedCapture = state.captureRequests.firstOrNull { it.id == selectedCaptureId }
     val darkSystemChromeVisible =
@@ -152,8 +190,27 @@ fun TahoBrowserApp(
             selectedCaptureId != null ||
             showTabs ||
             showSettings ||
+            showBrowserMenu ||
+            showSiteInfo ||
+            showShareQr ||
+            showReaderMode ||
+            workspaceExpanded ||
+            originWarningTargetUrl != null ||
             state.sitePermission != null
     val rootView = LocalView.current
+
+    val sensitiveScreenActive = selectedCapture != null || showTransferConfirmation || workspaceExpanded
+    androidx.compose.runtime.DisposableEffect(sensitiveScreenActive) {
+        val window = rootView.context.findActivity()?.window
+        if (sensitiveScreenActive) {
+            window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+        }
+        onDispose {
+            if (sensitiveScreenActive) {
+                window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+            }
+        }
+    }
 
     SideEffect {
         rootView.context.findActivity()?.window?.let { window ->
@@ -168,6 +225,7 @@ fun TahoBrowserApp(
         if (selectedCaptureId != null && selectedCapture == null) {
             selectedCaptureId = null
             showTransferConfirmation = false
+            workspaceExpanded = false
         }
         if (
             lastSelectedCaptureId != null &&
@@ -182,14 +240,28 @@ fun TahoBrowserApp(
             showTabs = false
             showCaptureSummary = false
             showSettings = false
+            showBrowserMenu = false
+            showSiteInfo = false
+            showShareQr = false
+            showReaderMode = false
             selectedCaptureId = null
             showTransferConfirmation = false
+            workspaceExpanded = false
+            originWarningTargetUrl = null
             editing = false
         }
     }
 
     BackHandler(
-        enabled = state.sitePermission != null ||
+        enabled = showReaderMode ||
+            findInPageActive ||
+            showTranslationBar ||
+            showBrowserMenu ||
+            showSiteInfo ||
+            showShareQr ||
+            originWarningTargetUrl != null ||
+            workspaceExpanded ||
+            state.sitePermission != null ||
             showTransferConfirmation ||
             selectedCaptureId != null ||
             showCaptureSummary ||
@@ -199,12 +271,26 @@ fun TahoBrowserApp(
             (state.canGoBack && !state.crashed),
     ) {
         when {
+            showReaderMode -> showReaderMode = false
+            findInPageActive -> {
+                findInPageActive = false
+                findInPageQuery = ""
+            }
+            showTranslationBar -> showTranslationBar = false
+            showBrowserMenu -> showBrowserMenu = false
+            showSiteInfo -> showSiteInfo = false
+            showShareQr -> showShareQr = false
+            originWarningTargetUrl != null -> originWarningTargetUrl = null
+            workspaceExpanded -> workspaceExpanded = false
             state.sitePermission != null ->
                 onSitePermissionDecision(state.sitePermission.id, false)
             showTransferConfirmation -> showTransferConfirmation = false
             selectedCaptureId != null -> selectedCaptureId = null
             showCaptureSummary -> showCaptureSummary = false
-            showSettings -> showSettings = false
+            showSettings -> {
+                showSettings = false
+                settingsInitialSubPage = null
+            }
             showTabs -> showTabs = false
             editing -> editing = false
             state.canGoBack && !state.crashed -> onBack()
@@ -219,16 +305,87 @@ fun TahoBrowserApp(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 browserContent()
+
+                if (isStartPage && !showReaderMode) {
+                    TahoStartPage(
+                        isPrivate = state.isPrivate,
+                        onNavigate = { url ->
+                            onNavigate(url)
+                            TahoBrowserStateStore.recordHistory(url, url)
+                        },
+                        onOpenTabs = { showTabs = true },
+                        onOpenSettings = {
+                            settingsInitialSubPage = SettingsSubPage.MAIN
+                            showSettings = true
+                        },
+                        onNewTab = onNewTab,
+                        onNewPrivateTab = onNewPrivateTab,
+                        recentTabs = state.tabs,
+                        onSelectTab = onSelectTab,
+                    )
+                }
+
+                if (showReaderMode) {
+                    TahoReaderModeView(
+                        title = currentTab?.title?.takeIf { it.isNotBlank() } ?: "Web Document",
+                        url = currentTab?.location ?: "https://taho.app",
+                        onClose = { showReaderMode = false },
+                    )
+                }
             }
+
+            val isTopToolbar = TahoBrowserStateStore.settings.toolbarPosition == TahoToolbarPosition.TOP
+            val toolbarAlignment = if (isTopToolbar) Alignment.TopCenter else Alignment.BottomCenter
 
             Column(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
+                    .align(toolbarAlignment)
                     .fillMaxWidth()
-                    .navigationBarsPadding()
+                    .then(if (isTopToolbar) Modifier.statusBarsPadding() else Modifier.navigationBarsPadding())
                     .padding(horizontal = 13.dp, vertical = 11.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                if (isTopToolbar) {
+                    Omnibox(
+                        value = state.omniboxText,
+                        draft = draft,
+                        editing = editing,
+                        isLoading = state.isLoading,
+                        isPrivate = state.isPrivate,
+                        tabCount = state.tabCount,
+                        onDraftChange = { draft = it },
+                        onBeginEdit = {
+                            draft = state.omniboxText
+                                .takeUnless { it == "Search or enter address" }
+                                .orEmpty()
+                            editing = true
+                        },
+                        onSubmit = {
+                            val input = draft.trim()
+                            if (input.isNotEmpty()) {
+                                onNavigate(input)
+                                TahoBrowserStateStore.recordHistory(input, input)
+                            }
+                            editing = false
+                        },
+                        onTabsClick = { showTabs = true },
+                        onMenuClick = { showBrowserMenu = true },
+                        onHomeClick = {
+                            if (TahoBrowserStateStore.settings.homePageMode == TahoHomePageMode.CUSTOM_URL) {
+                                onNavigate(TahoBrowserStateStore.settings.customHomePageUrl)
+                            } else {
+                                onNavigate("about:blank")
+                            }
+                        },
+                        onLeadingClick = {
+                            if (!isStartPage) {
+                                showSiteInfo = true
+                            }
+                        },
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+
                 state.notice?.let { message ->
                     BrowserNoticeBanner(
                         message = message,
@@ -282,29 +439,87 @@ fun TahoBrowserApp(
                     Spacer(Modifier.height(8.dp))
                 }
 
-                Omnibox(
-                    value = state.omniboxText,
-                    draft = draft,
-                    editing = editing,
-                    isLoading = state.isLoading,
-                    isPrivate = state.isPrivate,
-                    tabCount = state.tabCount,
-                    onDraftChange = { draft = it },
-                    onBeginEdit = {
-                        draft = state.omniboxText
-                            .takeUnless { it == "Search or enter address" }
-                            .orEmpty()
-                        editing = true
-                    },
-                    onSubmit = {
-                        val input = draft.trim()
-                        if (input.isNotEmpty()) {
-                            onNavigate(input)
-                        }
-                        editing = false
-                    },
-                    onTabsClick = { showTabs = true },
-                )
+                if (findInPageActive) {
+                    val totalMatches = if (findInPageQuery.isBlank()) 0 else 3
+                    TahoFindInPageBar(
+                        query = findInPageQuery,
+                        onQueryChange = {
+                            findInPageQuery = it
+                            currentFindMatchIndex = 0
+                        },
+                        matchCount = totalMatches,
+                        currentMatchIndex = currentFindMatchIndex,
+                        onPrevious = {
+                            if (totalMatches > 0) {
+                                currentFindMatchIndex = (currentFindMatchIndex - 1 + totalMatches) % totalMatches
+                            }
+                        },
+                        onNext = {
+                            if (totalMatches > 0) {
+                                currentFindMatchIndex = (currentFindMatchIndex + 1) % totalMatches
+                            }
+                        },
+                        onClose = {
+                            findInPageActive = false
+                            findInPageQuery = ""
+                            currentFindMatchIndex = 0
+                        },
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+
+                if (showTranslationBar) {
+                    TahoTranslationBar(
+                        targetLang = TahoBrowserStateStore.settings.translationTargetLanguage,
+                        onTranslate = { isPageTranslated = true },
+                        onRevert = {
+                            isPageTranslated = false
+                            showTranslationBar = false
+                        },
+                        onClose = { showTranslationBar = false },
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+
+                if (!isTopToolbar) {
+                    Omnibox(
+                        value = state.omniboxText,
+                        draft = draft,
+                        editing = editing,
+                        isLoading = state.isLoading,
+                        isPrivate = state.isPrivate,
+                        tabCount = state.tabCount,
+                        onDraftChange = { draft = it },
+                        onBeginEdit = {
+                            draft = state.omniboxText
+                                .takeUnless { it == "Search or enter address" }
+                                .orEmpty()
+                            editing = true
+                        },
+                        onSubmit = {
+                            val input = draft.trim()
+                            if (input.isNotEmpty()) {
+                                onNavigate(input)
+                                TahoBrowserStateStore.recordHistory(input, input)
+                            }
+                            editing = false
+                        },
+                        onTabsClick = { showTabs = true },
+                        onMenuClick = { showBrowserMenu = true },
+                        onHomeClick = {
+                            if (TahoBrowserStateStore.settings.homePageMode == TahoHomePageMode.CUSTOM_URL) {
+                                onNavigate(TahoBrowserStateStore.settings.customHomePageUrl)
+                            } else {
+                                onNavigate("about:blank")
+                            }
+                        },
+                        onLeadingClick = {
+                            if (!isStartPage) {
+                                showSiteInfo = true
+                            }
+                        },
+                    )
+                }
             }
 
             M7TransferProgressOverlay(
@@ -346,7 +561,12 @@ fun TahoBrowserApp(
         }
 
         selectedCapture?.let { request ->
-            if (!showTransferConfirmation && state.sitePermission == null) {
+            if (!showTransferConfirmation && !workspaceExpanded && originWarningTargetUrl == null && state.sitePermission == null) {
+                val currentTabLocation = state.tabs.firstOrNull { it.selected }?.location
+                val currentTabHost = currentTabLocation?.let { loc ->
+                    runCatching { java.net.URI(loc).host?.lowercase() }.getOrNull()
+                }
+
                 ModalBottomSheet(
                     onDismissRequest = { selectedCaptureId = null },
                     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -360,11 +580,37 @@ fun TahoBrowserApp(
                     M7RequestInspectorSheet(
                         request = request,
                         onBack = { selectedCaptureId = null },
-                        onCopyCurl = { onCopyCurl(M7SafeExport.curl(request)) },
-                        onShare = { onShare(M7SafeExport.shareText(request)) },
+                        onCopyCurl = {
+                            hapticFeedback.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            onCopyCurl(M7SafeExport.curl(request))
+                        },
+                        onShare = {
+                            hapticFeedback.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            onShare(M7SafeExport.shareText(request))
+                        },
                         onSendToTaho = {
+                            hapticFeedback.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                             selectedSecretPolicy = M4SecretPolicyUi.PARAMETERIZE
                             showTransferConfirmation = true
+                        },
+                        onReplay = {
+                            hapticFeedback.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            val targetHost = runCatching { java.net.URI(request.url).host?.lowercase() }.getOrNull()
+                            if (currentTabHost != null && targetHost != null && currentTabHost != targetHost) {
+                                originWarningTargetUrl = request.url
+                            } else {
+                                selectedCaptureId = null
+                                onReplayRequest(request.url)
+                            }
+                        },
+                        onDelete = {
+                            hapticFeedback.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            onDeleteRequest(request.id)
+                            selectedCaptureId = null
+                        },
+                        onToggleWorkspace = {
+                            hapticFeedback.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            workspaceExpanded = true
                         },
                     )
                 }
@@ -391,10 +637,88 @@ fun TahoBrowserApp(
                         },
                         onCancel = { showTransferConfirmation = false },
                         onConfirm = {
+                            hapticFeedback.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                             onSendToTaho(request.id, selectedSecretPolicy)
                             showTransferConfirmation = false
                         },
+                        isTahoInstalled = state.isTahoInstalled,
+                        onInstallTaho = onInstallTaho,
+                        onExportInstead = {
+                            onShare(M7SafeExport.shareText(request))
+                            showTransferConfirmation = false
+                        },
                     )
+                }
+            }
+
+            if (workspaceExpanded) {
+                M7TechnicalWorkspaceView(
+                    request = request,
+                    onClose = { workspaceExpanded = false },
+                    onCopyCurl = {
+                        hapticFeedback.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        onCopyCurl(M7SafeExport.curl(request))
+                    },
+                    onShare = {
+                        hapticFeedback.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        onShare(M7SafeExport.shareText(request))
+                    },
+                )
+            }
+        }
+
+        originWarningTargetUrl?.let { targetUrl ->
+            val parsedTarget = runCatching { java.net.URI(targetUrl).host }.getOrNull() ?: targetUrl
+            ModalBottomSheet(
+                onDismissRequest = { originWarningTargetUrl = null },
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                containerColor = TahoSheet,
+                contentColor = TahoText,
+                shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+                tonalElevation = 0.dp,
+                scrimColor = Color.Black.copy(alpha = .50f),
+                dragHandle = { SheetGrabHandle() },
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 18.dp, vertical = 20.dp),
+                ) {
+                    Text(
+                        text = "Destination Origin Changed",
+                        color = TahoWarn,
+                        fontFamily = TahoDisplay,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 17.sp,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "This request is addressed to $parsedTarget, which differs from your current tab origin. Replaying it will send network traffic to this external host without live browser cookies or credentials.",
+                        color = TahoText,
+                        fontFamily = TahoMono,
+                        fontSize = 11.sp,
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(9.dp),
+                    ) {
+                        M7PrimaryButton(
+                            label = "Replay Safely",
+                            showArrow = false,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                val url = targetUrl
+                                originWarningTargetUrl = null
+                                selectedCaptureId = null
+                                onReplayRequest(url)
+                            },
+                        )
+                        M7SecondaryButton("Cancel", Modifier.weight(1f)) {
+                            originWarningTargetUrl = null
+                        }
+                    }
                 }
             }
         }
@@ -405,13 +729,22 @@ fun TahoBrowserApp(
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                 containerColor = TahoSheet,
                 contentColor = TahoText,
-                shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+                shape = TahoSheetShape,
                 tonalElevation = 0.dp,
                 scrimColor = Color.Black.copy(alpha = .50f),
                 dragHandle = { SheetGrabHandle() },
             ) {
-                TabSwitcher(
+                TahoTabsOverviewSheet(
                     tabs = state.tabs,
+                    onSelectTab = {
+                        onSelectTab(it)
+                        showTabs = false
+                    },
+                    onCloseTab = {
+                        val tabToClose = state.tabs.find { t -> t.id == it }
+                        TahoBrowserStateStore.recordClosedTab(tabToClose?.title, tabToClose?.location, tabToClose?.isPrivate ?: false)
+                        onCloseTab(it)
+                    },
                     onNewTab = {
                         onNewTab()
                         showTabs = false
@@ -420,13 +753,27 @@ fun TahoBrowserApp(
                         onNewPrivateTab()
                         showTabs = false
                     },
-                    onSelectTab = {
-                        onSelectTab(it)
+                    onCloseOtherTabs = { keepId ->
+                        state.tabs.filterNot { it.id == keepId }.forEach { t -> onCloseTab(t.id) }
+                    },
+                    onCloseAllTabs = {
+                        state.tabs.forEach { t -> onCloseTab(t.id) }
+                        onNewTab()
                         showTabs = false
                     },
-                    onCloseTab = onCloseTab,
-                    onSettings = {
+                    onDuplicateTab = { id ->
+                        val t = state.tabs.find { it.id == id }
+                        t?.location?.let { loc -> onNavigate(loc) }
                         showTabs = false
+                    },
+                    onRestoreClosedTab = { url ->
+                        onNavigate(url)
+                        showTabs = false
+                    },
+                    onCloseOverview = { showTabs = false },
+                    onOpenSettings = {
+                        showTabs = false
+                        settingsInitialSubPage = SettingsSubPage.MAIN
                         showSettings = true
                     },
                 )
@@ -435,20 +782,151 @@ fun TahoBrowserApp(
 
         if (showSettings && state.sitePermission == null) {
             ModalBottomSheet(
-                onDismissRequest = { showSettings = false },
+                onDismissRequest = {
+                    showSettings = false
+                    settingsInitialSubPage = null
+                },
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                 containerColor = TahoSheet,
                 contentColor = TahoText,
-                shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+                shape = TahoSheetShape,
                 tonalElevation = 0.dp,
                 scrimColor = Color.Black.copy(alpha = .50f),
                 dragHandle = { SheetGrabHandle() },
             ) {
-                M7SettingsSheet(
-                    captureCapabilityNote = state.captureCapabilityNote,
-                    onClearCaptureData = onClearCaptureData,
+                TahoSettingsHubSheet(
+                    initialSubPage = settingsInitialSubPage ?: SettingsSubPage.MAIN,
+                    onNavigateUrl = { url ->
+                        onNavigate(url)
+                        showSettings = false
+                        settingsInitialSubPage = null
+                    },
+                    onDismiss = {
+                        showSettings = false
+                        settingsInitialSubPage = null
+                    },
                 )
             }
+        }
+
+        if (showBrowserMenu && state.sitePermission == null) {
+            ModalBottomSheet(
+                onDismissRequest = { showBrowserMenu = false },
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                containerColor = TahoSheet,
+                contentColor = TahoText,
+                shape = TahoSheetShape,
+                tonalElevation = 0.dp,
+                scrimColor = Color.Black.copy(alpha = .50f),
+                dragHandle = { SheetGrabHandle() },
+            ) {
+                TahoBrowserMenuSheet(
+                    currentLocation = currentTab?.location,
+                    currentTitle = currentTab?.title,
+                    isDesktopMode = effectiveDesktop,
+                    isBookmarked = isBookmarked,
+                    zoomPercent = currentZoom,
+                    onZoomIn = {
+                        TahoBrowserStateStore.setZoomForOrigin(currentOrigin, (currentZoom + 10).coerceAtMost(300))
+                    },
+                    onZoomOut = {
+                        TahoBrowserStateStore.setZoomForOrigin(currentOrigin, (currentZoom - 10).coerceAtLeast(50))
+                    },
+                    onZoomReset = {
+                        TahoBrowserStateStore.setZoomForOrigin(currentOrigin, 100)
+                    },
+                    onToggleBookmark = {
+                        currentTab?.location?.let { loc ->
+                            if (isBookmarked) {
+                                val bm = TahoBrowserStateStore.bookmarks.find { it.url == loc }
+                                if (bm != null) TahoBrowserStateStore.removeBookmark(bm.id)
+                            } else {
+                                TahoBrowserStateStore.addBookmark(currentTab.title ?: loc, loc)
+                            }
+                        }
+                    },
+                    onSaveToReadingList = {
+                        currentTab?.location?.let { loc ->
+                            TahoBrowserStateStore.addReadingListItem(currentTab.title ?: loc, loc)
+                        }
+                    },
+                    onShare = { showShareQr = true },
+                    onFindInPage = { findInPageActive = true },
+                    onToggleDesktopMode = {
+                        currentTab?.location?.let { loc ->
+                            TahoBrowserStateStore.toggleDesktopModeForOrigin(loc)
+                        }
+                        isDesktopMode = !effectiveDesktop
+                    },
+                    onReaderMode = { showReaderMode = true },
+                    onTranslate = { showTranslationBar = true },
+                    onAddToHomeScreen = {
+                        currentTab?.location?.let { loc ->
+                            TahoBrowserStateStore.addTopSite(currentTab.title ?: loc, loc, isPinned = true)
+                        }
+                    },
+                    onPrintPage = {
+                        showBrowserMenu = false
+                        runCatching {
+                            val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                putExtra(Intent.EXTRA_SUBJECT, "Taho - " + (currentTab?.title ?: "Web Page"))
+                                putExtra(Intent.EXTRA_TEXT, currentTab?.location ?: "")
+                                type = "text/plain"
+                            }
+                            val shareIntent = Intent.createChooser(sendIntent, "Print or Share Webpage")
+                            context.startActivity(shareIntent)
+                        }
+                    },
+                    onSaveOffline = {
+                        currentTab?.location?.let { loc ->
+                            TahoBrowserStateStore.offlinePages = TahoBrowserStateStore.offlinePages + OfflinePageUi(
+                                id = java.util.UUID.randomUUID().toString(),
+                                title = currentTab.title ?: loc,
+                                url = loc,
+                            )
+                        }
+                    },
+                    onSiteInfo = { showSiteInfo = true },
+                    onOpenSettings = { section ->
+                        settingsInitialSubPage = when (section) {
+                            "BOOKMARKS" -> SettingsSubPage.BOOKMARKS
+                            "HISTORY" -> SettingsSubPage.HISTORY
+                            "DOWNLOADS" -> SettingsSubPage.DOWNLOADS
+                            "PASSWORDS" -> SettingsSubPage.PASSWORDS
+                            "EXTENSIONS" -> SettingsSubPage.EXTENSIONS
+                            else -> SettingsSubPage.MAIN
+                        }
+                        showSettings = true
+                    },
+                    onNewTab = {
+                        onNewTab()
+                        showBrowserMenu = false
+                    },
+                    onNewPrivateTab = {
+                        onNewPrivateTab()
+                        showBrowserMenu = false
+                    },
+                    onCloseMenu = { showBrowserMenu = false },
+                )
+            }
+        }
+
+        if (showSiteInfo && state.sitePermission == null) {
+            TahoSiteInfoSheet(
+                url = currentTab?.location ?: "https://taho.app",
+                onDismiss = { showSiteInfo = false },
+                onClearSiteData = { origin ->
+                    TahoBrowserStateStore.clearSiteDataForOrigin(origin)
+                },
+            )
+        }
+
+        if (showShareQr && state.sitePermission == null) {
+            TahoShareQrSheet(
+                url = currentTab?.location ?: "https://taho.app",
+                title = currentTab?.title,
+                onDismiss = { showShareQr = false },
+            )
         }
 
         state.sitePermission?.let { prompt ->
@@ -735,6 +1213,9 @@ private fun Omnibox(
     onBeginEdit: () -> Unit,
     onSubmit: () -> Unit,
     onTabsClick: () -> Unit,
+    onMenuClick: () -> Unit = {},
+    onHomeClick: () -> Unit = {},
+    onLeadingClick: () -> Unit = {},
 ) {
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
@@ -771,15 +1252,16 @@ private fun Omnibox(
                 .fillMaxWidth()
                 .heightIn(min = 44.dp)
                 .clickable(enabled = !editing, onClick = onBeginEdit)
-                .padding(horizontal = 14.dp),
+                .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             OmniboxLeadingGlyph(
                 value = value,
                 editing = editing,
                 isPrivate = isPrivate,
+                onClick = onLeadingClick,
             )
-            Spacer(Modifier.width(9.dp))
+            Spacer(Modifier.width(8.dp))
 
             if (editing) {
                 Box(modifier = Modifier.weight(1f)) {
@@ -824,12 +1306,50 @@ private fun Omnibox(
                 )
             }
 
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(4.dp))
+            OmniboxHomeButton(onClick = onHomeClick)
+            Spacer(Modifier.width(2.dp))
             TabCountButton(
                 tabCount = tabCount,
                 onClick = onTabsClick,
             )
+            Spacer(Modifier.width(2.dp))
+            OmniboxMenuButton(onClick = onMenuClick)
         }
+    }
+}
+
+@Composable
+private fun OmniboxHomeButton(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .clip(RoundedCornerShape(9.dp))
+            .clickable(onClick = onClick)
+            .semantics {
+                role = Role.Button
+                contentDescription = "Home"
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text("⌂", color = TahoMuted, fontSize = 15.sp)
+    }
+}
+
+@Composable
+private fun OmniboxMenuButton(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .clip(RoundedCornerShape(9.dp))
+            .clickable(onClick = onClick)
+            .semantics {
+                role = Role.Button
+                contentDescription = "Menu"
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text("⋮", color = TahoText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -838,53 +1358,62 @@ private fun OmniboxLeadingGlyph(
     value: String,
     editing: Boolean,
     isPrivate: Boolean,
+    onClick: () -> Unit = {},
 ) {
-    if (isPrivate) {
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (isPrivate) {
+            Text(
+                text = "◐",
+                color = TahoGoldHi,
+                fontSize = 14.sp,
+            )
+            return@Box
+        }
+
+        if (!editing && value.startsWith("https://")) {
+            Canvas(
+                modifier = Modifier
+                    .size(18.dp)
+                    .semantics { contentDescription = "Secure connection" },
+            ) {
+                val stroke = 1.35.dp.toPx()
+                val bodyWidth = size.width * .56f
+                val bodyHeight = size.height * .42f
+                val bodyLeft = (size.width - bodyWidth) / 2f
+                val bodyTop = size.height * .46f
+
+                drawRoundRect(
+                    color = TahoOk,
+                    topLeft = Offset(bodyLeft, bodyTop),
+                    size = Size(bodyWidth, bodyHeight),
+                    cornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx()),
+                    style = Stroke(width = stroke),
+                )
+                drawArc(
+                    color = TahoOk,
+                    startAngle = 180f,
+                    sweepAngle = 180f,
+                    useCenter = false,
+                    topLeft = Offset(size.width * .29f, size.height * .12f),
+                    size = Size(size.width * .42f, size.height * .54f),
+                    style = Stroke(width = stroke),
+                )
+            }
+            return@Box
+        }
+
         Text(
-            text = "◐",
-            color = TahoGoldHi,
+            text = "⌕",
+            color = TahoFaint,
             fontSize = 14.sp,
         )
-        return
     }
-
-    if (!editing && value.startsWith("https://")) {
-        Canvas(
-            modifier = Modifier
-                .size(18.dp)
-                .semantics { contentDescription = "Secure connection" },
-        ) {
-            val stroke = 1.35.dp.toPx()
-            val bodyWidth = size.width * .56f
-            val bodyHeight = size.height * .42f
-            val bodyLeft = (size.width - bodyWidth) / 2f
-            val bodyTop = size.height * .46f
-
-            drawRoundRect(
-                color = TahoFaint,
-                topLeft = Offset(bodyLeft, bodyTop),
-                size = Size(bodyWidth, bodyHeight),
-                cornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx()),
-                style = Stroke(width = stroke),
-            )
-            drawArc(
-                color = TahoFaint,
-                startAngle = 180f,
-                sweepAngle = 180f,
-                useCenter = false,
-                topLeft = Offset(size.width * .29f, size.height * .12f),
-                size = Size(size.width * .42f, size.height * .54f),
-                style = Stroke(width = stroke),
-            )
-        }
-        return
-    }
-
-    Text(
-        text = "⌕",
-        color = TahoFaint,
-        fontSize = 14.sp,
-    )
 }
 
 @Composable

@@ -1,0 +1,91 @@
+{
+  "schema": "taho.request-transfer",
+  "version": 1,
+  "minimumReaderVersion": 1,
+  "transferId": "01J8ZQ4M2K7X9V3B8N0P4R6T8M",
+  "issuedAt": 1758912345678,
+  "source": {
+    "product": "taho-browser",
+    "appVersion": "0.1.0",
+    "engine": "geckoview-156.0.20260921121718",
+    "captureSessionId": "01J8ZQ4M2K7X9V3B8N0P4R6T8A",
+    "tabId": "01J8ZQ4M2K7X9V3B8N0P4R6T8B",
+    "observation": "ENGINE"
+  },
+  "request": {
+    "id": "01J8ZQ4M2K7X9V3B8N0P4R6T8C",
+    "method": "GET",
+    "url": "https://api.example.com/v1/search?q=test&limit=10",
+    "query": [
+      {
+        "name": "q",
+        "value": "test",
+        "redacted": false
+      },
+      {
+        "name": "limit",
+        "value": "10",
+        "redacted": false
+      }
+    ],
+    "headers": [
+      {
+        "name": "Accept",
+        "value": "application/json",
+        "redacted": false
+      },
+      {
+        "name": "Accept-Language",
+        "value": "en-US,en;q=0.9",
+        "redacted": false
+      },
+      {
+        "name": "Cache-Control",
+        "value": "no-cache",
+        "redacted": false
+      },
+      {
+        "name": "User-Agent",
+        "value": "Mozilla/5.0 (Android; Mobile) TahoBrowser/0.1.0",
+        "redacted": false
+      },
+      {
+        "name": "X-Request-ID",
+        "value": "req-987654321",
+        "redacted": false
+      }
+    ],
+    "body": null
+  },
+  "capture": {
+    "timestamp": 1758912345678,
+    "durationMs": 110,
+    "status": 200,
+    "statusText": "OK",
+    "initiator": "SCRIPT",
+    "timing": { "ttfbMs": 85, "totalMs": 110 },
+    "completeness": {
+      "requestUrl": "COMPLETE",
+      "requestHeaders": "COMPLETE",
+      "requestBody": "NOT_APPLICABLE",
+      "responseHeaders": "COMPLETE",
+      "responseBody": "UNAVAILABLE",
+      "timing": "COMPLETE",
+      "tlsInfo": "UNAVAILABLE"
+    }
+  },
+  "security": {
+    "secretPolicy": "PARAMETERIZE",
+    "containsSensitiveData": false,
+    "secretCount": 0,
+    "fromPrivateSession": false,
+    "reviewRequired": false,
+    "findings": []
+  },
+  "provenance": {
+    "normalizerVersion": "norm/1.0.0",
+    "captureEngineVersion": "geckoview-156.0.20260921121718",
+    "capturedAt": 1758912345678,
+    "redirectCount": 0
+  }
+}

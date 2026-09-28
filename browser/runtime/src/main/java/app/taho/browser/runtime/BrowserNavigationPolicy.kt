@@ -18,7 +18,7 @@ object BrowserNavigationPolicy {
     private const val MAX_ORIGIN_LENGTH = 160
 
     private val internalSchemes = setOf("http", "https", "about")
-    private val externalSchemes = setOf("mailto", "tel", "sms", "geo")
+    private val externalSchemes = setOf("mailto", "tel", "sms", "geo", "intent")
     private val schemePattern = Regex("^([a-zA-Z][a-zA-Z0-9+.-]*):")
 
     fun decide(

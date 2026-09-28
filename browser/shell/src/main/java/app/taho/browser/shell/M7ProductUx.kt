@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -57,6 +58,11 @@ enum class M7CaptureFilterUi {
     ALL,
     AUTH,
     API,
+    GRAPHQL,
+    WEBSOCKET,
+    STATIC_RESOURCE,
+    ANALYTICS,
+    TELEMETRY,
 }
 
 enum class M7InspectorTabUi {
@@ -68,6 +74,21 @@ enum class M7InspectorTabUi {
 }
 
 internal object M7CaptureUx {
+    private val STATIC_EXTENSIONS = setOf(
+        ".js", ".css", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".woff", ".woff2",
+        ".ttf", ".eot", ".webp", ".mp4", ".webm", ".map",
+    )
+
+    private val ANALYTICS_PATTERNS = listOf(
+        "google-analytics", "analytics", "segment.io", "mixpanel", "amplitude", "hotjar",
+        "doubleclick", "clarity.ms", "stats", "pixel", "facebook.com/tr",
+    )
+
+    private val TELEMETRY_PATTERNS = listOf(
+        "telemetry", "sentry.io", "bugsnag", "datadog", "crashlytics", "newrelic",
+        "loggly", "rollbar", "metrics", "events",
+    )
+
     fun filtered(
         requests: List<M4CaptureRequestUiState>,
         filter: M7CaptureFilterUi,
@@ -81,6 +102,33 @@ internal object M7CaptureUx {
             }
             M7CaptureFilterUi.API -> requests.filter {
                 it.relevanceCategory.uppercase() in API_CATEGORIES
+            }
+            M7CaptureFilterUi.GRAPHQL -> requests.filter {
+                it.relevanceCategory.equals("GRAPHQL", ignoreCase = true) ||
+                    it.url.contains("/graphql", ignoreCase = true) ||
+                    it.bodyRepresentation.equals("GRAPHQL", ignoreCase = true)
+            }
+            M7CaptureFilterUi.WEBSOCKET -> requests.filter {
+                it.relevanceCategory.equals("WEBSOCKET", ignoreCase = true) ||
+                    it.url.startsWith("ws://", ignoreCase = true) ||
+                    it.url.startsWith("wss://", ignoreCase = true) ||
+                    it.headers.any { h ->
+                        h.name.equals("Upgrade", ignoreCase = true) &&
+                            h.displayValue.contains("websocket", ignoreCase = true)
+                    }
+            }
+            M7CaptureFilterUi.STATIC_RESOURCE -> requests.filter {
+                it.relevanceCategory.equals("STATIC_RESOURCE", ignoreCase = true) ||
+                    it.relevanceCategory.equals("STATIC", ignoreCase = true) ||
+                    STATIC_EXTENSIONS.any { ext -> it.url.substringBefore('?').endsWith(ext, ignoreCase = true) }
+            }
+            M7CaptureFilterUi.ANALYTICS -> requests.filter {
+                it.relevanceCategory.equals("ANALYTICS", ignoreCase = true) ||
+                    ANALYTICS_PATTERNS.any { p -> it.url.contains(p, ignoreCase = true) }
+            }
+            M7CaptureFilterUi.TELEMETRY -> requests.filter {
+                it.relevanceCategory.equals("TELEMETRY", ignoreCase = true) ||
+                    TELEMETRY_PATTERNS.any { p -> it.url.contains(p, ignoreCase = true) }
             }
         }
 
@@ -284,6 +332,11 @@ internal fun M7CaptureSummarySheet(
             M7FilterChip("All", M7CaptureFilterUi.ALL, filter, onFilterSelected)
             M7FilterChip("Auth", M7CaptureFilterUi.AUTH, filter, onFilterSelected)
             M7FilterChip("API", M7CaptureFilterUi.API, filter, onFilterSelected)
+            M7FilterChip("GraphQL", M7CaptureFilterUi.GRAPHQL, filter, onFilterSelected)
+            M7FilterChip("WebSocket", M7CaptureFilterUi.WEBSOCKET, filter, onFilterSelected)
+            M7FilterChip("Static", M7CaptureFilterUi.STATIC_RESOURCE, filter, onFilterSelected)
+            M7FilterChip("Analytics", M7CaptureFilterUi.ANALYTICS, filter, onFilterSelected)
+            M7FilterChip("Telemetry", M7CaptureFilterUi.TELEMETRY, filter, onFilterSelected)
         }
         Spacer(Modifier.height(12.dp))
 
@@ -294,10 +347,16 @@ internal fun M7CaptureSummarySheet(
                 filter == M7CaptureFilterUi.RELEVANT -> "No relevant requests yet."
                 filter == M7CaptureFilterUi.ALL -> "No captured requests yet."
                 filter == M7CaptureFilterUi.AUTH -> "No authentication requests in this capture."
-                else -> "No API requests in this capture."
+                filter == M7CaptureFilterUi.API -> "No API requests in this capture."
+                filter == M7CaptureFilterUi.GRAPHQL -> "No GraphQL requests in this capture."
+                filter == M7CaptureFilterUi.WEBSOCKET -> "No WebSocket streams in this capture."
+                filter == M7CaptureFilterUi.STATIC_RESOURCE -> "No static resource requests in this capture."
+                filter == M7CaptureFilterUi.ANALYTICS -> "No analytics requests in this capture."
+                filter == M7CaptureFilterUi.TELEMETRY -> "No telemetry requests in this capture."
+                else -> "No matching requests in this capture."
             }
             val emptyDetail = when {
-                searching -> "Search runs on host, path, method and status only."
+                searching -> "Search runs on host, path, method, status, request ID and content-type."
                 filter == M7CaptureFilterUi.RELEVANT ->
                     "Continue browsing and Taho will surface API activity here."
                 else -> "Change the filter or continue browsing."
@@ -504,6 +563,9 @@ internal fun M7RequestInspectorSheet(
     onCopyCurl: () -> Unit,
     onShare: () -> Unit,
     onSendToTaho: () -> Unit,
+    onReplay: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null,
+    onToggleWorkspace: (() -> Unit)? = null,
 ) {
     var selectedTab by rememberSaveable(request.id) { mutableStateOf(M7InspectorTabUi.OVERVIEW) }
     val parsed = runCatching { URI(request.url) }.getOrNull()
@@ -544,6 +606,22 @@ internal fun M7RequestInspectorSheet(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+            }
+            if (onToggleWorkspace != null) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .semantics {
+                            role = Role.Button
+                            contentDescription = "Open full-screen technical workspace"
+                        }
+                        .clickable(onClick = onToggleWorkspace),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("⛶", color = TahoGoldHi, fontSize = 16.sp)
+                }
+                Spacer(Modifier.width(4.dp))
             }
             Box(
                 modifier = Modifier
@@ -594,7 +672,31 @@ internal fun M7RequestInspectorSheet(
             M7HonestyNote(reason, warning = true)
         }
 
-        Spacer(Modifier.height(10.dp))
+        if (onReplay != null || onDelete != null) {
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (onReplay != null) {
+                    M7MiniButton(
+                        label = "Replay",
+                        modifier = Modifier.weight(1f),
+                        onClick = onReplay,
+                    )
+                }
+                if (onDelete != null) {
+                    M7MiniButton(
+                        label = "Delete",
+                        modifier = Modifier.weight(1f),
+                        onClick = onDelete,
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -892,6 +994,9 @@ internal fun M7SendConfirmationSheet(
     onPolicySelected: (M4SecretPolicyUi) -> Unit,
     onCancel: () -> Unit,
     onConfirm: () -> Unit,
+    isTahoInstalled: Boolean = true,
+    onInstallTaho: () -> Unit = {},
+    onExportInstead: () -> Unit = {},
 ) {
     val parsed = runCatching { URI(request.url) }.getOrNull()
     val host = parsed?.host ?: "request"
@@ -1029,19 +1134,43 @@ internal fun M7SendConfirmationSheet(
         )
 
         Spacer(Modifier.height(18.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(9.dp),
-        ) {
-            M7PrimaryButton(
-                label = "Send to Taho",
-                showArrow = false,
-                enabled = request.transferBlockedReason == null &&
-                    (selectedPolicy != M4SecretPolicyUi.EXPLICIT || request.explicitPolicyAllowed),
-                modifier = Modifier.weight(1f),
-                onClick = onConfirm,
+        if (!isTahoInstalled) {
+            M7HonestyNote(
+                "Taho API Testing is not installed on this device. You can install it from the app store or export this request directly.",
+                warning = true,
             )
-            M7SecondaryButton("Cancel", Modifier.weight(1f), onCancel)
+            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(9.dp),
+            ) {
+                M7PrimaryButton(
+                    label = "Install Taho",
+                    showArrow = true,
+                    modifier = Modifier.weight(1f),
+                    onClick = onInstallTaho,
+                )
+                M7SecondaryButton(
+                    label = "Export Instead",
+                    modifier = Modifier.weight(1f),
+                    onClick = onExportInstead,
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(9.dp),
+            ) {
+                M7PrimaryButton(
+                    label = "Send to Taho",
+                    showArrow = false,
+                    enabled = request.transferBlockedReason == null &&
+                        (selectedPolicy != M4SecretPolicyUi.EXPLICIT || request.explicitPolicyAllowed),
+                    modifier = Modifier.weight(1f),
+                    onClick = onConfirm,
+                )
+                M7SecondaryButton("Cancel", Modifier.weight(1f), onCancel)
+            }
         }
         Spacer(Modifier.height(9.dp))
         Text(
@@ -1056,6 +1185,8 @@ internal fun M7SendConfirmationSheet(
 @Composable
 internal fun M7SettingsSheet(
     captureCapabilityNote: String?,
+    retentionMode: String = "Session only",
+    onRetentionModeChanged: (String) -> Unit = {},
     onClearCaptureData: () -> Unit,
 ) {
     var confirmingClear by rememberSaveable { mutableStateOf(false) }
@@ -1081,7 +1212,52 @@ internal fun M7SettingsSheet(
         )
         Spacer(Modifier.height(16.dp))
 
-        M7KeyValue("Capture retention", "Session only")
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Capture retention",
+                    color = TahoText,
+                    fontFamily = TahoMono,
+                    fontSize = 11.sp,
+                )
+                Text(
+                    text = if (retentionMode == "Keep until deleted") {
+                        "Workspace mode: records are kept until deleted."
+                    } else {
+                        "Ephemeral: records are cleared when tabs close."
+                    },
+                    color = TahoMuted,
+                    fontFamily = TahoMono,
+                    fontSize = 9.sp,
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (retentionMode == "Session only") TahoGold.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f))
+                        .clickable { onRetentionModeChanged("Session only") }
+                        .padding(horizontal = 9.dp, vertical = 6.dp),
+                ) {
+                    Text("Session", color = if (retentionMode == "Session only") TahoGoldHi else TahoMuted, fontSize = 10.sp, fontFamily = TahoMono)
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (retentionMode == "Keep until deleted") TahoGold.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f))
+                        .clickable { onRetentionModeChanged("Keep until deleted") }
+                        .padding(horizontal = 9.dp, vertical = 6.dp),
+                ) {
+                    Text("Keep until deleted", color = if (retentionMode == "Keep until deleted") TahoGoldHi else TahoMuted, fontSize = 10.sp, fontFamily = TahoMono)
+                }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+
         M7KeyValue("Default secret policy", "Parameterize")
         M7KeyValue("Response bodies", "Unavailable on current capture path")
         M7KeyValue("Reduced motion", "Follows Android animation scale")
@@ -1129,6 +1305,185 @@ internal fun M7SettingsSheet(
                 )
             }
         }
+    }
+}
+
+@Composable
+internal fun M7TechnicalWorkspaceView(
+    request: M4CaptureRequestUiState,
+    onClose: () -> Unit,
+    onCopyCurl: () -> Unit,
+    onShare: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(TahoBg)
+            .navigationBarsPadding()
+            .padding(16.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "TECHNICAL WORKSPACE",
+                    color = TahoGoldHi,
+                    fontFamily = TahoMono,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                )
+                Text(
+                    text = request.method + " " + request.url,
+                    color = TahoText,
+                    fontFamily = TahoMono,
+                    fontSize = 12.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(onClick = onClose),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("✕", color = TahoMuted, fontSize = 20.sp)
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            M7SecondaryButton("Copy cURL", Modifier.weight(1f), onCopyCurl)
+            M7SecondaryButton("Export / Share", Modifier.weight(1f), onShare)
+        }
+        Spacer(Modifier.height(14.dp))
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            item {
+                M7RawSection(
+                    title = "METRICS & PROVENANCE",
+                    entries = listOf(
+                        "Request ID" to request.id,
+                        "Status" to "${request.status ?: 0}",
+                        "Duration" to "${request.durationMs ?: 0} ms",
+                        "Initiator" to (request.observationSource ?: "network"),
+                        "Redirects" to "${request.redirectCount}",
+                        "Private Session" to "${request.fromPrivateSession}",
+                    ),
+                )
+            }
+            item {
+                M7RawSection(
+                    title = "REQUEST HEADERS",
+                    entries = request.headers.map { it.name to it.displayValue },
+                )
+            }
+            item {
+                M7RawSection(
+                    title = "COMPLETENESS AUDIT",
+                    entries = listOf(
+                        "URL" to request.requestUrlCompleteness.name,
+                        "Headers" to request.requestHeadersCompleteness.name,
+                        "Body" to request.requestBodyCompleteness.name,
+                        "Response Headers" to request.responseHeadersCompleteness.name,
+                        "Response Body" to request.responseBodyCompleteness.name,
+                        "Timing" to request.timingCompleteness.name,
+                        "TLS Info" to request.tlsCompleteness.name,
+                    ),
+                )
+            }
+            if (!request.safeBodyPreview.isNullOrBlank()) {
+                item {
+                    M7RawBlock(
+                        title = "REQUEST BODY PAYLOAD",
+                        content = request.safeBodyPreview,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun M7RawSection(title: String, entries: List<Pair<String, String>>) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.White.copy(alpha = 0.03f))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
+            .padding(12.dp),
+    ) {
+        Text(
+            text = title,
+            color = TahoMuted,
+            fontFamily = TahoMono,
+            fontWeight = FontWeight.Bold,
+            fontSize = 10.sp,
+        )
+        Spacer(Modifier.height(8.dp))
+        entries.forEach { (key, value) ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 2.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = key,
+                    color = TahoFaint,
+                    fontFamily = TahoMono,
+                    fontSize = 10.sp,
+                    modifier = Modifier.weight(0.4f),
+                )
+                Text(
+                    text = value,
+                    color = TahoText,
+                    fontFamily = TahoMono,
+                    fontSize = 10.sp,
+                    modifier = Modifier.weight(0.6f),
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun M7RawBlock(title: String, content: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.White.copy(alpha = 0.03f))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
+            .padding(12.dp),
+    ) {
+        Text(
+            text = title,
+            color = TahoMuted,
+            fontFamily = TahoMono,
+            fontWeight = FontWeight.Bold,
+            fontSize = 10.sp,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = content,
+            color = TahoGoldHi,
+            fontFamily = TahoMono,
+            fontSize = 10.sp,
+        )
     }
 }
 
@@ -1360,9 +1715,9 @@ private fun M7MiniButton(
  * trailing arrow nested inside its own dark circular wrapper (spec §6).
  */
 @Composable
-private fun M7PrimaryButton(
+internal fun M7PrimaryButton(
     label: String,
-    enabled: Boolean,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier,
     showArrow: Boolean = true,
     onClick: () -> Unit,
@@ -1418,7 +1773,7 @@ private fun M7PrimaryButton(
 }
 
 @Composable
-private fun M7SecondaryButton(
+internal fun M7SecondaryButton(
     label: String,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,

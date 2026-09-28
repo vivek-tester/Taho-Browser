@@ -448,6 +448,7 @@ class BrowserRuntimeController(context: Context) {
     private fun newSession(privateMode: Boolean): GeckoSession {
         val settings = GeckoSessionSettings.Builder()
             .usePrivateMode(privateMode)
+            .useTrackingProtection(true)
             .build()
         return GeckoSession(settings)
     }

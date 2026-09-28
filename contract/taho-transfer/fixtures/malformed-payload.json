@@ -1,0 +1,27 @@
+{
+  "schema": "taho.request-transfer",
+  "version": 1,
+  "minimumReaderVersion": 1,
+  "transferId": "INVALID_TRANSFER_ID_NOT_A_ULID",
+  "issuedAt": -1,
+  "source": {
+    "product": "",
+    "appVersion": "",
+    "engine": "",
+    "captureSessionId": "",
+    "observation": "INVALID_SOURCE"
+  },
+  "request": {
+    "id": "",
+    "method": "INVALID_METHOD",
+    "url": "not-a-valid-url"
+  },
+  "capture": {
+    "timestamp": -1,
+    "completeness": {}
+  },
+  "security": {
+    "secretPolicy": "INVALID_POLICY"
+  },
+  "provenance": {}
+}

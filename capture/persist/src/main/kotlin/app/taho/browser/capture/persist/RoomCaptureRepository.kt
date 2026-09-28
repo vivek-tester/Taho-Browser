@@ -225,6 +225,52 @@ class RoomCaptureRepository private constructor(
         }
     }
 
+    fun deleteTransaction(transactionId: String): CaptureRepositoryResult<Unit> = guarded {
+        dao.deleteTransaction(transactionId)
+        dao.deleteOrphanBodies()
+        Unit
+    }
+
+    fun upsertTab(tab: TabEntity): CaptureRepositoryResult<Unit> = guarded {
+        dao.upsertTab(tab)
+        Unit
+    }
+
+    fun getTab(id: String): CaptureRepositoryResult<TabEntity?> = guarded {
+        dao.getTab(id)
+    }
+
+    fun listTabs(): CaptureRepositoryResult<List<TabEntity>> = guarded {
+        dao.listTabs()
+    }
+
+    fun insertStreamFrame(frame: StreamFrameEntity): CaptureRepositoryResult<Unit> = guarded {
+        dao.insertStreamFrame(frame)
+        Unit
+    }
+
+    fun listFrames(transactionId: String): CaptureRepositoryResult<List<StreamFrameEntity>> = guarded {
+        dao.listFramesForTransaction(transactionId)
+    }
+
+    fun upsertTransferRecord(record: TransferRecordEntity): CaptureRepositoryResult<Unit> = guarded {
+        dao.upsertTransferRecord(record)
+        Unit
+    }
+
+    fun getTransferRecord(transferId: String): CaptureRepositoryResult<TransferRecordEntity?> = guarded {
+        dao.getTransferRecord(transferId)
+    }
+
+    fun setMeta(key: String, value: String): CaptureRepositoryResult<Unit> = guarded {
+        dao.upsertMeta(MetaEntity(key, value))
+        Unit
+    }
+
+    fun getMeta(key: String): CaptureRepositoryResult<String?> = guarded {
+        dao.getMeta(key)?.value
+    }
+
     fun close() {
         database.close()
     }

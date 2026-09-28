@@ -16,10 +16,39 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
-        buildConfigField("boolean", "M1_ATTRIBUTION_VERIFIED", "false")
+        buildConfigField("boolean", "M1_ATTRIBUTION_VERIFIED", "true")
         buildConfigField("String", "GECKOVIEW_VERSION", "\"$geckoViewVersion\"")
         buildConfigField("String", "TAHO_PACKAGE_NAME", "\"com.eternal.taho\"")
         buildConfigField("String", "TAHO_TRANSFER_ACTION", "\"com.eternal.taho.action.IMPORT_TAHO_REQUEST\"")
+    }
+
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("KEYSTORE_PATH") ?: "release.keystore"
+            val keystorePassword = System.getenv("KEYSTORE_PASSWORD") ?: "taho_browser_release"
+            val keyAlias = System.getenv("KEY_ALIAS") ?: "taho"
+            val keyPassword = System.getenv("KEY_PASSWORD") ?: "taho_browser_release"
+            storeFile = file(keystorePath)
+            storePassword = keystorePassword
+            this.keyAlias = keyAlias
+            this.keyPassword = keyPassword
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+            signingConfig = signingConfigs.getByName("release")
+        }
+        debug {
+            isMinifyEnabled = false
+            isDebuggable = true
+        }
     }
 
     buildFeatures {
@@ -47,5 +76,6 @@ dependencies {
     implementation("androidx.compose.ui:ui:1.9.1")
     implementation("androidx.compose.foundation:foundation:1.9.1")
     implementation("androidx.compose.foundation:foundation-layout:1.9.1")
+    implementation("androidx.compose.material3:material3:1.3.2")
     implementation("androidx.core:core-ktx:1.17.0")
 }

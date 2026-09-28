@@ -7,7 +7,11 @@ import androidx.room.RoomDatabase;
     entities = {
         CaptureSessionEntity.class,
         CaptureTransactionEntity.class,
-        CaptureBodyEntity.class
+        CaptureBodyEntity.class,
+        TabEntity.class,
+        StreamFrameEntity.class,
+        TransferRecordEntity.class,
+        MetaEntity.class
     },
     version = 1,
     exportSchema = true

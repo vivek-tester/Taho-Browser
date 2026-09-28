@@ -4,13 +4,23 @@ import android.Manifest
 import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
+import android.content.ComponentCallbacks2
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.PersistableBundle
 import android.os.Looper
 import android.os.ResultReceiver
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import app.taho.browser.runtime.DefensiveIntentHandler
+import app.taho.browser.runtime.DefensiveIntentResult
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -85,6 +95,19 @@ class MainActivity : ComponentActivity() {
     private var transferPhase by mutableStateOf(M7TransferPhaseUi.NOT_STARTED)
     private var pendingTransferId: String? = null
     private var transferPreparationInFlight: Boolean = false
+    private var isOffline by mutableStateOf(false)
+    private var originatingTabId: String? = null
+    private var pendingExternalNavDialog by mutableStateOf<Triple<String, String, Intent>?>(null)
+    private var captureRetentionMode by mutableStateOf("Session only")
+
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            runOnUiThread { isOffline = false }
+        }
+        override fun onLost(network: Network) {
+            runOnUiThread { isOffline = true }
+        }
+    }
 
     private val androidPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -123,6 +146,17 @@ class MainActivity : ComponentActivity() {
         CaptureMaintenance.schedule(this)
         transferCoordinator = TahoSecureTransferCoordinator(this)
         TransferArtifactMaintenance.schedule(this)
+
+        runCatching {
+            val cm = getSystemService(ConnectivityManager::class.java)
+            cm?.registerNetworkCallback(
+                NetworkRequest.Builder()
+                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    .build(),
+                networkCallback,
+            )
+        }
+
         val recoveredReceipt = TransferReceiptRecoveryStore.consumeLatest(this)
         if (recoveredReceipt != null) {
             transferNotice = receiptNotice(recoveredReceipt)
@@ -209,21 +243,63 @@ class MainActivity : ComponentActivity() {
                     return@LaunchedEffect
                 }
 
-                val opened = runCatching {
-                    val action = if (request.scheme == "tel") {
-                        Intent.ACTION_DIAL
-                    } else {
-                        Intent.ACTION_VIEW
+                when (val result = DefensiveIntentHandler.parse(request.uri, this@MainActivity)) {
+                    is DefensiveIntentResult.SafeIntent -> {
+                        pendingExternalNavDialog = Triple(
+                            request.id,
+                            result.displayLabel,
+                            result.intent,
+                        )
                     }
-                    startActivity(Intent(action, Uri.parse(request.uri)))
-                    true
-                }.getOrDefault(false)
+                    is DefensiveIntentResult.FallbackInBrowser -> {
+                        controller.resolveExternalNavigation(request.id, opened = true)
+                        controller.load(uri = result.fallbackUrl)
+                    }
+                    is DefensiveIntentResult.Blocked -> {
+                        controller.resolveExternalNavigation(request.id, opened = false)
+                        transferNotice = "Blocked external request: ${result.reason}"
+                    }
+                }
+            }
 
-                controller.resolveExternalNavigation(
-                    requestId = request.id,
-                    opened = opened,
+            pendingExternalNavDialog?.let { (reqId, label, intent) ->
+                AlertDialog(
+                    onDismissRequest = {
+                        controller.resolveExternalNavigation(reqId, opened = false)
+                        pendingExternalNavDialog = null
+                    },
+                    title = { Text("Open in $label?") },
+                    text = { Text("You are leaving Taho Browser to open an external application.") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            originatingTabId = controller.snapshot().selectedTabId
+                            val opened = runCatching {
+                                startActivity(intent)
+                                true
+                            }.getOrDefault(false)
+                            controller.resolveExternalNavigation(reqId, opened = opened)
+                            pendingExternalNavDialog = null
+                        }) {
+                            Text("Open")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = {
+                            controller.resolveExternalNavigation(reqId, opened = false)
+                            pendingExternalNavDialog = null
+                        }) {
+                            Text("Stay in Browser")
+                        }
+                    },
                 )
             }
+
+            val isTahoInstalled = transferCoordinator.isTargetAvailable(
+                TahoDirectTransferTarget(
+                    packageName = BuildConfig.TAHO_PACKAGE_NAME,
+                    action = BuildConfig.TAHO_TRANSFER_ACTION,
+                ),
+            )
 
             TahoBrowserApp(
                 state = BrowserUiState(
@@ -237,9 +313,15 @@ class MainActivity : ComponentActivity() {
                     isPrivate = snapshot.isPrivate,
                     canGoBack = snapshot.canGoBack,
                     canGoForward = snapshot.canGoForward,
-                    notice = transferNotice
-                        ?: captureSnapshot.storageDegradedReason?.let(::storageNotice)
-                        ?: snapshot.notice,
+                    isTahoInstalled = isTahoInstalled,
+                    retentionMode = captureRetentionMode,
+                    notice = if (isOffline) {
+                        "Device is offline. Network requests cannot be made until connected."
+                    } else {
+                        transferNotice
+                            ?: captureSnapshot.storageDegradedReason?.let(::storageNotice)
+                            ?: snapshot.notice
+                    },
                     transferPhase = transferPhase,
                     captureCapabilityNote = when {
                         !BuildConfig.M1_ATTRIBUTION_VERIFIED ->
@@ -304,6 +386,36 @@ class MainActivity : ComponentActivity() {
                 },
                 onClearCaptureData = ::clearCaptureData,
                 onSendToTaho = ::sendToTaho,
+                onDeleteRequest = { id ->
+                    captureRepository.deleteTransaction(id)
+                    transferNotice = "Captured request deleted."
+                },
+                onInstallTaho = {
+                    runCatching {
+                        startActivity(
+                            Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse("market://details?id=${BuildConfig.TAHO_PACKAGE_NAME}"),
+                            ).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK },
+                        )
+                    }.onFailure {
+                        runCatching {
+                            startActivity(
+                                Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("https://play.google.com/store/apps/details?id=${BuildConfig.TAHO_PACKAGE_NAME}"),
+                                ).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK },
+                            )
+                        }
+                    }
+                },
+                onRetentionModeChanged = { mode ->
+                    captureRetentionMode = mode
+                    transferNotice = "Capture retention set to: $mode"
+                },
+                onReplayRequest = { url ->
+                    controller.load(uri = url)
+                },
                 browserContent = {
                     AndroidView(
                         factory = { context ->
@@ -321,12 +433,33 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        originatingTabId?.let { tabId ->
+            originatingTabId = null
+            if (controller.snapshot().tabs.any { it.id == tabId }) {
+                controller.selectTab(tabId)
+            }
+        }
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL || level >= ComponentCallbacks2.TRIM_MEMORY_COMPLETE) {
+            controller.persistNow()
+            transferNotice = "Device low on memory. Capture operating in degraded mode."
+        }
+    }
+
     override fun onStop() {
         controller.persistNow()
         super.onStop()
     }
 
     override fun onDestroy() {
+        runCatching {
+            getSystemService(ConnectivityManager::class.java)?.unregisterNetworkCallback(networkCallback)
+        }
         captureRuntime.close()
         super.onDestroy()
     }
@@ -351,12 +484,13 @@ class MainActivity : ComponentActivity() {
             is CaptureRepositoryResult.Success -> Unit
         }
 
+        val isWorkspace = captureRetentionMode == "Keep until deleted"
         return captureRepository.upsertSession(
             DurableCaptureSession(
                 id = sessionId,
-                kind = CaptureSessionKind.EPHEMERAL,
+                kind = if (isWorkspace) CaptureSessionKind.WORKSPACE else CaptureSessionKind.EPHEMERAL,
                 lifecycle = CaptureSessionLifecycle.ACTIVE,
-                retention = RetentionPolicy.SESSION_ONLY,
+                retention = if (isWorkspace) RetentionPolicy.KEEP_UNTIL_DELETED else RetentionPolicy.SESSION_ONLY,
                 createdAtEpochMs = now,
             ),
         )

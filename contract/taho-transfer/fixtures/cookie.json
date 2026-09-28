@@ -1,0 +1,69 @@
+{
+  "schema": "taho.request-transfer",
+  "version": 1,
+  "minimumReaderVersion": 1,
+  "transferId": "01J8ZQ4M2K7X9V3B8N0P4R6T8K",
+  "issuedAt": 1758912345678,
+  "source": {
+    "product": "taho-browser",
+    "appVersion": "0.1.0",
+    "engine": "geckoview-156.0.20260921121718",
+    "captureSessionId": "01J8ZQ4M2K7X9V3B8N0P4R6T8A",
+    "tabId": "01J8ZQ4M2K7X9V3B8N0P4R6T8B",
+    "observation": "ENGINE"
+  },
+  "request": {
+    "id": "01J8ZQ4M2K7X9V3B8N0P4R6T8C",
+    "method": "GET",
+    "url": "https://api.example.com/v1/session",
+    "query": [],
+    "headers": [
+      {
+        "name": "Cookie",
+        "value": "{{COOKIE}}",
+        "redacted": true,
+        "secretCategory": "COOKIE",
+        "policy": "PARAMETERIZE"
+      }
+    ],
+    "body": null
+  },
+  "capture": {
+    "timestamp": 1758912345678,
+    "durationMs": 77,
+    "status": 200,
+    "statusText": "OK",
+    "initiator": "SCRIPT",
+    "timing": { "ttfbMs": 55, "totalMs": 77 },
+    "completeness": {
+      "requestUrl": "COMPLETE",
+      "requestHeaders": "COMPLETE",
+      "requestBody": "NOT_APPLICABLE",
+      "responseHeaders": "COMPLETE",
+      "responseBody": "UNAVAILABLE",
+      "timing": "COMPLETE",
+      "tlsInfo": "UNAVAILABLE"
+    }
+  },
+  "security": {
+    "secretPolicy": "PARAMETERIZE",
+    "containsSensitiveData": true,
+    "secretCount": 1,
+    "fromPrivateSession": false,
+    "reviewRequired": false,
+    "findings": [
+      {
+        "category": "COOKIE",
+        "headerName": "Cookie",
+        "paramName": null,
+        "policy": "PARAMETERIZE"
+      }
+    ]
+  },
+  "provenance": {
+    "normalizerVersion": "norm/1.0.0",
+    "captureEngineVersion": "geckoview-156.0.20260921121718",
+    "capturedAt": 1758912345678,
+    "redirectCount": 0
+  }
+}

@@ -61,11 +61,31 @@ class BrowserNavigationPolicyTest {
     }
 
     @Test
+    fun intentSchemeAllowedWithUserGestureAndDeniedOnRedirect() {
+        val allowed = BrowserNavigationPolicy.decide(
+            uri = "intent://scan/#Intent;scheme=zxing;end",
+            targetNewWindow = false,
+            hasUserGesture = true,
+            isRedirect = false,
+            externalRequestPending = false,
+        )
+        val redirected = BrowserNavigationPolicy.decide(
+            uri = "intent://scan/#Intent;scheme=zxing;end",
+            targetNewWindow = false,
+            hasUserGesture = true,
+            isRedirect = true,
+            externalRequestPending = false,
+        )
+        assertEquals(BrowserNavigationDisposition.REQUEST_EXTERNAL_APP, allowed.disposition)
+        assertEquals(BrowserNavigationDisposition.DENY, redirected.disposition)
+    }
+
+    @Test
     fun arbitraryAndScriptSchemesFailClosed() {
         listOf(
-            "intent://scan/#Intent;scheme=zxing;end",
             "javascript:alert(1)",
             "file:///sdcard/secret.txt",
+            "data:text/html,<h1>evil</h1>",
             "custom-scheme://payload",
         ).forEach { uri ->
             val decision = BrowserNavigationPolicy.decide(
