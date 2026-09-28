@@ -131,6 +131,9 @@ class M4CaptureRuntime(
             .firstOrNull { it.transferId == transferId }
             ?.let(M4TransferPreparer::projectDisplay)
 
+    fun capturedRequest(transferId: String): M4CapturedRequest? =
+        snapshot.requests.firstOrNull { it.transferId == transferId }
+
     fun prepare(
         transferId: String,
         policy: SecretPolicy,
