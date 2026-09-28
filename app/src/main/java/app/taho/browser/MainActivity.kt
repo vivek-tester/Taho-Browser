@@ -66,6 +66,7 @@ import app.taho.browser.shell.M4CaptureRequestUiState
 import app.taho.browser.shell.M4CompletenessUi
 import app.taho.browser.shell.M4SecretPolicyUi
 import app.taho.browser.shell.M7TransferPhaseUi
+import app.taho.browser.shell.ReaderPageContentUi
 import app.taho.browser.shell.SitePermissionUiState
 import app.taho.browser.shell.TahoBrowserApp
 import app.taho.browser.shell.TahoBrowserStateStore
@@ -461,6 +462,20 @@ class MainActivity : ComponentActivity() {
                         clearCookiesAndSiteData = clearCookies,
                         onComplete = callback,
                     )
+                },
+                onExtractReaderContent = { callback ->
+                    controller.extractReaderContent { extracted ->
+                        callback(
+                            extracted?.let {
+                                ReaderPageContentUi(
+                                    text = it.text,
+                                    wordCount = it.wordCount,
+                                    language = it.language,
+                                    isGated = it.isGated,
+                                )
+                            },
+                        )
+                    }
                 },
                 browserContent = {
                     AndroidView(
