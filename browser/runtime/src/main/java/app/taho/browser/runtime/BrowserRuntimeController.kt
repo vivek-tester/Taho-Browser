@@ -82,6 +82,7 @@ data class BrowserTabSnapshot(
     val isPrivate: Boolean,
     val canGoBack: Boolean,
     val canGoForward: Boolean,
+    val isFullScreen: Boolean = false,
     val webAppManifest: BrowserWebAppManifest? = null,
 )
 
@@ -95,6 +96,7 @@ data class BrowserSnapshot(
     val isPrivate: Boolean,
     val canGoBack: Boolean,
     val canGoForward: Boolean,
+    val isFullScreen: Boolean,
     val security: BrowserSecuritySnapshot?,
     val sitePermission: BrowserSitePermissionPrompt?,
     val androidPermissionRequest: BrowserAndroidPermissionRequest?,
@@ -119,6 +121,7 @@ class BrowserRuntimeController(context: Context) {
         var security: BrowserSecuritySnapshot? = null,
         var sessionState: GeckoSession.SessionState? = null,
         var lastAccessedAtEpochMs: Long = System.currentTimeMillis(),
+        var isFullScreen: Boolean = false,
         var webAppManifest: BrowserWebAppManifest? = null,
     )
 
@@ -274,6 +277,7 @@ class BrowserRuntimeController(context: Context) {
             isPrivate = selected.isPrivate,
             canGoBack = selected.canGoBack,
             canGoForward = selected.canGoForward,
+            isFullScreen = selected.isFullScreen,
             security = selected.security,
             sitePermission = pendingSitePermission?.prompt,
             androidPermissionRequest = pendingAndroidPermission?.request,
@@ -291,6 +295,7 @@ class BrowserRuntimeController(context: Context) {
                     isPrivate = tab.isPrivate,
                     canGoBack = tab.canGoBack,
                     canGoForward = tab.canGoForward,
+                    isFullScreen = tab.isFullScreen,
                     webAppManifest = tab.webAppManifest,
                 )
             },
@@ -1424,6 +1429,11 @@ class BrowserRuntimeController(context: Context) {
                 notifyChangedIfReady()
             }
 
+            override fun onFullScreen(session: GeckoSession, fullScreen: Boolean) {
+                tab.isFullScreen = fullScreen
+                notifyChangedIfReady()
+            }
+
             override fun onTitleChange(session: GeckoSession, title: String?) {
                 tab.title = title
                 persistSoon()
@@ -1575,6 +1585,7 @@ class BrowserRuntimeController(context: Context) {
         tab.loadFailed = false
         tab.canGoBack = false
         tab.canGoForward = false
+        tab.isFullScreen = false
         persistSoon()
         notifyChangedIfReady()
     }
@@ -1590,6 +1601,7 @@ class BrowserRuntimeController(context: Context) {
         tab.isLoading = true
         tab.canGoBack = false
         tab.canGoForward = false
+        tab.isFullScreen = false
 
         attachDelegates(tab)
         replacement.open(runtime)
