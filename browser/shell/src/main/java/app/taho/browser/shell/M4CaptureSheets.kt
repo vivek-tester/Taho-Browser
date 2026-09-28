@@ -77,6 +77,21 @@ data class M4CaptureRequestUiState(
     val fromPrivateSession: Boolean = false,
     val transferBlockedReason: String? = null,
     val explicitPolicyAllowed: Boolean = false,
+    val relevanceCategory: String = category,
+    val relevantByDefault: Boolean = true,
+    val captureSessionId: String? = null,
+    val tabId: String? = null,
+    val capturedAtEpochMs: Long? = null,
+    val sourceProduct: String = "taho-browser",
+    val sourceVersion: String? = null,
+    val captureEngineVersion: String? = null,
+    val normalizerVersion: String? = null,
+    val observationSource: String? = null,
+    val redirectCount: Int = 0,
+    val transactionState: String? = null,
+    val requestBodyCapturedBytes: Long? = null,
+    val requestBodyDeclaredBytes: Long? = null,
+    val safeBodyPreview: String? = null,
 ) {
     init {
         require(id.isNotBlank()) { "request id must not be blank" }
