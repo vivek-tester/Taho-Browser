@@ -1,6 +1,7 @@
 package app.taho.browser.observation
 
 import app.taho.browser.capture.domain.BodySupportLimitation
+import app.taho.browser.capture.domain.CaptureBudgets
 import app.taho.browser.capture.domain.Completeness as DomainCompleteness
 import app.taho.browser.capture.domain.DurableBody
 import app.taho.browser.capture.domain.DurableBodyEncoding
@@ -36,6 +37,7 @@ import app.taho.browser.transfer.core.M4QueryInput
 import app.taho.browser.transfer.core.UlidGenerator
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 import java.net.URI
 import java.net.URLDecoder
 import java.net.URLEncoder
@@ -70,6 +72,11 @@ class M4InMemoryCaptureAssembler(
         var startAt: Double? = null,
         var requestHeaders: List<ProductionObservationMessage.HeaderValue>? = null,
         var requestBody: ByteArray? = null,
+        var requestBodyBuffer: ByteArrayOutputStream? = null,
+        var requestBodyExpectedChunk: Int = 0,
+        var requestBodyChunkCount: Int? = null,
+        var requestBodyTruncated: Boolean = false,
+        var requestBodyInvalid: Boolean = false,
         var requestFormData: Map<String, List<String>>? = null,
         var statusCode: Int? = null,
         var statusText: String? = null,
@@ -151,10 +158,18 @@ class M4InMemoryCaptureAssembler(
 
             is ProductionObservationMessage.TxRequestBody -> {
                 tx.extTabId = message.extTabId
-                tx.requestBody = message.bytes.takeIf { it.isNotEmpty() }?.copyOf()
-                tx.requestFormData = message.formData
-                    .takeIf { it.isNotEmpty() }
-                    ?.mapValues { (_, values) -> values.toList() }
+                if (message.formData.isNotEmpty()) {
+                    tx.requestBody = null
+                    tx.requestBodyBuffer = null
+                    tx.requestBodyExpectedChunk = 0
+                    tx.requestBodyChunkCount = null
+                    tx.requestBodyTruncated = false
+                    tx.requestBodyInvalid = false
+                    tx.requestFormData = message.formData
+                        .mapValues { (_, values) -> values.toList() }
+                } else if (message.bytes.isNotEmpty()) {
+                    acceptBodyChunk(tx, message)
+                }
             }
 
             is ProductionObservationMessage.TxRedirect -> {
@@ -191,6 +206,59 @@ class M4InMemoryCaptureAssembler(
 
             is ProductionObservationMessage.Hello,
             is ProductionObservationMessage.TabRegister -> Unit
+        }
+    }
+
+    private fun acceptBodyChunk(
+        tx: MutableTransaction,
+        message: ProductionObservationMessage.TxRequestBody,
+    ) {
+        val expectedCount = tx.requestBodyChunkCount
+        if (
+            message.chunkIndex != tx.requestBodyExpectedChunk ||
+            expectedCount != null && expectedCount != message.chunkCount
+        ) {
+            tx.requestBodyInvalid = true
+            tx.requestBodyBuffer = null
+            limited = true
+            return
+        }
+
+        if (tx.requestBodyChunkCount == null) {
+            tx.requestBodyChunkCount = message.chunkCount
+        }
+
+        val buffer = tx.requestBodyBuffer ?: ByteArrayOutputStream().also {
+            tx.requestBodyBuffer = it
+        }
+        val maxBytes = CaptureBudgets().maxBodyBytes
+        if (message.bytes.size.toLong() > maxBytes - buffer.size().toLong()) {
+            tx.requestBodyTruncated = true
+            tx.requestBodyInvalid = true
+            tx.requestBodyBuffer = null
+            limited = true
+            return
+        }
+
+        buffer.write(message.bytes)
+        tx.requestBodyExpectedChunk += 1
+        tx.requestBodyTruncated = tx.requestBodyTruncated || message.truncated
+
+        if (message.isFinal) {
+            if (
+                tx.requestBodyExpectedChunk != message.chunkCount ||
+                message.observedTotalBytes != null &&
+                !message.truncated &&
+                message.observedTotalBytes != buffer.size().toLong()
+            ) {
+                tx.requestBodyInvalid = true
+                tx.requestBodyBuffer = null
+                limited = true
+                return
+            }
+
+            tx.requestBody = buffer.toByteArray()
+            tx.requestBodyBuffer = null
         }
     }
 
@@ -237,7 +305,7 @@ class M4InMemoryCaptureAssembler(
                 tx.sequenceGap
 
         val bodyless = method.equals("GET", true) || method.equals("HEAD", true)
-        val bodySupport = if (bodyless) {
+        var bodySupport = if (bodyless) {
             null
         } else {
             RequestBodySupport.classify(
@@ -247,13 +315,23 @@ class M4InMemoryCaptureAssembler(
                 formData = tx.requestFormData,
             )
         }
+        if (!bodyless && tx.requestBodyInvalid) {
+            bodySupport = bodySupport?.copy(
+                completeness = DomainCompleteness.PARTIAL,
+                transferSafeText = null,
+                limitation = BodySupportLimitation.BODY_CHUNKS_INCOMPLETE,
+            )
+        } else if (!bodyless && tx.requestBodyTruncated) {
+            bodySupport = bodySupport?.copy(
+                completeness = DomainCompleteness.TRUNCATED,
+                transferSafeText = null,
+                limitation = BodySupportLimitation.BODY_TRUNCATED,
+            )
+        }
 
         bodySupport?.let { support ->
             findings += support.secretAssessment.findings
-            if (
-                support.limitation != BodySupportLimitation.NONE ||
-                support.representation != DurableBodyRepresentation.JSON
-            ) {
+            if (!isM6TransferableBody(support)) {
                 reviewRequired = true
             }
         }
@@ -265,15 +343,11 @@ class M4InMemoryCaptureAssembler(
         }
 
         val transferBody = bodySupport
-            ?.takeIf {
-                it.representation == DurableBodyRepresentation.JSON &&
-                    it.transferSafeText != null &&
-                    it.limitation == BodySupportLimitation.NONE
-            }
+            ?.takeIf(::isM6TransferableBody)
             ?.let { support ->
                 val text = requireNotNull(support.transferSafeText)
                 TransferBody(
-                    representation = BodyRepresentation.JSON,
+                    representation = contractRepresentation(support.representation),
                     contentType = support.contentType,
                     charset = support.charset ?: "utf-8",
                     encoding = BodyEncoding.UTF8,
@@ -691,6 +765,36 @@ class M4InMemoryCaptureAssembler(
                 SecretSeverity.MEDIUM
         }
 
+    private fun isM6TransferableBody(
+        support: app.taho.browser.capture.domain.CapturedBodySupport,
+    ): Boolean {
+        if (
+            support.limitation != BodySupportLimitation.NONE ||
+            support.transferSafeText == null ||
+            support.completeness != DomainCompleteness.COMPLETE
+        ) {
+            return false
+        }
+
+        return when (support.representation) {
+            DurableBodyRepresentation.JSON,
+            DurableBodyRepresentation.FORM -> true
+
+            DurableBodyRepresentation.GRAPHQL -> {
+                val mime = support.contentType
+                    ?.substringBefore(';')
+                    ?.trim()
+                    ?.lowercase()
+                    .orEmpty()
+                mime == "application/json" || mime.endsWith("+json")
+            }
+
+            DurableBodyRepresentation.TEXT,
+            DurableBodyRepresentation.MULTIPART,
+            DurableBodyRepresentation.BINARY -> false
+        }
+    }
+
     private fun contractRepresentation(
         representation: DurableBodyRepresentation,
     ): BodyRepresentation =
@@ -702,12 +806,16 @@ class M4InMemoryCaptureAssembler(
         if (support == null) return null
         return when {
             support.limitation == BodySupportLimitation.NONE &&
-                support.representation == DurableBodyRepresentation.JSON -> null
+                isM6TransferableBody(support) -> null
             support.limitation == BodySupportLimitation.NONE ->
                 support.representation.name.lowercase().replaceFirstChar(Char::uppercase) +
-                    " captured; direct transfer for this body type is not enabled in M5."
+                    " captured, but this representation cannot yet be reconstructed safely in Taho."
             support.limitation == BodySupportLimitation.BODY_NOT_OBSERVED ->
                 "Request body was not exposed by GeckoView for this request."
+            support.limitation == BodySupportLimitation.BODY_TRUNCATED ->
+                "Request body exceeded the 8 MiB capture ceiling and was truncated."
+            support.limitation == BodySupportLimitation.BODY_CHUNKS_INCOMPLETE ->
+                "Request body chunks were incomplete or out of order."
             support.limitation == BodySupportLimitation.MULTIPART_PARTS_UNAVAILABLE ->
                 "Multipart bytes were observed, but structured parts are unavailable on this capture path."
             support.limitation == BodySupportLimitation.OPAQUE_BINARY ->

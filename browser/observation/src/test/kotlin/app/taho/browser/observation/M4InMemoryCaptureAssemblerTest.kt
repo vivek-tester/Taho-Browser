@@ -178,7 +178,7 @@ class M4InMemoryCaptureAssemblerTest {
     }
 
     @Test
-    fun redirectChainAndFormLimitationAreRetainedInDurableEvidence() {
+    fun redirectChainAndSafeFormAreRetainedAndTransferable() {
         var durable: DurableTransaction? = null
         val assembler = M4InMemoryCaptureAssembler(
             appVersion = "0.1.0",
@@ -237,8 +237,13 @@ class M4InMemoryCaptureAssemblerTest {
         val captured = assembler.requestsForTab("tab-a").single()
         assertEquals(1, captured.redirectCount)
         assertEquals(DurableBodyRepresentation.FORM.name, captured.bodyRepresentation?.name)
-        assertTrue(captured.reviewRequired)
-        assertTrue(captured.bodyLimitation?.contains("Form", ignoreCase = true) == true)
+        assertFalse(captured.reviewRequired)
+        assertEquals(null, captured.bodyLimitation)
+        assertEquals(
+            app.taho.browser.contract.BodyRepresentation.FORM,
+            captured.body?.representation,
+        )
+        assertEquals("name=widget", captured.body?.content)
 
         val stored = requireNotNull(durable)
         try {
@@ -301,6 +306,278 @@ class M4InMemoryCaptureAssemblerTest {
             stored.close()
         }
     }
+
+
+    @Test
+    fun jsonGraphqlBodyMapsToGraphqlTransferRepresentation() {
+        val assembler = M4InMemoryCaptureAssembler(
+            appVersion = "0.1.0",
+            engineVersion = "geckoview-test",
+            captureSessionId = "capture-graphql",
+        )
+        val body =
+            """{"query":"query Viewer { viewer { id } }","variables":{"limit":3}}"""
+                .encodeToByteArray()
+
+        accept(
+            assembler,
+            ProductionObservationMessage.TxStart(
+                "conn-graphql",
+                2,
+                "graphql-start",
+                "graphql-request",
+                7,
+                0,
+                null,
+                "https://api.example.test/graphql",
+                "POST",
+                "xmlhttprequest",
+                1000.0,
+            ),
+        )
+        accept(
+            assembler,
+            ProductionObservationMessage.TxRequestHeaders(
+                "conn-graphql",
+                3,
+                "graphql-headers",
+                "graphql-request",
+                7,
+                listOf(
+                    ProductionObservationMessage.HeaderValue(
+                        "Content-Type",
+                        "application/json",
+                    ),
+                ),
+            ),
+        )
+        accept(
+            assembler,
+            ProductionObservationMessage.TxRequestBody(
+                "conn-graphql",
+                4,
+                "graphql-body",
+                "graphql-request",
+                7,
+                body,
+            ),
+        )
+        accept(
+            assembler,
+            ProductionObservationMessage.TxComplete(
+                "conn-graphql",
+                5,
+                "graphql-complete",
+                "graphql-request",
+                7,
+                1010.0,
+            ),
+        )
+
+        val captured = assembler.requestsForTab("tab-a").single()
+        assertFalse(captured.reviewRequired)
+        assertEquals(
+            app.taho.browser.contract.BodyRepresentation.GRAPHQL,
+            captured.body?.representation,
+        )
+        assertEquals(body.decodeToString(), captured.body?.content)
+    }
+
+    @Test
+    fun fiveMiBJsonBodyReassemblesAndPreparesForArtifactTransport() {
+        val assembler = M4InMemoryCaptureAssembler(
+            appVersion = "0.1.0",
+            engineVersion = "geckoview-test",
+            captureSessionId = "capture-large",
+            transferIdFactory = { "01J8ZQ4M2K7X9V3B8N0P4R6T8Y" },
+        )
+        val json = "{\"blob\":\"" +
+            "a".repeat(5 * 1024 * 1024) +
+            "\"}"
+        val bytes = json.encodeToByteArray()
+
+        accept(
+            assembler,
+            ProductionObservationMessage.TxStart(
+                "conn-large",
+                2,
+                "large-start",
+                "large-request",
+                7,
+                0,
+                null,
+                "https://api.example.test/v1/large",
+                "POST",
+                "xmlhttprequest",
+                1000.0,
+            ),
+        )
+        accept(
+            assembler,
+            ProductionObservationMessage.TxRequestHeaders(
+                "conn-large",
+                3,
+                "large-headers",
+                "large-request",
+                7,
+                listOf(
+                    ProductionObservationMessage.HeaderValue(
+                        "Content-Type",
+                        "application/json",
+                    ),
+                ),
+            ),
+        )
+
+        val chunkSize = 160 * 1024
+        val chunkCount = (bytes.size + chunkSize - 1) / chunkSize
+        var sequence = 4L
+        repeat(chunkCount) { index ->
+            val start = index * chunkSize
+            val end = minOf(bytes.size, start + chunkSize)
+            accept(
+                assembler,
+                ProductionObservationMessage.TxRequestBody(
+                    connectionId = "conn-large",
+                    sequence = sequence++,
+                    eventId = "large-body-$index",
+                    requestId = "large-request",
+                    extTabId = 7,
+                    bytes = bytes.copyOfRange(start, end),
+                    chunkIndex = index,
+                    chunkCount = chunkCount,
+                    isFinal = index == chunkCount - 1,
+                    observedTotalBytes = bytes.size.toLong(),
+                    truncated = false,
+                ),
+            )
+        }
+        accept(
+            assembler,
+            ProductionObservationMessage.TxComplete(
+                "conn-large",
+                sequence,
+                "large-complete",
+                "large-request",
+                7,
+                1010.0,
+            ),
+        )
+
+        val captured = assembler.requestsForTab("tab-a").single()
+        assertFalse(captured.reviewRequired)
+        assertEquals(
+            app.taho.browser.contract.Completeness.COMPLETE,
+            captured.completeness.requestBody,
+        )
+        assertEquals(bytes.size.toLong(), captured.body?.size)
+
+        val prepared = assertIs<M4PreparationResult.Prepared>(
+            M4TransferPreparer.prepare(captured),
+        ).value
+        assertTrue(
+            prepared.encodedUtf8Bytes.toLong() >
+                app.taho.browser.contract.ContractLimits.DIRECT_ENVELOPE_UTF8_BYTES,
+        )
+        assertTrue(
+            prepared.encodedUtf8Bytes.toLong() <
+                app.taho.browser.contract.ContractLimits.ARTIFACT_PLAINTEXT_BYTES,
+        )
+    }
+
+    @Test
+    fun missingBodyChunkBecomesPartialAndTransferBlocked() {
+        val assembler = M4InMemoryCaptureAssembler(
+            appVersion = "0.1.0",
+            engineVersion = "geckoview-test",
+            captureSessionId = "capture-partial",
+        )
+        accept(
+            assembler,
+            ProductionObservationMessage.TxStart(
+                "conn-partial",
+                2,
+                "partial-start",
+                "partial-request",
+                7,
+                0,
+                null,
+                "https://api.example.test/v1/partial",
+                "POST",
+                "xmlhttprequest",
+                1000.0,
+            ),
+        )
+        accept(
+            assembler,
+            ProductionObservationMessage.TxRequestHeaders(
+                "conn-partial",
+                3,
+                "partial-headers",
+                "partial-request",
+                7,
+                listOf(
+                    ProductionObservationMessage.HeaderValue(
+                        "Content-Type",
+                        "application/json",
+                    ),
+                ),
+            ),
+        )
+        accept(
+            assembler,
+            ProductionObservationMessage.TxRequestBody(
+                connectionId = "conn-partial",
+                sequence = 4,
+                eventId = "partial-body-0",
+                requestId = "partial-request",
+                extTabId = 7,
+                bytes = "{\"blob\":\"".encodeToByteArray(),
+                chunkIndex = 0,
+                chunkCount = 3,
+                isFinal = false,
+                observedTotalBytes = 100,
+            ),
+        )
+        accept(
+            assembler,
+            ProductionObservationMessage.TxRequestBody(
+                connectionId = "conn-partial",
+                sequence = 5,
+                eventId = "partial-body-2",
+                requestId = "partial-request",
+                extTabId = 7,
+                bytes = "\"}".encodeToByteArray(),
+                chunkIndex = 2,
+                chunkCount = 3,
+                isFinal = true,
+                observedTotalBytes = 100,
+            ),
+        )
+        accept(
+            assembler,
+            ProductionObservationMessage.TxComplete(
+                "conn-partial",
+                6,
+                "partial-complete",
+                "partial-request",
+                7,
+                1010.0,
+            ),
+        )
+
+        val captured = assembler.requestsForTab("tab-a").single()
+        assertTrue(captured.reviewRequired)
+        assertEquals(
+            app.taho.browser.contract.Completeness.PARTIAL,
+            captured.completeness.requestBody,
+        )
+        assertEquals(null, captured.body)
+        assertTrue(
+            captured.bodyLimitation?.contains("incomplete", ignoreCase = true) == true,
+        )
+    }
+
 
 
     private fun accept(

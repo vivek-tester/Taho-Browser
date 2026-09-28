@@ -82,13 +82,20 @@ sealed interface ProductionObservationMessage {
         val extTabId: Int,
         val bytes: ByteArray = ByteArray(0),
         val formData: Map<String, List<String>> = emptyMap(),
+        val chunkIndex: Int = 0,
+        val chunkCount: Int = 1,
+        val isFinal: Boolean = true,
+        val observedTotalBytes: Long? = null,
+        val truncated: Boolean = false,
     ) : ProductionObservationMessage {
         override val type: String = "TX_REQ_BODY"
 
         override fun toString(): String =
             "TxRequestBody(conn=$connectionId,seq=$sequence,eventId=$eventId," +
                 "requestId=$requestId,extTabId=$extTabId,bytes=" + bytes.size +
-                ",formFields=" + formData.size + ")"
+                ",formFields=" + formData.size + ",chunk=" + chunkIndex +
+                "/" + chunkCount + ",final=" + isFinal +
+                ",truncated=" + truncated + ")"
     }
 
     data class TxRedirect(
@@ -180,6 +187,7 @@ object ProductionObservationProtocol {
     private const val MAX_HEADER_VALUE_CHARS = 16 * 1024
     private const val MAX_ID_CHARS = 200
     private const val MAX_ERROR_CHARS = 512
+    private const val MAX_BODY_CHUNKS = 128
 
     private val typeRegex = Regex("\"type\"\\s*:\\s*\"([A-Z_]+)\"")
     private val methodRegex = Regex("^[A-Z][A-Z0-9!#$%&'*+.^_|~-]*$")
@@ -262,6 +270,7 @@ object ProductionObservationProtocol {
                     val bodyKind = json.optString("bodyKind", "RAW")
                     val decoded = if (bodyKind == "RAW") {
                         Base64.getDecoder().decode(json.getString("base64")).also {
+                            require(it.isNotEmpty())
                             require(it.size <= IngressMessageType.TX_REQ_BODY.payloadCapBytes)
                         }
                     } else {
@@ -272,7 +281,44 @@ object ProductionObservationProtocol {
                     } else {
                         emptyMap()
                     }
+                    require(bodyKind == "RAW" || bodyKind == "FORM")
                     require(decoded.isNotEmpty() || formData.isNotEmpty())
+
+                    val chunkIndex = if (bodyKind == "RAW") {
+                        json.optInt("chunkIndex", 0)
+                    } else {
+                        0
+                    }
+                    val chunkCount = if (bodyKind == "RAW") {
+                        json.optInt("chunkCount", 1)
+                    } else {
+                        1
+                    }
+                    val isFinal = if (bodyKind == "RAW") {
+                        json.optBoolean("isFinal", true)
+                    } else {
+                        true
+                    }
+                    val observedTotalBytes = if (
+                        bodyKind == "RAW" &&
+                        json.has("observedTotalBytes") &&
+                        !json.isNull("observedTotalBytes")
+                    ) {
+                        json.getLong("observedTotalBytes")
+                    } else {
+                        null
+                    }
+                    val truncated = bodyKind == "RAW" &&
+                        json.optBoolean("truncated", false)
+
+                    require(chunkIndex >= 0)
+                    require(chunkCount in 1..MAX_BODY_CHUNKS)
+                    require(chunkIndex < chunkCount)
+                    require(isFinal == (chunkIndex == chunkCount - 1))
+                    if (observedTotalBytes != null) {
+                        require(observedTotalBytes >= decoded.size.toLong())
+                    }
+
                     ProductionObservationMessage.TxRequestBody(
                         connectionId = requiredId(json, "conn"),
                         sequence = positiveSequence(json),
@@ -281,6 +327,11 @@ object ProductionObservationProtocol {
                         extTabId = extTabId(json),
                         bytes = decoded,
                         formData = formData,
+                        chunkIndex = chunkIndex,
+                        chunkCount = chunkCount,
+                        isFinal = isFinal,
+                        observedTotalBytes = observedTotalBytes,
+                        truncated = truncated,
                     )
                 }
 

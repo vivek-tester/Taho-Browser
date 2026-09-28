@@ -1,1 +1,13 @@
-<manifest />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <provider
+            android:name="app.taho.browser.transfer.android.SecureTransferArtifactProvider"
+            android:authorities="${applicationId}.transfer.artifacts"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
+        <receiver
+            android:name="app.taho.browser.transfer.android.TransferReceiptReceiver"
+            android:exported="false" />
+    </application>
+</manifest>

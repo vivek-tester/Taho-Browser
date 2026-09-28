@@ -50,13 +50,21 @@ import app.taho.browser.shell.SitePermissionUiState
 import app.taho.browser.shell.TahoBrowserApp
 import app.taho.browser.transfer.android.TahoDirectTransferIntentFactory
 import app.taho.browser.transfer.android.TahoDirectTransferTarget
+import app.taho.browser.transfer.android.TahoSecureTransferCoordinator
+import app.taho.browser.transfer.android.TransferArtifactMaintenance
+import app.taho.browser.transfer.android.TransferReceiptRecoveryStore
 import app.taho.browser.transfer.core.M4PreparationBlock
 import app.taho.browser.transfer.core.M4PreparationResult
 
 class MainActivity : ComponentActivity() {
+    private companion object {
+        const val TAHO_TRANSFER_REQUEST_CODE = 0x5448
+    }
+
     private lateinit var controller: BrowserRuntimeController
     private lateinit var captureRuntime: M4CaptureRuntime
     private lateinit var captureRepository: RoomCaptureRepository
+    private lateinit var transferCoordinator: TahoSecureTransferCoordinator
     private var activeAndroidPermissionRequestId: String? = null
     private var activeAndroidPermissions: List<String> = emptyList()
     private var transferNotice by mutableStateOf<String?>(null)
@@ -84,6 +92,14 @@ class MainActivity : ComponentActivity() {
         controller = BrowserRuntimeStore.get(this)
         captureRepository = CapturePersistenceStore.repository(this)
         CaptureMaintenance.schedule(this)
+        transferCoordinator = TahoSecureTransferCoordinator(this)
+        TransferArtifactMaintenance.schedule(this)
+        val recoveredReceipt = TransferReceiptRecoveryStore.consumeLatest(this)
+        if (recoveredReceipt != null) {
+            transferNotice = receiptNotice(recoveredReceipt)
+        } else if (transferCoordinator.recoverExpiredAttempts().isNotEmpty()) {
+            transferNotice = "A previous Taho transfer expired. The source capture is still available."
+        }
         captureRuntime = M4CaptureRuntime(
             runtime = GeckoRuntimeHolder.get(this),
             gate = if (BuildConfig.M1_ATTRIBUTION_VERIFIED) {
@@ -403,8 +419,6 @@ class MainActivity : ComponentActivity() {
                         "Explicit credential transfer is unavailable for this capture."
                     M4PreparationBlock.INVALID_CONTRACT ->
                         "Transfer blocked: request does not satisfy the Taho contract."
-                    M4PreparationBlock.REQUIRES_LARGE_PAYLOAD_M6 ->
-                        "Transfer requires the large-payload handoff path planned for M6."
                 }
             }
 
@@ -419,45 +433,76 @@ class MainActivity : ComponentActivity() {
                     packageName = BuildConfig.TAHO_PACKAGE_NAME,
                     action = BuildConfig.TAHO_TRANSFER_ACTION,
                 )
+                if (!transferCoordinator.isTargetAvailable(target)) {
+                    transferNotice = "Compatible Project-Taho receiver is not installed."
+                    return
+                }
+
                 val expectedTransferId = result.value.envelope.transferId
                 val receiver = object : ResultReceiver(Handler(Looper.getMainLooper())) {
                     override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
                         if (pendingTransferId != expectedTransferId) return
                         pendingTransferId = null
                         val receipt = TahoDirectTransferIntentFactory.parseReceipt(resultData)
+                        if (receipt?.transferId == expectedTransferId) {
+                            transferCoordinator.settle(expectedTransferId)
+                            TransferReceiptRecoveryStore.clearIfMatches(
+                                this@MainActivity,
+                                expectedTransferId,
+                            )
+                        }
                         transferNotice = when {
                             receipt == null ->
                                 "Taho returned no valid transfer receipt."
                             receipt.transferId != expectedTransferId ->
                                 "Taho returned a receipt for a different transfer."
-                            receipt.result.name == "IMPORTED" ||
-                                receipt.result.name == "DUPLICATE" ->
-                                "Taho received the request. Import does not execute it."
-                            else ->
-                                "Taho rejected the request" +
-                                    (receipt.errorCode?.let { ": " + it.name } ?: ".")
+                            else -> receiptNotice(receipt)
                         }
                     }
                 }
-                val intent = TahoDirectTransferIntentFactory.create(
-                    target = target,
-                    prepared = result.value,
-                    resultReceiver = receiver,
-                )
-                if (intent.resolveActivity(packageManager) == null) {
-                    transferNotice = "Compatible Project-Taho receiver is not installed."
+
+                val dispatch = runCatching {
+                    transferCoordinator.prepareDispatch(
+                        target = target,
+                        prepared = result.value,
+                        resultReceiver = receiver,
+                    )
+                }.getOrElse {
+                    transferNotice = "Unable to prepare a secure transfer."
                     return
                 }
 
                 pendingTransferId = expectedTransferId
-                runCatching { startActivity(intent) }
-                    .onFailure {
-                        pendingTransferId = null
-                        transferNotice = "Unable to open Project-Taho."
-                    }
+                runCatching {
+                    @Suppress("DEPRECATION")
+                    startActivityForResult(dispatch.intent, TAHO_TRANSFER_REQUEST_CODE)
+                }.onFailure {
+                    pendingTransferId = null
+                    transferCoordinator.cancel(expectedTransferId)
+                    transferNotice = "Unable to open Project-Taho."
+                }
             }
         }
     }
+
+    private fun receiptNotice(
+        receipt: app.taho.browser.contract.TransferReceiptV1,
+    ): String =
+        when {
+            receipt.result.name == "IMPORTED" ->
+                "Taho received the request. Import does not execute it."
+            receipt.result.name == "DUPLICATE" ->
+                "Taho already imported this request. Nothing was executed."
+            receipt.errorCode?.name == "TAHO_TRANSFER_UNSUPPORTED_VERSION" ->
+                "Taho needs an update to import this request."
+            receipt.errorCode?.name == "TAHO_TRANSFER_URI_EXPIRED" ->
+                "The transfer expired. Try again."
+            receipt.errorCode?.name == "TAHO_TRANSFER_ACCESS_DENIED" ->
+                "Taho could not be given access to the transfer."
+            else ->
+                "Taho rejected the request" +
+                    (receipt.errorCode?.let { ": " + it.name } ?: ".")
+        }
 
     private fun storageNotice(reason: StorageDegradationReason): String =
         when (reason) {
