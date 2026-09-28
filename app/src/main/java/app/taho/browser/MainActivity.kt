@@ -1170,6 +1170,7 @@ class MainActivity : FragmentActivity() {
                 TahoThemeMode.LIGHT -> BrowserWebColorScheme.LIGHT
             },
             suspendBackgroundMedia = !backgroundAudioEnabled,
+            speculativePreconnectEnabled = preloadingEnabled,
         )
     }
 
