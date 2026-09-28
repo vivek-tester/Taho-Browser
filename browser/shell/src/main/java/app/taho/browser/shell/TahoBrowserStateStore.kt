@@ -220,6 +220,9 @@ object TahoBrowserStateStore {
     }
 
     // --- State mutation helpers ---
+    fun activeProfileIsGuest(): Boolean =
+        profiles.firstOrNull { it.isActive }?.isGuest == true
+
     fun updateSettings(updater: (BrowserSettingsState) -> BrowserSettingsState) {
         settings = updater(settings)
     }
