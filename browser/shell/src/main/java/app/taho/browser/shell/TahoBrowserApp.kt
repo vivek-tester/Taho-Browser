@@ -143,6 +143,7 @@ fun TahoBrowserApp(
     onSetDesktopMode: (Boolean) -> Unit = {},
     onClearBrowserStorage: (Boolean, Boolean, (Boolean) -> Unit) -> Unit =
         { _, _, callback -> callback(true) },
+    onExtractReaderContent: ((ReaderPageContentUi?) -> Unit) -> Unit = { callback -> callback(null) },
     browserContent: @Composable () -> Unit = {},
 ) {
     var editing by rememberSaveable { mutableStateOf(false) }
@@ -153,6 +154,9 @@ fun TahoBrowserApp(
     var showSiteInfo by rememberSaveable { mutableStateOf(false) }
     var showShareQr by rememberSaveable { mutableStateOf(false) }
     var showReaderMode by rememberSaveable { mutableStateOf(false) }
+    var readerContent by remember { mutableStateOf<ReaderPageContentUi?>(null) }
+    var readerLoading by remember { mutableStateOf(false) }
+    var readerError by remember { mutableStateOf<String?>(null) }
     var showTranslationBar by rememberSaveable { mutableStateOf(false) }
     var isPageTranslated by rememberSaveable { mutableStateOf(false) }
     var findInPageActive by rememberSaveable { mutableStateOf(false) }
@@ -331,8 +335,18 @@ fun TahoBrowserApp(
                 if (showReaderMode) {
                     TahoReaderModeView(
                         title = currentTab?.title?.takeIf { it.isNotBlank() } ?: "Web Document",
-                        url = currentTab?.location ?: "https://taho.app",
-                        onClose = { showReaderMode = false },
+                        url = currentTab?.location ?: "about:blank",
+                        content = readerContent?.text,
+                        wordCount = readerContent?.wordCount ?: 0,
+                        language = readerContent?.language.orEmpty(),
+                        isGated = readerContent?.isGated == true,
+                        isLoading = readerLoading,
+                        errorMessage = readerError,
+                        onClose = {
+                            showReaderMode = false
+                            readerContent = null
+                            readerError = null
+                        },
                     )
                 }
             }
@@ -878,7 +892,19 @@ fun TahoBrowserApp(
                         isDesktopMode = nextDesktop
                         onSetDesktopMode(nextDesktop)
                     },
-                    onReaderMode = { showReaderMode = true },
+                    onReaderMode = {
+                        showReaderMode = true
+                        readerContent = null
+                        readerError = null
+                        readerLoading = true
+                        onExtractReaderContent { extracted ->
+                            readerLoading = false
+                            readerContent = extracted
+                            if (extracted == null) {
+                                readerError = "This page does not expose readable content."
+                            }
+                        }
+                    },
                     onTranslate = { showTranslationBar = true },
                     onAddToHomeScreen = {
                         currentTab?.location?.let { loc ->
