@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import org.json.JSONObject
 import org.mozilla.geckoview.AllowOrDeny
 import org.mozilla.geckoview.Autocomplete
 import org.mozilla.geckoview.GeckoResult
@@ -77,6 +78,7 @@ data class BrowserTabSnapshot(
     val isPrivate: Boolean,
     val canGoBack: Boolean,
     val canGoForward: Boolean,
+    val webAppManifest: BrowserWebAppManifest? = null,
 )
 
 data class BrowserSnapshot(
@@ -113,6 +115,7 @@ class BrowserRuntimeController(context: Context) {
         var security: BrowserSecuritySnapshot? = null,
         var sessionState: GeckoSession.SessionState? = null,
         var lastAccessedAtEpochMs: Long = System.currentTimeMillis(),
+        var webAppManifest: BrowserWebAppManifest? = null,
     )
 
     private sealed interface PendingSitePermission {
@@ -283,6 +286,7 @@ class BrowserRuntimeController(context: Context) {
                     isPrivate = tab.isPrivate,
                     canGoBack = tab.canGoBack,
                     canGoForward = tab.canGoForward,
+                    webAppManifest = tab.webAppManifest,
                 )
             },
         )
@@ -865,6 +869,7 @@ class BrowserRuntimeController(context: Context) {
                 tab.loadFailed = false
                 tab.crashed = false
                 tab.security = null
+                tab.webAppManifest = null
                 persistSoon()
                 notifyChangedIfReady()
             }
@@ -1135,6 +1140,38 @@ class BrowserRuntimeController(context: Context) {
                         body = body,
                     ),
                 )
+            }
+
+            override fun onWebAppManifest(
+                session: GeckoSession,
+                manifest: JSONObject,
+            ) {
+                val location = tab.location ?: return
+                val shortName = manifest.optString("short_name")
+                    .takeIf(String::isNotBlank)
+                val name = manifest.optString("name")
+                    .takeIf(String::isNotBlank)
+                    ?: shortName
+                    ?: tab.title?.takeIf(String::isNotBlank)
+                    ?: return
+                val rawStart = manifest.optString("start_url")
+                    .takeIf(String::isNotBlank)
+                    ?: location
+                val startUrl = resolveHttpUrl(location, rawStart) ?: return
+                val scope = manifest.optString("scope")
+                    .takeIf(String::isNotBlank)
+                    ?.let { resolveHttpUrl(location, it) }
+
+                tab.webAppManifest = BrowserWebAppManifest(
+                    name = name,
+                    shortName = shortName,
+                    startUrl = startUrl,
+                    scope = scope,
+                    display = manifest.optString("display").takeIf(String::isNotBlank),
+                    themeColor = manifest.optString("theme_color").takeIf(String::isNotBlank),
+                    backgroundColor = manifest.optString("background_color").takeIf(String::isNotBlank),
+                )
+                notifyChangedIfReady()
             }
 
             override fun onTitleChange(session: GeckoSession, title: String?) {
@@ -1440,6 +1477,15 @@ class BrowserRuntimeController(context: Context) {
                 )
             },
         )
+
+    private fun resolveHttpUrl(base: String, candidate: String): String? =
+        runCatching {
+            val resolved = java.net.URI(base).resolve(candidate)
+            val scheme = resolved.scheme?.lowercase()
+            if (scheme != "http" && scheme != "https") return@runCatching null
+            if (resolved.host.isNullOrBlank()) return@runCatching null
+            resolved.toString()
+        }.getOrNull()
 
     private fun originForDomain(domain: String): String {
         val trimmed = domain.trim()
