@@ -297,6 +297,7 @@ fun TahoBrowserApp(
                         selectedCaptureId = requestId
                         selectedSecretPolicy = M4SecretPolicyUi.PARAMETERIZE
                     },
+                    onClose = { showCaptureSummary = false },
                 )
             }
         }
