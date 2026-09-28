@@ -23,6 +23,7 @@ import app.taho.browser.capture.domain.CaptureRepositoryResult
 import app.taho.browser.capture.domain.CaptureSessionKind
 import app.taho.browser.capture.domain.CaptureSessionLifecycle
 import app.taho.browser.capture.domain.DurableCaptureSession
+import app.taho.browser.capture.domain.NormalizedHeaderValue
 import app.taho.browser.capture.domain.RelevanceClassifier
 import app.taho.browser.capture.domain.RelevanceInput
 import app.taho.browser.capture.domain.RetentionPolicy
@@ -412,10 +413,20 @@ class MainActivity : ComponentActivity() {
                     durationMs = display.durationMs,
                     category = request.initiator ?: "API",
                     headers = display.headers.map { header ->
+                        val source = request.headers.firstOrNull { candidate ->
+                            candidate.name.equals(header.name, ignoreCase = true) &&
+                                candidate.value is NormalizedHeaderValue.Protected
+                        }
+                        val secretCategory =
+                            (source?.value as? NormalizedHeaderValue.Protected)
+                                ?.ref
+                                ?.category
+                                ?.name
                         M4CaptureHeaderUiState(
                             name = header.name,
                             displayValue = header.displayValue,
                             sensitive = header.sensitive,
+                            secretCategory = secretCategory,
                         )
                     },
                     requestBodyCompleteness =
