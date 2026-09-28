@@ -1,6 +1,10 @@
 package app.taho.browser.shell
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,7 +20,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -34,15 +37,20 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -52,11 +60,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.core.view.WindowInsetsControllerCompat
 import app.taho.browser.capture.domain.CaptureState
 
 data class BrowserTabUiState(
@@ -113,6 +123,8 @@ fun TahoBrowserApp(
     onSitePermissionDecision: (String, Boolean) -> Unit = { _, _ -> },
     onDismissNotice: () -> Unit = {},
     onClearCaptureData: () -> Unit = {},
+    onCopyCurl: (String) -> Unit = {},
+    onShare: (String) -> Unit = {},
     onSendToTaho: (String, M4SecretPolicyUi) -> Unit = { _, _ -> },
     browserContent: @Composable () -> Unit = {},
 ) {
@@ -131,6 +143,22 @@ fun TahoBrowserApp(
     }
 
     val selectedCapture = state.captureRequests.firstOrNull { it.id == selectedCaptureId }
+    val darkSystemChromeVisible =
+        showCaptureSummary ||
+            selectedCaptureId != null ||
+            showTabs ||
+            showSettings ||
+            state.sitePermission != null
+    val rootView = LocalView.current
+
+    SideEffect {
+        rootView.context.findActivity()?.window?.let { window ->
+            WindowInsetsControllerCompat(window, rootView).apply {
+                isAppearanceLightStatusBars = !darkSystemChromeVisible
+                isAppearanceLightNavigationBars = !darkSystemChromeVisible
+            }
+        }
+    }
 
     LaunchedEffect(state.captureRequests, selectedCaptureId) {
         if (selectedCaptureId != null && selectedCapture == null) {
@@ -183,8 +211,7 @@ fun TahoBrowserApp(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(TahoBg)
-                .systemBarsPadding(),
+                .background(TahoBg),
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 browserContent()
@@ -283,7 +310,9 @@ fun TahoBrowserApp(
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                 containerColor = TahoSheet,
                 contentColor = TahoText,
-                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+                tonalElevation = 0.dp,
+                scrimColor = Color.Black.copy(alpha = .50f),
                 dragHandle = { SheetGrabHandle() },
             ) {
                 M7CaptureSummarySheet(
@@ -309,12 +338,16 @@ fun TahoBrowserApp(
                     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                     containerColor = TahoSheet,
                     contentColor = TahoText,
-                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                    shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+                    tonalElevation = 0.dp,
+                    scrimColor = Color.Black.copy(alpha = .50f),
                     dragHandle = { SheetGrabHandle() },
                 ) {
                     M7RequestInspectorSheet(
                         request = request,
                         onBack = { selectedCaptureId = null },
+                        onCopyCurl = { onCopyCurl(M7SafeExport.curl(request)) },
+                        onShare = { onShare(M7SafeExport.shareText(request)) },
                         onSendToTaho = {
                             selectedSecretPolicy = M4SecretPolicyUi.PARAMETERIZE
                             showTransferConfirmation = true
@@ -329,7 +362,9 @@ fun TahoBrowserApp(
                     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                     containerColor = TahoSheet,
                     contentColor = TahoText,
-                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                    shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+                    tonalElevation = 0.dp,
+                    scrimColor = Color.Black.copy(alpha = .50f),
                     dragHandle = { SheetGrabHandle() },
                 ) {
                     M7SendConfirmationSheet(
@@ -356,7 +391,9 @@ fun TahoBrowserApp(
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                 containerColor = TahoSheet,
                 contentColor = TahoText,
-                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+                tonalElevation = 0.dp,
+                scrimColor = Color.Black.copy(alpha = .50f),
                 dragHandle = { SheetGrabHandle() },
             ) {
                 TabSwitcher(
@@ -388,7 +425,9 @@ fun TahoBrowserApp(
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                 containerColor = TahoSheet,
                 contentColor = TahoText,
-                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+                tonalElevation = 0.dp,
+                scrimColor = Color.Black.copy(alpha = .50f),
                 dragHandle = { SheetGrabHandle() },
             ) {
                 M7SettingsSheet(
@@ -406,7 +445,9 @@ fun TahoBrowserApp(
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                 containerColor = TahoSheet,
                 contentColor = TahoText,
-                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+                tonalElevation = 0.dp,
+                scrimColor = Color.Black.copy(alpha = .50f),
                 dragHandle = { SheetGrabHandle() },
             ) {
                 SitePermissionSheet(
@@ -717,10 +758,10 @@ private fun Omnibox(
                 .padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = if (isPrivate) "◐" else "⌕",
-                color = if (isPrivate) TahoGoldHi else TahoFaint,
-                fontSize = 14.sp,
+            OmniboxLeadingGlyph(
+                value = value,
+                editing = editing,
+                isPrivate = isPrivate,
             )
             Spacer(Modifier.width(9.dp))
 
@@ -777,6 +818,60 @@ private fun Omnibox(
 }
 
 @Composable
+private fun OmniboxLeadingGlyph(
+    value: String,
+    editing: Boolean,
+    isPrivate: Boolean,
+) {
+    if (isPrivate) {
+        Text(
+            text = "◐",
+            color = TahoGoldHi,
+            fontSize = 14.sp,
+        )
+        return
+    }
+
+    if (!editing && value.startsWith("https://")) {
+        Canvas(
+            modifier = Modifier
+                .size(18.dp)
+                .semantics { contentDescription = "Secure connection" },
+        ) {
+            val stroke = 1.35.dp.toPx()
+            val bodyWidth = size.width * .56f
+            val bodyHeight = size.height * .42f
+            val bodyLeft = (size.width - bodyWidth) / 2f
+            val bodyTop = size.height * .46f
+
+            drawRoundRect(
+                color = TahoFaint,
+                topLeft = Offset(bodyLeft, bodyTop),
+                size = Size(bodyWidth, bodyHeight),
+                cornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx()),
+                style = Stroke(width = stroke),
+            )
+            drawArc(
+                color = TahoFaint,
+                startAngle = 180f,
+                sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(size.width * .29f, size.height * .12f),
+                size = Size(size.width * .42f, size.height * .54f),
+                style = Stroke(width = stroke),
+            )
+        }
+        return
+    }
+
+    Text(
+        text = "⌕",
+        color = TahoFaint,
+        fontSize = 14.sp,
+    )
+}
+
+@Composable
 private fun TabCountButton(
     tabCount: Int,
     onClick: () -> Unit,
@@ -800,7 +895,7 @@ private fun TabCountButton(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = "⃞" + count.toString(),
+                text = count.toString(),
                 color = TahoText,
                 fontFamily = FontFamily.Monospace,
                 fontSize = 10.sp,
@@ -1132,4 +1227,14 @@ private fun tabTitle(location: String?): String {
     if (location.isNullOrBlank() || location == "about:blank") return "New tab"
     val compact = compactLocation(location)
     return compact.substringBefore('/').substringBefore('?').ifBlank { "Tab" }
+}
+
+
+private fun Context.findActivity(): Activity? {
+    var current: Context = this
+    while (current is ContextWrapper) {
+        if (current is Activity) return current
+        current = current.baseContext
+    }
+    return current as? Activity
 }
