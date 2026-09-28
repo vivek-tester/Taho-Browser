@@ -6,6 +6,9 @@ import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.ComponentCallbacks2
 import android.content.Intent
+import android.content.pm.ShortcutInfo
+import android.content.pm.ShortcutManager
+import android.graphics.drawable.Icon
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -502,6 +505,7 @@ class MainActivity : ComponentActivity() {
                     }
                 },
                 onPrintPage = controller::printCurrentPage,
+                onAddToHomeScreen = ::pinPageShortcut,
                 browserContent = {
                     AndroidView(
                         factory = { context ->
@@ -1018,6 +1022,45 @@ class MainActivity : ComponentActivity() {
         location
             ?.takeIf { it.startsWith("http://") || it.startsWith("https://") }
             ?.let { runCatching { URI(it).host }.getOrNull() }
+
+    private fun pinPageShortcut(title: String, url: String) {
+        val supportedUrl = Uri.parse(url)
+            .takeIf { it.scheme == "https" || it.scheme == "http" }
+        if (supportedUrl == null) {
+            transferNotice = "Only HTTP(S) pages can be added to the Home screen."
+            return
+        }
+
+        val manager = getSystemService(ShortcutManager::class.java)
+        if (manager == null || !manager.isRequestPinShortcutSupported) {
+            transferNotice = "Your launcher does not support pinned web shortcuts."
+            return
+        }
+
+        val launchIntent = Intent(this, MainActivity::class.java)
+            .setAction(Intent.ACTION_VIEW)
+            .setData(supportedUrl)
+
+        val shortcut = ShortcutInfo.Builder(
+            this,
+            "web-" + Integer.toHexString(url.hashCode()),
+        )
+            .setShortLabel(title.take(40).ifBlank { supportedUrl.host ?: "Web page" })
+            .setLongLabel(title.take(80).ifBlank { url })
+            .setIcon(Icon.createWithResource(this, android.R.drawable.ic_menu_view))
+            .setIntent(launchIntent)
+            .build()
+
+        val requested = runCatching {
+            manager.requestPinShortcut(shortcut, null)
+        }.getOrDefault(false)
+
+        transferNotice = if (requested) {
+            "Home screen shortcut request sent to your launcher."
+        } else {
+            "Unable to request a Home screen shortcut."
+        }
+    }
 
     private fun copyMaskedCurl(text: String) {
         val copied = runCatching {
