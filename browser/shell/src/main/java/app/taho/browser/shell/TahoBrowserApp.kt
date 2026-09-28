@@ -211,6 +211,8 @@ fun TahoBrowserApp(
     onSetExtensionPrivate: (String, Boolean) -> Unit = { _, _ -> },
     onUpdateExtension: (String) -> Unit = {},
     onUninstallExtension: (String) -> Unit = {},
+    onSwitchProfile: (String) -> Unit = {},
+    onCreateLocalProfile: (String) -> Unit = {},
     onSearchExtensionMarketplace: (
         String,
         (List<ExtensionMarketplaceItemUi>, String?) -> Unit,
@@ -1022,6 +1024,8 @@ fun TahoBrowserApp(
                     onSetExtensionPrivate = onSetExtensionPrivate,
                     onUpdateExtension = onUpdateExtension,
                     onUninstallExtension = onUninstallExtension,
+                    onSwitchProfile = onSwitchProfile,
+                    onCreateLocalProfile = onCreateLocalProfile,
                     onSearchExtensionMarketplace = onSearchExtensionMarketplace,
                     onExportFullBackup = onExportFullBackup,
                     onRestoreFullBackup = onRestoreFullBackup,
