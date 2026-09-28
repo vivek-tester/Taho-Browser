@@ -893,6 +893,16 @@ class MainActivity : FragmentActivity() {
                 },
                 onAddToHomeScreen = ::pinPageShortcut,
                 onInstallWebApp = ::installWebApp,
+                onTranslatePage = { targetLanguage, callback ->
+                    controller.translateCurrentPage(targetLanguage) { success, source, error ->
+                        runOnUiThread { callback(success, source, error) }
+                    }
+                },
+                onRestorePageTranslation = { callback ->
+                    controller.restoreOriginalPageTranslation { success, error ->
+                        runOnUiThread { callback(success, error) }
+                    }
+                },
                 onRefreshExtensions = {
                     extensionManager.refresh { success ->
                         if (!success) {
