@@ -617,6 +617,10 @@ class MainActivity : ComponentActivity() {
 
                     runOnUiThread {
                         transferPreparationInFlight = false
+                        if (isDestroyed) {
+                            transferCoordinator.cancel(expectedTransferId)
+                            return@runOnUiThread
+                        }
                         pendingTransferId = expectedTransferId
                         transferNotice = if (
                             dispatch.transport == TahoTransferTransport.ARTIFACT_URI
