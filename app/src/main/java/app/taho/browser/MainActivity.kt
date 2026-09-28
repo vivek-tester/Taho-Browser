@@ -81,6 +81,7 @@ import app.taho.browser.shell.M4CaptureRequestUiState
 import app.taho.browser.shell.M4CompletenessUi
 import app.taho.browser.shell.M4SecretPolicyUi
 import app.taho.browser.shell.M7TransferPhaseUi
+import app.taho.browser.shell.OfflinePageUi
 import app.taho.browser.shell.ReaderPageContentUi
 import app.taho.browser.shell.SitePermissionUiState
 import app.taho.browser.shell.SiteSecurityUiState
@@ -122,6 +123,7 @@ class MainActivity : FragmentActivity() {
     private val committedHistoryLocationByTab = mutableMapOf<String, String?>()
     private val passwordBreachChecker = PasswordBreachChecker()
     private lateinit var downloadManager: BrowserDownloadManager
+    private lateinit var offlinePageManager: OfflinePageManager
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
@@ -170,6 +172,7 @@ class MainActivity : FragmentActivity() {
                 TahoBrowserStateStore.upsertDownload(item)
             }
         }
+        offlinePageManager = OfflinePageManager(this)
         controller = BrowserRuntimeStore.get(this)
         controller.setExternalResponseConsumer(downloadManager::accept)
         controller.setAutofillStore(
@@ -690,6 +693,37 @@ class MainActivity : FragmentActivity() {
                         transferNotice = "Downloaded file could not be deleted."
                     }
                 },
+                onSaveOfflinePage = { title, url ->
+                    controller.saveCurrentPageAsPdf { stream, error ->
+                        if (stream == null) {
+                            transferNotice = error ?: "Offline snapshot could not be created."
+                        } else {
+                            offlinePageManager.savePdf(title, url, stream) { page, saveError ->
+                                runOnUiThread {
+                                    if (page != null) {
+                                        TahoBrowserStateStore.upsertOfflinePage(page)
+                                        transferNotice = "Offline PDF snapshot saved."
+                                    } else {
+                                        transferNotice =
+                                            saveError ?: "Offline snapshot could not be written."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                onOpenOfflinePage = { page ->
+                    if (!offlinePageManager.open(page)) {
+                        transferNotice = "Offline snapshot file is unavailable."
+                    }
+                },
+                onDeleteOfflinePage = { page ->
+                    if (offlinePageManager.delete(page)) {
+                        TahoBrowserStateStore.removeOfflinePage(page.id)
+                    } else {
+                        transferNotice = "Offline snapshot could not be deleted."
+                    }
+                },
                 onAddToHomeScreen = ::pinPageShortcut,
                 browserContent = {
                     AndroidView(
@@ -848,6 +882,9 @@ class MainActivity : FragmentActivity() {
         passwordBreachChecker.close()
         if (::downloadManager.isInitialized) {
             downloadManager.close()
+        }
+        if (::offlinePageManager.isInitialized) {
+            offlinePageManager.close()
         }
         super.onDestroy()
     }
