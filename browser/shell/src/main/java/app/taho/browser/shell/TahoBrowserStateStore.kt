@@ -9,6 +9,7 @@ import java.util.UUID
 
 object TahoBrowserStateStore {
     private var persistence: TahoBrowserPersistence? = null
+    private var profileDataById: Map<String, BrowserProfileLocalData> = emptyMap()
     private var uiMetaPreferences: android.content.SharedPreferences? = null
 
     var settings by mutableStateOf(BrowserSettingsState())
@@ -36,18 +37,7 @@ object TahoBrowserStateStore {
     var savedAddresses by mutableStateOf(emptyList<SavedAddressUi>())
     var savedPayments by mutableStateOf(emptyList<SavedPaymentUi>())
 
-    var profiles by mutableStateOf(
-        listOf(
-            BrowserProfileUi(
-                id = "profile_personal",
-                name = "Personal",
-                avatarGlyph = "👤",
-                isActive = true,
-                syncEnabled = false,
-                syncedDevicesCount = 0,
-            ),
-        ),
-    )
+    var profiles by mutableStateOf(defaultProfiles())
     var syncedDevices by mutableStateOf(emptyList<SyncedDeviceUi>())
     var tabGroups by mutableStateOf(emptyList<TabGroupUi>())
     var pinnedTabIds by mutableStateOf(emptySet<String>())
@@ -111,37 +101,81 @@ object TahoBrowserStateStore {
             savedAddresses = sensitive.addresses
             savedPayments = sensitive.payments
         }
+
+        profiles = ensureGuestProfile(profiles)
+        val requestedProfileId = settings.currentProfileId
+            .takeIf { id -> profiles.any { it.id == id && !it.isGuest } }
+            ?: PERSONAL_PROFILE_ID
+        profiles = profiles.map { it.copy(isActive = it.id == requestedProfileId) }
+        settings = settings.copy(currentProfileId = requestedProfileId)
+
+        profileDataById = store.loadProfileData()
+        if (profileDataById.isEmpty()) {
+            profileDataById = mapOf(requestedProfileId to captureCurrentProfileData())
+            store.saveProfileData(profileDataById)
+        } else {
+            applyProfileData(
+                profileDataById[requestedProfileId] ?: BrowserProfileLocalData(),
+            )
+        }
     }
 
     fun persistNow() {
         val store = persistence ?: return
         runCatching {
+            val active = profiles.firstOrNull { it.isActive }
+            if (active != null && !active.isGuest) {
+                profileDataById = profileDataById + (active.id to captureCurrentProfileData())
+            }
+            store.saveProfileData(profileDataById.filterKeys { id ->
+                profiles.none { it.id == id && it.isGuest }
+            })
+
+            val guestActive = active?.isGuest == true
+            val diskData = if (guestActive) {
+                profileDataById[PERSONAL_PROFILE_ID] ?: BrowserProfileLocalData()
+            } else {
+                captureCurrentProfileData()
+            }
+            val diskSettings = if (guestActive) {
+                settings.copy(currentProfileId = PERSONAL_PROFILE_ID)
+            } else {
+                settings
+            }
+            val diskProfiles = if (guestActive) {
+                ensureGuestProfile(profiles).map {
+                    it.copy(isActive = it.id == PERSONAL_PROFILE_ID)
+                }
+            } else {
+                ensureGuestProfile(profiles)
+            }
+
             store.save(
                 state = BrowserPersistentState(
-                    settings = settings,
+                    settings = diskSettings,
                     searchEngines = searchEngines,
-                    topSites = topSites,
-                    bookmarkFolders = bookmarkFolders,
-                    bookmarks = bookmarks,
-                    readingList = readingList,
-                    history = history,
-                    recentlyClosedTabs = recentlyClosedTabs.filterNot { it.isPrivate },
-                    downloads = downloads,
-                    profiles = profiles,
+                    topSites = diskData.topSites,
+                    bookmarkFolders = diskData.bookmarkFolders,
+                    bookmarks = diskData.bookmarks,
+                    readingList = diskData.readingList,
+                    history = diskData.history,
+                    recentlyClosedTabs = diskData.recentlyClosedTabs.filterNot { it.isPrivate },
+                    downloads = diskData.downloads,
+                    profiles = diskProfiles,
                     syncedDevices = syncedDevices,
-                    tabGroups = tabGroups,
-                    sitePermissions = sitePermissions,
-                    installedPwas = installedPwas,
-                    offlinePages = offlinePages,
-                    collections = collections,
-                    websiteNotifications = websiteNotifications,
-                    archivedTabs = archivedTabs,
+                    tabGroups = diskData.tabGroups,
+                    sitePermissions = diskData.sitePermissions,
+                    installedPwas = diskData.installedPwas,
+                    offlinePages = diskData.offlinePages,
+                    collections = diskData.collections,
+                    websiteNotifications = diskData.websiteNotifications,
+                    archivedTabs = diskData.archivedTabs,
                     readerSettings = readerSettings,
                 ),
                 sensitive = BrowserSensitiveState(
-                    passwords = savedPasswords,
-                    addresses = savedAddresses,
-                    payments = savedPayments,
+                    passwords = diskData.savedPasswords,
+                    addresses = diskData.savedAddresses,
+                    payments = diskData.savedPayments,
                 ),
             )
         }
@@ -168,16 +202,8 @@ object TahoBrowserStateStore {
         savedPasswords = emptyList()
         savedAddresses = emptyList()
         savedPayments = emptyList()
-        profiles = listOf(
-            BrowserProfileUi(
-                id = "profile_personal",
-                name = "Personal",
-                avatarGlyph = "👤",
-                isActive = true,
-                syncEnabled = false,
-                syncedDevicesCount = 0,
-            ),
-        )
+        profiles = defaultProfiles()
+        profileDataById = emptyMap()
         syncedDevices = emptyList()
         tabGroups = emptyList()
         pinnedTabIds = emptySet()
@@ -372,12 +398,136 @@ object TahoBrowserStateStore {
         siteData = siteData.filterNot { it.origin.contains(origin, ignoreCase = true) }
     }
 
-    fun switchProfile(profileId: String) {
-        profiles = profiles.map {
-            it.copy(isActive = it.id == profileId)
+    fun switchProfile(profileId: String): BrowserProfileUi? {
+        val target = profiles.firstOrNull { it.id == profileId } ?: return null
+        val current = profiles.firstOrNull { it.isActive }
+        if (current?.id == target.id) return target
+
+        if (current != null && !current.isGuest) {
+            profileDataById = profileDataById + (current.id to captureCurrentProfileData())
         }
-        settings = settings.copy(currentProfileId = profileId)
+
+        profiles = ensureGuestProfile(profiles).map {
+            it.copy(isActive = it.id == target.id)
+        }
+        settings = settings.copy(currentProfileId = target.id)
+        applyProfileData(
+            if (target.isGuest) {
+                BrowserProfileLocalData()
+            } else {
+                profileDataById[target.id] ?: BrowserProfileLocalData()
+            },
+        )
+        pinnedTabIds = emptySet()
+        persistPinnedTabs()
+        persistNow()
+        return target
     }
+
+    fun addLocalProfile(name: String): BrowserProfileUi {
+        val clean = name.trim().take(40).ifBlank { "Profile" }
+        val profile = BrowserProfileUi(
+            id = "profile_" + UUID.randomUUID().toString(),
+            name = clean,
+            avatarGlyph = clean.take(1).uppercase().ifBlank { "P" },
+            isActive = false,
+        )
+        profiles = ensureGuestProfile(profiles.filterNot { it.id == profile.id } + profile)
+        profileDataById = profileDataById + (profile.id to BrowserProfileLocalData())
+        persistNow()
+        return profile
+    }
+
+    private fun captureCurrentProfileData(): BrowserProfileLocalData =
+        BrowserProfileLocalData(
+            topSites = topSites,
+            bookmarkFolders = bookmarkFolders,
+            bookmarks = bookmarks,
+            readingList = readingList,
+            history = history,
+            recentlyClosedTabs = recentlyClosedTabs.filterNot { it.isPrivate },
+            downloads = downloads,
+            savedPasswords = savedPasswords,
+            savedAddresses = savedAddresses,
+            savedPayments = savedPayments,
+            tabGroups = tabGroups,
+            sitePermissions = sitePermissions,
+            installedPwas = installedPwas,
+            offlinePages = offlinePages,
+            collections = collections,
+            websiteNotifications = websiteNotifications,
+            archivedTabs = archivedTabs,
+        )
+
+    private fun applyProfileData(data: BrowserProfileLocalData) {
+        topSites = data.topSites
+        bookmarkFolders = data.bookmarkFolders
+        bookmarks = data.bookmarks
+        readingList = data.readingList
+        history = data.history
+        recentlyClosedTabs = data.recentlyClosedTabs.filterNot { it.isPrivate }
+        downloads = data.downloads.map { item ->
+            if (
+                item.status == TahoDownloadStatus.DOWNLOADING ||
+                item.status == TahoDownloadStatus.PAUSED
+            ) {
+                item.copy(status = TahoDownloadStatus.FAILED)
+            } else {
+                item
+            }
+        }
+        savedPasswords = data.savedPasswords
+        savedAddresses = data.savedAddresses
+        savedPayments = data.savedPayments
+        tabGroups = data.tabGroups
+        sitePermissions = data.sitePermissions
+        installedPwas = data.installedPwas
+        offlinePages = data.offlinePages
+        collections = data.collections
+        websiteNotifications = data.websiteNotifications
+        archivedTabs = data.archivedTabs
+        siteData = emptyList()
+    }
+
+    private fun ensureGuestProfile(items: List<BrowserProfileUi>): List<BrowserProfileUi> =
+        if (items.any { it.id == GUEST_PROFILE_ID }) {
+            items.map {
+                if (it.id == GUEST_PROFILE_ID) it.copy(isGuest = true, syncEnabled = false)
+                else it
+            }
+        } else {
+            items + BrowserProfileUi(
+                id = GUEST_PROFILE_ID,
+                name = "Guest",
+                avatarGlyph = "◐",
+                isGuest = true,
+                isActive = false,
+                syncEnabled = false,
+            )
+        }
+
+    private fun defaultProfiles(): List<BrowserProfileUi> =
+        listOf(
+            BrowserProfileUi(
+                id = PERSONAL_PROFILE_ID,
+                name = "Personal",
+                avatarGlyph = "👤",
+                isActive = true,
+                syncEnabled = false,
+                syncedDevicesCount = 0,
+            ),
+            BrowserProfileUi(
+                id = GUEST_PROFILE_ID,
+                name = "Guest",
+                avatarGlyph = "◐",
+                isGuest = true,
+                isActive = false,
+                syncEnabled = false,
+            ),
+        )
+
+    private const val PERSONAL_PROFILE_ID = "profile_personal"
+    private const val GUEST_PROFILE_ID = "profile_guest"
 
     // --- Pinned Tabs ---
     fun togglePinnedTab(tabId: String, isPrivate: Boolean = false) {
