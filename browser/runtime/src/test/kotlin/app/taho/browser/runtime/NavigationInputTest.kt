@@ -62,4 +62,33 @@ class NavigationInputTest {
     fun aboutBlankIsAllowedForTheInternalEmptyTab() {
         assertEquals("about:blank", NavigationInput.resolve("about:blank"))
     }
+
+    @Test
+    fun selectedSearchEngineTemplateIsUsedForQueries() {
+        assertEquals(
+            "https://duckduckgo.com/?q=taho%20browser",
+            NavigationInput.resolve(
+                "taho browser",
+                searchUrlTemplate = "https://duckduckgo.com/?q=%s",
+            ),
+        )
+    }
+
+    @Test
+    fun unsafeOrMalformedSearchTemplateFallsBackToDefault() {
+        assertEquals(
+            "https://www.google.com/search?q=taho",
+            NavigationInput.resolve(
+                "taho",
+                searchUrlTemplate = "http://search.invalid/?q=%s",
+            ),
+        )
+        assertEquals(
+            "https://www.google.com/search?q=taho",
+            NavigationInput.resolve(
+                "taho",
+                searchUrlTemplate = "https://search.invalid/no-placeholder",
+            ),
+        )
+    }
 }
