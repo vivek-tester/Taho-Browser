@@ -24,4 +24,5 @@ data class BrowserRuntimePreferences(
     val forceAccessibilityTree: Boolean,
     val webColorScheme: BrowserWebColorScheme,
     val suspendBackgroundMedia: Boolean,
+    val speculativePreconnectEnabled: Boolean,
 )
