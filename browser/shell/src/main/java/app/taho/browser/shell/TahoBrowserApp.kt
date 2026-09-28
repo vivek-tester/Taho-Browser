@@ -213,6 +213,12 @@ fun TahoBrowserApp(
     onPrintPage: () -> Boolean = { false },
     onAddToHomeScreen: (String, String) -> Unit = { _, _ -> },
     onInstallWebApp: (WebAppManifestUi) -> Unit = {},
+    onTranslatePage: (
+        targetLanguage: String,
+        (Boolean, String?, String?) -> Unit,
+    ) -> Unit = { _, callback -> callback(false, null, "Translation is unavailable.") },
+    onRestorePageTranslation: ((Boolean, String?) -> Unit) -> Unit =
+        { callback -> callback(false, "Translation is unavailable.") },
     browserContent: @Composable () -> Unit = {},
 ) {
     var editing by rememberSaveable { mutableStateOf(false) }
@@ -228,6 +234,9 @@ fun TahoBrowserApp(
     var readerError by remember { mutableStateOf<String?>(null) }
     var showTranslationBar by rememberSaveable { mutableStateOf(false) }
     var isPageTranslated by rememberSaveable { mutableStateOf(false) }
+    var translationInProgress by rememberSaveable { mutableStateOf(false) }
+    var translationSourceLanguage by rememberSaveable { mutableStateOf<String?>(null) }
+    var translationMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var findInPageActive by rememberSaveable { mutableStateOf(false) }
     var findInPageQuery by rememberSaveable { mutableStateOf("") }
     var currentFindMatchIndex by rememberSaveable { mutableStateOf(0) }
@@ -601,11 +610,43 @@ fun TahoBrowserApp(
 
                 if (showTranslationBar) {
                     TahoTranslationBar(
+                        sourceLang = translationSourceLanguage ?: "Detect page language",
                         targetLang = TahoBrowserStateStore.settings.translationTargetLanguage,
-                        onTranslate = { isPageTranslated = true },
+                        isTranslating = translationInProgress,
+                        translated = isPageTranslated,
+                        statusMessage = translationMessage,
+                        onTranslate = {
+                            if (!translationInProgress) {
+                                translationInProgress = true
+                                translationMessage = null
+                                onTranslatePage(
+                                    TahoBrowserStateStore.settings.translationTargetLanguage,
+                                ) { success, sourceLanguage, error ->
+                                    translationInProgress = false
+                                    translationSourceLanguage = sourceLanguage
+                                    isPageTranslated = success
+                                    translationMessage = if (success) {
+                                        "Translated by Gecko using its page translation engine."
+                                    } else {
+                                        error ?: "Translation failed."
+                                    }
+                                }
+                            }
+                        },
                         onRevert = {
-                            isPageTranslated = false
-                            showTranslationBar = false
+                            if (!translationInProgress) {
+                                translationInProgress = true
+                                translationMessage = null
+                                onRestorePageTranslation { success, error ->
+                                    translationInProgress = false
+                                    if (success) {
+                                        isPageTranslated = false
+                                        translationMessage = "Original page restored."
+                                    } else {
+                                        translationMessage = error ?: "Unable to restore the original page."
+                                    }
+                                }
+                            }
                         },
                         onClose = { showTranslationBar = false },
                     )
