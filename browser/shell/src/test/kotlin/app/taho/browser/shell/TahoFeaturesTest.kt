@@ -408,4 +408,18 @@ class TahoFeaturesTest {
         store.toggleTrackingException(origin)
         assertFalse(store.settings.perSiteTrackingExceptions.contains(origin))
     }
+
+    @Test
+    fun pinnedTabsIgnorePrivateTabsAndCanBeToggled() {
+        val store = TahoBrowserStateStore
+
+        store.togglePinnedTab("normal-tab", isPrivate = false)
+        assertTrue("normal-tab" in store.pinnedTabIds)
+
+        store.togglePinnedTab("private-tab", isPrivate = true)
+        assertFalse("private-tab" in store.pinnedTabIds)
+
+        store.togglePinnedTab("normal-tab", isPrivate = false)
+        assertFalse("normal-tab" in store.pinnedTabIds)
+    }
 }
