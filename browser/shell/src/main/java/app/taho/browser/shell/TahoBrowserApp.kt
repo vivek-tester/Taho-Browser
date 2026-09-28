@@ -158,6 +158,7 @@ fun TahoBrowserApp(
         { _, callback -> callback(false) },
     onExtractReaderContent: ((ReaderPageContentUi?) -> Unit) -> Unit = { callback -> callback(null) },
     onPrintPage: () -> Boolean = { false },
+    onAddToHomeScreen: (String, String) -> Unit = { _, _ -> },
     browserContent: @Composable () -> Unit = {},
 ) {
     var editing by rememberSaveable { mutableStateOf(false) }
@@ -243,6 +244,10 @@ fun TahoBrowserApp(
                 isAppearanceLightNavigationBars = !darkSystemChromeVisible
             }
         }
+    }
+
+    LaunchedEffect(state.tabs) {
+        TahoBrowserStateStore.prunePinnedTabs(state.tabs.mapTo(mutableSetOf()) { it.id })
     }
 
     LaunchedEffect(state.captureRequests, selectedCaptureId) {
@@ -799,11 +804,16 @@ fun TahoBrowserApp(
                         showTabs = false
                     },
                     onCloseOtherTabs = { keepId ->
-                        state.tabs.filterNot { it.id == keepId }.forEach { t -> onCloseTab(t.id) }
+                        state.tabs
+                            .filterNot { it.id == keepId || it.id in TahoBrowserStateStore.pinnedTabIds }
+                            .forEach { t -> onCloseTab(t.id) }
                     },
                     onCloseAllTabs = {
-                        state.tabs.forEach { t -> onCloseTab(t.id) }
-                        onNewTab()
+                        val closable = state.tabs.filterNot { it.id in TahoBrowserStateStore.pinnedTabIds }
+                        closable.forEach { t -> onCloseTab(t.id) }
+                        if (TahoBrowserStateStore.pinnedTabIds.isEmpty()) {
+                            onNewTab()
+                        }
                         showTabs = false
                     },
                     onDuplicateTab = { id ->
@@ -922,7 +932,7 @@ fun TahoBrowserApp(
                     onTranslate = { showTranslationBar = true },
                     onAddToHomeScreen = {
                         currentTab?.location?.let { loc ->
-                            TahoBrowserStateStore.addTopSite(currentTab.title ?: loc, loc, isPinned = true)
+                            onAddToHomeScreen(currentTab.title ?: loc, loc)
                         }
                     },
                     onPrintPage = {
