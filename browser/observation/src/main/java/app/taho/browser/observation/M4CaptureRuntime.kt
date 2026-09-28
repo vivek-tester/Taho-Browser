@@ -144,6 +144,16 @@ class M4CaptureRuntime(
                 )
             }
 
+    fun clearPresentationHistory() {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            mainHandler.post(::clearPresentationHistory)
+            return
+        }
+        assembler.clearForUser()
+        persistedRecords = emptyList()
+        publish(derivedActiveState())
+    }
+
     private fun persistDurable(record: DurableTransaction) {
         val sink = durableSink
         if (sink == null) {
