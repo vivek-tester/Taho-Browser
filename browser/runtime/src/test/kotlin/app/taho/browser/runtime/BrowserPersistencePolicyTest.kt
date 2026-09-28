@@ -15,6 +15,7 @@ class BrowserPersistencePolicyTest {
                     location = "https://example.com",
                     serializedSessionState = "normal-state",
                     isPrivate = false,
+                    lastAccessedAtEpochMs = 77L,
                 ),
                 BrowserPersistableTab(
                     id = "private",
@@ -29,6 +30,7 @@ class BrowserPersistencePolicyTest {
 
         assertEquals(listOf("normal"), state.tabs.map { it.id })
         assertEquals("normal-state", state.tabs.single().serializedSessionState)
+        assertEquals(77L, state.tabs.single().lastAccessedAtEpochMs)
         assertNull(state.selectedTabId)
     }
 
