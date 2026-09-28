@@ -1212,6 +1212,50 @@ private fun SettingsHistoryPage(onNavigate: (String) -> Unit) {
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(TahoPillShape)
+                .background(TahoSurfaceControl)
+                .border(1.dp, TahoHairline, TahoPillShape)
+                .padding(horizontal = 12.dp, vertical = 7.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("⌕", color = TahoFaint, fontSize = 13.sp)
+                Spacer(Modifier.width(8.dp))
+                Box(modifier = Modifier.weight(1f)) {
+                    if (search.isEmpty()) {
+                        Text(
+                            "Search browsing history…",
+                            color = TahoFaint,
+                            fontFamily = TahoMono,
+                            fontSize = 11.sp,
+                        )
+                    }
+                    BasicTextField(
+                        value = search,
+                        onValueChange = { search = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp),
+                        cursorBrush = SolidColor(TahoGold),
+                    )
+                }
+                if (search.isNotEmpty()) {
+                    Text(
+                        "×",
+                        color = TahoMuted,
+                        fontSize = 14.sp,
+                        modifier = Modifier
+                            .clickable { search = "" }
+                            .padding(4.dp),
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
