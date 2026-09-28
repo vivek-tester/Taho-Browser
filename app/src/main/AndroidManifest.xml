@@ -25,6 +25,11 @@
                 android:resource="@xml/download_file_paths" />
         </provider>
         <activity
+            android:name=".TahoPwaActivity"
+            android:exported="false"
+            android:launchMode="standard"
+            android:theme="@style/Theme.TahoBrowser" />
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop">
