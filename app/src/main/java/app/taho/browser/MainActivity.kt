@@ -146,6 +146,7 @@ class MainActivity : FragmentActivity() {
     private lateinit var offlinePageManager: OfflinePageManager
     private lateinit var extensionManager: BrowserExtensionManager
     private lateinit var webNotificationManager: BrowserWebNotificationManager
+    private lateinit var extensionMarketplace: BrowserExtensionMarketplace
     private var pendingExtensionPermissionRequest by
         mutableStateOf<BrowserExtensionPermissionRequest?>(null)
     private var pendingExtensionPermissionDecision: ((Boolean) -> Unit)? = null
@@ -380,6 +381,7 @@ class MainActivity : FragmentActivity() {
         transferCoordinator = TahoSecureTransferCoordinator(this)
         updateChecker = BrowserUpdateChecker(this)
         backupManager = BrowserBackupManager(this)
+        extensionMarketplace = BrowserExtensionMarketplace()
         TransferArtifactMaintenance.schedule(this)
 
         runCatching {
@@ -1008,6 +1010,9 @@ class MainActivity : FragmentActivity() {
                             }
                         }
                     }
+                },
+                onSearchExtensionMarketplace = { query, callback ->
+                    extensionMarketplace.search(query, callback)
                 },
                 browserContent = {
                     AndroidView(
