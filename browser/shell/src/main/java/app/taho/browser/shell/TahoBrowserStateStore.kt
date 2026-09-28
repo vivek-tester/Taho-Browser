@@ -668,6 +668,11 @@ object TahoBrowserStateStore {
     }
 
     // --- Offline Pages ---
+    fun upsertOfflinePage(item: OfflinePageUi) {
+        offlinePages = listOf(item) + offlinePages.filterNot { it.id == item.id }
+        persistNow()
+    }
+
     fun removeOfflinePage(id: String) {
         offlinePages = offlinePages.filterNot { it.id == id }
     }
