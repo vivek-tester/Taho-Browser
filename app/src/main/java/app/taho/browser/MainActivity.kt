@@ -59,6 +59,7 @@ import app.taho.browser.transfer.android.TahoTransferTransport
 import app.taho.browser.transfer.android.TransferReceiptRecoveryStore
 import app.taho.browser.transfer.core.M4PreparationBlock
 import app.taho.browser.transfer.core.M4PreparationResult
+import app.taho.browser.transfer.core.M4TransferPreparer
 import java.net.URI
 
 class MainActivity : ComponentActivity() {
@@ -75,6 +76,7 @@ class MainActivity : ComponentActivity() {
     private var activeAndroidPermissions: List<String> = emptyList()
     private var transferNotice by mutableStateOf<String?>(null)
     private var pendingTransferId: String? = null
+    private var transferPreparationInFlight: Boolean = false
 
     private val androidPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -515,86 +517,131 @@ class MainActivity : ComponentActivity() {
         transferId: String,
         policy: M4SecretPolicyUi,
     ) {
-        val domainPolicy = SecretPolicy.valueOf(policy.name)
-        when (val result = captureRuntime.prepare(transferId, domainPolicy)) {
-            null -> transferNotice = "The captured request is no longer available."
+        if (transferPreparationInFlight || pendingTransferId != null) {
+            transferNotice = "A Taho transfer is already in progress."
+            return
+        }
+        if (BuildConfig.TAHO_TRANSFER_ACTION.isBlank()) {
+            transferNotice =
+                "Project-Taho structured receiver is not configured yet. Nothing was sent."
+            return
+        }
 
-            is M4PreparationResult.Blocked -> {
-                transferNotice = when (result.reason) {
-                    M4PreparationBlock.REVIEW_REQUIRED ->
-                        "Transfer blocked: sensitive data still requires review."
-                    M4PreparationBlock.EXPLICIT_SECRET_UNAVAILABLE ->
-                        "Explicit credential transfer is unavailable for this capture."
-                    M4PreparationBlock.INVALID_CONTRACT ->
-                        "Transfer blocked: request does not satisfy the Taho contract."
+        val captured = captureRuntime.capturedRequest(transferId)
+        if (captured == null) {
+            transferNotice = "The captured request is no longer available."
+            return
+        }
+
+        val target = TahoDirectTransferTarget(
+            packageName = BuildConfig.TAHO_PACKAGE_NAME,
+            action = BuildConfig.TAHO_TRANSFER_ACTION,
+        )
+        if (!transferCoordinator.isTargetAvailable(target)) {
+            transferNotice = "Taho API Testing isn't installed."
+            return
+        }
+
+        val domainPolicy = SecretPolicy.valueOf(policy.name)
+        val expectedTransferId = captured.transferId
+        val receiver = object : ResultReceiver(Handler(Looper.getMainLooper())) {
+            override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
+                if (pendingTransferId != expectedTransferId) return
+                pendingTransferId = null
+                val receipt = TahoDirectTransferIntentFactory.parseReceipt(resultData)
+                if (receipt?.transferId == expectedTransferId) {
+                    transferCoordinator.settle(expectedTransferId)
+                    TransferReceiptRecoveryStore.clearIfMatches(
+                        this@MainActivity,
+                        expectedTransferId,
+                    )
+                }
+                transferNotice = when {
+                    receipt == null ->
+                        "Taho returned no valid transfer receipt."
+                    receipt.transferId != expectedTransferId ->
+                        "Taho returned a receipt for a different transfer."
+                    else -> receiptNotice(receipt)
                 }
             }
+        }
 
-            is M4PreparationResult.Prepared -> {
-                if (BuildConfig.TAHO_TRANSFER_ACTION.isBlank()) {
-                    transferNotice =
-                        "Project-Taho structured receiver is not configured yet. Nothing was sent."
-                    return
-                }
+        transferPreparationInFlight = true
+        transferNotice = "Preparing request for Taho…"
 
-                val target = TahoDirectTransferTarget(
-                    packageName = BuildConfig.TAHO_PACKAGE_NAME,
-                    action = BuildConfig.TAHO_TRANSFER_ACTION,
+        Thread({
+            val preparation = runCatching {
+                M4TransferPreparer.prepare(
+                    input = captured,
+                    requestedPolicy = domainPolicy,
                 )
-                if (!transferCoordinator.isTargetAvailable(target)) {
-                    transferNotice = "Taho API Testing isn't installed."
-                    return
+            }.getOrElse {
+                runOnUiThread {
+                    transferPreparationInFlight = false
+                    transferNotice =
+                        "Taho could not receive this request. Your captured request remains in Taho Browser."
                 }
+                return@Thread
+            }
 
-                val expectedTransferId = result.value.envelope.transferId
-                val receiver = object : ResultReceiver(Handler(Looper.getMainLooper())) {
-                    override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
-                        if (pendingTransferId != expectedTransferId) return
-                        pendingTransferId = null
-                        val receipt = TahoDirectTransferIntentFactory.parseReceipt(resultData)
-                        if (receipt?.transferId == expectedTransferId) {
-                            transferCoordinator.settle(expectedTransferId)
-                            TransferReceiptRecoveryStore.clearIfMatches(
-                                this@MainActivity,
-                                expectedTransferId,
-                            )
-                        }
-                        transferNotice = when {
-                            receipt == null ->
-                                "Taho returned no valid transfer receipt."
-                            receipt.transferId != expectedTransferId ->
-                                "Taho returned a receipt for a different transfer."
-                            else -> receiptNotice(receipt)
+            when (preparation) {
+                is M4PreparationResult.Blocked -> {
+                    runOnUiThread {
+                        transferPreparationInFlight = false
+                        transferNotice = when (preparation.reason) {
+                            M4PreparationBlock.REVIEW_REQUIRED ->
+                                "Transfer blocked: sensitive data still requires review."
+                            M4PreparationBlock.EXPLICIT_SECRET_UNAVAILABLE ->
+                                "Explicit credential transfer is unavailable for this capture."
+                            M4PreparationBlock.INVALID_CONTRACT ->
+                                "Transfer blocked: request does not satisfy the Taho contract."
                         }
                     }
                 }
 
-                val dispatch = runCatching {
-                    transferCoordinator.prepareDispatch(
-                        target = target,
-                        prepared = result.value,
-                        resultReceiver = receiver,
-                    )
-                }.getOrElse {
-                    transferNotice = "Unable to prepare a secure transfer."
-                    return
-                }
+                is M4PreparationResult.Prepared -> {
+                    val dispatch = runCatching {
+                        transferCoordinator.prepareDispatch(
+                            target = target,
+                            prepared = preparation.value,
+                            resultReceiver = receiver,
+                        )
+                    }.getOrElse {
+                        runOnUiThread {
+                            transferPreparationInFlight = false
+                            transferNotice =
+                                "Taho could not receive this request. Your captured request remains in Taho Browser."
+                        }
+                        return@Thread
+                    }
 
-                pendingTransferId = expectedTransferId
-                if (dispatch.transport == TahoTransferTransport.ARTIFACT_URI) {
-                    transferNotice = "This request is large. Using secure file transfer…"
-                }
-                runCatching {
-                    @Suppress("DEPRECATION")
-                    startActivityForResult(dispatch.intent, TAHO_TRANSFER_REQUEST_CODE)
-                }.onFailure {
-                    pendingTransferId = null
-                    transferCoordinator.cancel(expectedTransferId)
-                    transferNotice =
-                        "Taho could not receive this request. Your captured request remains in Taho Browser."
+                    runOnUiThread {
+                        transferPreparationInFlight = false
+                        pendingTransferId = expectedTransferId
+                        transferNotice = if (
+                            dispatch.transport == TahoTransferTransport.ARTIFACT_URI
+                        ) {
+                            "This request is large. Using secure file transfer…"
+                        } else {
+                            "Sending to Taho…"
+                        }
+
+                        runCatching {
+                            @Suppress("DEPRECATION")
+                            startActivityForResult(
+                                dispatch.intent,
+                                TAHO_TRANSFER_REQUEST_CODE,
+                            )
+                        }.onFailure {
+                            pendingTransferId = null
+                            transferCoordinator.cancel(expectedTransferId)
+                            transferNotice =
+                                "Taho could not receive this request. Your captured request remains in Taho Browser."
+                        }
+                    }
                 }
             }
-        }
+        }, "taho-transfer-prepare").start()
     }
 
     private fun receiptNotice(
