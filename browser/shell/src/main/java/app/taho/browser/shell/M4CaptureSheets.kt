@@ -47,6 +47,7 @@ data class M4CaptureHeaderUiState(
     val name: String,
     val displayValue: String,
     val sensitive: Boolean,
+    val secretCategory: String? = null,
 ) {
     init {
         require(name.isNotBlank()) { "header name must not be blank" }
