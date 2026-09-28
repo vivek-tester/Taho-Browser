@@ -75,6 +75,7 @@ import app.taho.browser.shell.BrowserAutofillPromptOptionUi
 import app.taho.browser.shell.BrowserAutofillPromptUiState
 import app.taho.browser.shell.BrowserTabUiState
 import app.taho.browser.shell.BrowserUiState
+import app.taho.browser.shell.DownloadItemUi
 import app.taho.browser.shell.M4CaptureHeaderUiState
 import app.taho.browser.shell.M4CaptureRequestUiState
 import app.taho.browser.shell.M4CompletenessUi
@@ -120,6 +121,7 @@ class MainActivity : FragmentActivity() {
     private var captureRetentionMode by mutableStateOf("Session only")
     private val committedHistoryLocationByTab = mutableMapOf<String, String?>()
     private val passwordBreachChecker = PasswordBreachChecker()
+    private lateinit var downloadManager: BrowserDownloadManager
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
@@ -163,7 +165,13 @@ class MainActivity : FragmentActivity() {
         }
 
         TahoBrowserStateStore.initialize(this)
+        downloadManager = BrowserDownloadManager(this) { item ->
+            runOnUiThread {
+                TahoBrowserStateStore.upsertDownload(item)
+            }
+        }
         controller = BrowserRuntimeStore.get(this)
+        controller.setExternalResponseConsumer(downloadManager::accept)
         controller.setAutofillStore(
             object : BrowserAutofillStore {
                 override val loginAutofillEnabled: Boolean
@@ -664,6 +672,24 @@ class MainActivity : FragmentActivity() {
                 onPrintPage = controller::printCurrentPage,
                 onAuthenticateSensitive = ::authenticateSensitive,
                 onCheckPasswordBreach = passwordBreachChecker::check,
+                onDownloadPauseResume = downloadManager::pauseResume,
+                onDownloadCancel = downloadManager::cancel,
+                onDownloadRetry = { item ->
+                    TahoBrowserStateStore.removeDownload(item.id)
+                    controller.load(uri = item.url)
+                },
+                onDownloadOpen = { item ->
+                    if (!downloadManager.open(item)) {
+                        transferNotice = "No installed app can open this downloaded file."
+                    }
+                },
+                onDownloadDelete = { item ->
+                    if (downloadManager.delete(item)) {
+                        TahoBrowserStateStore.removeDownload(item.id)
+                    } else {
+                        transferNotice = "Downloaded file could not be deleted."
+                    }
+                },
                 onAddToHomeScreen = ::pinPageShortcut,
                 browserContent = {
                     AndroidView(
@@ -820,6 +846,9 @@ class MainActivity : FragmentActivity() {
         }
         captureRuntime.close()
         passwordBreachChecker.close()
+        if (::downloadManager.isInitialized) {
+            downloadManager.close()
+        }
         super.onDestroy()
     }
 
