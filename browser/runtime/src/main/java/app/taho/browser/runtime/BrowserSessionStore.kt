@@ -7,6 +7,7 @@ data class PersistedBrowserTab(
     val title: String?,
     val location: String?,
     val serializedSessionState: String?,
+    val lastAccessedAtEpochMs: Long? = null,
 )
 
 data class PersistedBrowserState(

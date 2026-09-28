@@ -5,6 +5,8 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -1212,6 +1214,50 @@ private fun SettingsHistoryPage(onNavigate: (String) -> Unit) {
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(TahoPillShape)
+                .background(TahoSurfaceControl)
+                .border(1.dp, TahoHairline, TahoPillShape)
+                .padding(horizontal = 12.dp, vertical = 7.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("⌕", color = TahoFaint, fontSize = 13.sp)
+                Spacer(Modifier.width(8.dp))
+                Box(modifier = Modifier.weight(1f)) {
+                    if (search.isEmpty()) {
+                        Text(
+                            "Search browsing history…",
+                            color = TahoFaint,
+                            fontFamily = TahoMono,
+                            fontSize = 11.sp,
+                        )
+                    }
+                    BasicTextField(
+                        value = search,
+                        onValueChange = { search = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp),
+                        cursorBrush = SolidColor(TahoGold),
+                    )
+                }
+                if (search.isNotEmpty()) {
+                    Text(
+                        "×",
+                        color = TahoMuted,
+                        fontSize = 14.sp,
+                        modifier = Modifier
+                            .clickable { search = "" }
+                            .padding(4.dp),
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -1811,14 +1857,13 @@ private fun SettingsAutofillPage() {
 private fun SettingsProfilesSyncPage() {
     val profiles = TahoBrowserStateStore.profiles
     val devices = TahoBrowserStateStore.syncedDevices
-    val settings = TahoBrowserStateStore.settings
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
-        SettingsSectionTitle("SWITCH BROWSER PROFILE")
+        SettingsSectionTitle("LOCAL BROWSER PROFILES")
         profiles.forEach { profile ->
             Row(
                 modifier = Modifier
@@ -1836,7 +1881,12 @@ private fun SettingsProfilesSyncPage() {
                     Spacer(Modifier.width(10.dp))
                     Column {
                         Text(profile.name, color = TahoText, fontFamily = TahoMono, fontSize = 11.5.sp)
-                        Text(if (profile.isGuest) "Zero persistence" else "Sync active · ${profile.syncedDevicesCount} devices", color = TahoFaint, fontFamily = TahoMono, fontSize = 8.5.sp)
+                        Text(
+                            if (profile.isGuest) "Guest profile" else "Local profile metadata",
+                            color = TahoFaint,
+                            fontFamily = TahoMono,
+                            fontSize = 8.5.sp,
+                        )
                     }
                 }
                 if (profile.isActive) {
@@ -1847,25 +1897,54 @@ private fun SettingsProfilesSyncPage() {
         }
 
         Spacer(Modifier.height(18.dp))
-        SettingsSectionTitle("SYNCED DEVICES")
-        devices.forEach { dev ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(TahoBlockShape)
-                    .background(TahoSurfaceRow)
-                    .border(1.dp, TahoHairline, TahoBlockShape)
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column {
-                    Text(dev.name, color = TahoText, fontFamily = TahoMono, fontSize = 11.sp)
-                    Text("Type: ${dev.deviceType}", color = TahoFaint, fontFamily = TahoMono, fontSize = 9.sp)
-                }
-                Text("Send Tab ↗", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable { /* Send tab simulated */ })
+        SettingsSectionTitle("CROSS-DEVICE SYNC")
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(TahoCardShape)
+                .background(TahoSurfaceRow)
+                .border(1.dp, TahoHairline, TahoCardShape)
+                .padding(14.dp),
+        ) {
+            Column {
+                Text(
+                    "Sync service not connected",
+                    color = TahoText,
+                    fontFamily = TahoDisplay,
+                    fontSize = 13.sp,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Bookmarks, history, passwords, open tabs, settings and device-to-device tab sending remain local until a real authenticated sync backend is connected.",
+                    color = TahoMuted,
+                    fontFamily = TahoMono,
+                    fontSize = 9.5.sp,
+                )
             }
-            Spacer(Modifier.height(6.dp))
+        }
+
+        if (devices.isNotEmpty()) {
+            Spacer(Modifier.height(14.dp))
+            SettingsSectionTitle("SYNCED DEVICES")
+            devices.forEach { dev ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(TahoBlockShape)
+                        .background(TahoSurfaceRow)
+                        .border(1.dp, TahoHairline, TahoBlockShape)
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text(dev.name, color = TahoText, fontFamily = TahoMono, fontSize = 11.sp)
+                        Text("Type: ${dev.deviceType}", color = TahoFaint, fontFamily = TahoMono, fontSize = 9.sp)
+                    }
+                    Text("Read only", color = TahoFaint, fontFamily = TahoMono, fontSize = 9.sp)
+                }
+                Spacer(Modifier.height(6.dp))
+            }
         }
     }
 }
@@ -2069,12 +2148,47 @@ private fun SettingsDefaultBrowserPage() {
             Column {
                 Text("Make Taho your default browser", color = TahoText, fontFamily = TahoDisplay, fontSize = 14.sp)
                 Spacer(Modifier.height(4.dp))
-                Text("Open all web links, authentication handshakes, and API endpoints directly inside Taho Browser with zero-trust protection.", color = TahoMuted, fontFamily = TahoMono, fontSize = 10.sp)
+                Text(
+                    "Choose Taho as Android's web browser and control which verified links may open directly in it.",
+                    color = TahoMuted,
+                    fontFamily = TahoMono,
+                    fontSize = 10.sp,
+                )
                 Spacer(Modifier.height(14.dp))
                 M7PrimaryButton("Set as Default Browser", modifier = Modifier.fillMaxWidth()) {
                     runCatching {
-                        val intent = Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)
-                        context.startActivity(intent)
+                        if (android.os.Build.VERSION.SDK_INT >= 29) {
+                            val roleManager = context.getSystemService(android.app.role.RoleManager::class.java)
+                            if (roleManager?.isRoleAvailable(android.app.role.RoleManager.ROLE_BROWSER) == true) {
+                                context.startActivity(
+                                    roleManager.createRequestRoleIntent(android.app.role.RoleManager.ROLE_BROWSER),
+                                )
+                            } else {
+                                context.startActivity(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
+                            }
+                        } else {
+                            context.startActivity(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                M7SecondaryButton("Open Supported Links Settings", Modifier.fillMaxWidth()) {
+                    runCatching {
+                        context.startActivity(
+                            Intent(
+                                Settings.ACTION_APP_OPEN_BY_DEFAULT_SETTINGS,
+                                Uri.parse("package:" + context.packageName),
+                            ),
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                M7SecondaryButton("Open App Notification Settings", Modifier.fillMaxWidth()) {
+                    runCatching {
+                        context.startActivity(
+                            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+                        )
                     }
                 }
             }
@@ -2094,27 +2208,123 @@ private fun SettingsPerformanceMediaPage() {
             .verticalScroll(rememberScrollState()),
     ) {
         SettingsSectionTitle("STARTUP & SESSION RESTORATION")
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
             listOf(
-                TahoHomePageMode.START_PAGE to "Start Page",
-                TahoHomePageMode.CUSTOM_URL to "Custom URL",
+                TahoStartupBehavior.PREVIOUS_TABS to "Continue Previous Tabs",
+                TahoStartupBehavior.START_PAGE to "Open Start Page",
+                TahoStartupBehavior.CUSTOM_PAGE to "Open Custom Page",
             ).forEach { (mode, label) ->
-                val sel = settings.homePageMode == mode
-                Box(
+                val selected = settings.startupBehavior == mode
+                Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .clip(TahoPillShape)
-                        .background(if (sel) TahoGold else TahoSurfaceControl)
-                        .clickable { TahoBrowserStateStore.updateSettings { it.copy(homePageMode = mode) } }
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center,
+                        .fillMaxWidth()
+                        .clip(TahoBlockShape)
+                        .background(if (selected) TahoGold.copy(alpha = .14f) else TahoSurfaceRow)
+                        .border(
+                            1.dp,
+                            if (selected) TahoGold.copy(alpha = .45f) else TahoHairline,
+                            TahoBlockShape,
+                        )
+                        .clickable {
+                            TahoBrowserStateStore.updateSettings { it.copy(startupBehavior = mode) }
+                        }
+                        .padding(horizontal = 13.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(label, color = if (sel) TahoBg else TahoText, fontFamily = TahoMono, fontSize = 10.sp)
+                    Text(
+                        text = label,
+                        color = if (selected) TahoGoldHi else TahoText,
+                        fontFamily = TahoMono,
+                        fontSize = 10.sp,
+                    )
+                    if (selected) {
+                        Text("✓", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 10.sp)
+                    }
                 }
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        if (settings.startupBehavior == TahoStartupBehavior.CUSTOM_PAGE) {
+            Spacer(Modifier.height(8.dp))
+            BasicTextField(
+                value = settings.customStartupUrl,
+                onValueChange = { value ->
+                    TahoBrowserStateStore.updateSettings { it.copy(customStartupUrl = value) }
+                },
+                singleLine = true,
+                textStyle = TextStyle(
+                    color = TahoText,
+                    fontFamily = TahoMono,
+                    fontSize = 10.5.sp,
+                ),
+                cursorBrush = SolidColor(TahoGold),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(TahoBlockShape)
+                    .background(TahoSurfaceControl)
+                    .border(1.dp, TahoHairline, TahoBlockShape)
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                decorationBox = { inner ->
+                    Box {
+                        if (settings.customStartupUrl.isBlank()) {
+                            Text(
+                                "https://example.com",
+                                color = TahoFaint,
+                                fontFamily = TahoMono,
+                                fontSize = 10.5.sp,
+                            )
+                        }
+                        inner()
+                    }
+                },
+            )
+        }
+
+        Spacer(Modifier.height(18.dp))
+        SettingsSectionTitle("AUTOMATIC INACTIVE TAB CLOSING")
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            listOf(
+                TahoAutoCloseTabs.NEVER to "Never",
+                TahoAutoCloseTabs.AFTER_1_DAY to "1 Day",
+                TahoAutoCloseTabs.AFTER_1_WEEK to "1 Week",
+                TahoAutoCloseTabs.AFTER_1_MONTH to "1 Month",
+            ).forEach { (policy, label) ->
+                val selected = settings.autoCloseTabs == policy
+                Box(
+                    modifier = Modifier
+                        .clip(TahoPillShape)
+                        .background(if (selected) TahoGold else TahoSurfaceControl)
+                        .border(1.dp, if (selected) TahoGoldHi else TahoHairline, TahoPillShape)
+                        .clickable {
+                            TahoBrowserStateStore.updateSettings { it.copy(autoCloseTabs = policy) }
+                        }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = label,
+                        color = if (selected) TahoBg else TahoText,
+                        fontFamily = TahoMono,
+                        fontSize = 9.5.sp,
+                    )
+                }
+            }
+        }
+        Text(
+            text = "Pinned tabs are excluded from automatic cleanup.",
+            color = TahoFaint,
+            fontFamily = TahoMono,
+            fontSize = 8.5.sp,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+
+        Spacer(Modifier.height(18.dp))
         SettingsSectionTitle("MEMORY & SYSTEM EFFICIENCY")
         SettingsToggleRow("Memory Saver Mode", "Discard background tabs when memory is low", settings.memorySaverEnabled) {
             TahoBrowserStateStore.updateSettings { it.copy(memorySaverEnabled = !it.memorySaverEnabled) }
@@ -2143,19 +2353,37 @@ private fun SettingsPerformanceMediaPage() {
 @Composable
 private fun SettingsStorageUsagePage() {
     val siteData = TahoBrowserStateStore.siteData
+    val offlinePages = TahoBrowserStateStore.offlinePages
+    val offlineBytes = offlinePages.sumOf { it.sizeBytes }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
-        SettingsSectionTitle("STORAGE BREAKDOWN")
-        StorageBarRow("Cached Content", "24.6 MB", 0.45f, TahoGold)
-        StorageBarRow("Cookies & LocalStorage", "12.8 MB", 0.25f, TahoInfo)
-        StorageBarRow("Offline Reading Pages", "4.2 MB", 0.12f, TahoOk)
-        StorageBarRow("GeckoView IndexedDB", "8.9 MB", 0.18f, TahoNeutral)
+        SettingsSectionTitle("LOCAL BROWSER STORAGE")
+        DiagItem("Offline page records", offlinePages.size.toString())
+        DiagItem("Recorded offline bytes", "${offlineBytes / 1024} KB")
+        DiagItem("Tracked site-data origins", siteData.size.toString())
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Exact Gecko cache, IndexedDB and cookie byte totals are not exposed by the current Browser storage adapter, so Taho does not estimate them.",
+            color = TahoFaint,
+            fontFamily = TahoMono,
+            fontSize = 9.5.sp,
+        )
 
         Spacer(Modifier.height(20.dp))
         SettingsSectionTitle("SITE STORAGE (${siteData.size} DOMAINS)")
+
+        if (siteData.isEmpty()) {
+            Text(
+                "No per-origin storage measurements are available from the current runtime adapter.",
+                color = TahoFaint,
+                fontFamily = TahoMono,
+                fontSize = 10.sp,
+            )
+        }
 
         siteData.forEach { data ->
             Row(
@@ -2170,11 +2398,22 @@ private fun SettingsStorageUsagePage() {
             ) {
                 Column {
                     Text(data.origin, color = TahoText, fontFamily = TahoMono, fontSize = 11.sp)
-                    Text("${data.cookieCount} cookies · ${data.storageSizeBytes / 1024} KB", color = TahoFaint, fontFamily = TahoMono, fontSize = 8.5.sp)
+                    Text(
+                        "${data.cookieCount} cookies · ${data.storageSizeBytes / 1024} KB",
+                        color = TahoFaint,
+                        fontFamily = TahoMono,
+                        fontSize = 8.5.sp,
+                    )
                 }
-                Text("Clear", color = TahoError, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable {
-                    TahoBrowserStateStore.clearSiteDataForOrigin(data.origin)
-                })
+                Text(
+                    "Clear",
+                    color = TahoError,
+                    fontFamily = TahoMono,
+                    fontSize = 9.sp,
+                    modifier = Modifier.clickable {
+                        TahoBrowserStateStore.clearSiteDataForOrigin(data.origin)
+                    },
+                )
             }
             Spacer(Modifier.height(6.dp))
         }
@@ -2188,13 +2427,19 @@ private fun SettingsStorageUsagePage() {
 private fun SettingsDiagnosticsPage() {
     val settings = TahoBrowserStateStore.settings
     val notifications = TahoBrowserStateStore.websiteNotifications
+    val context = LocalContext.current
+    val appInfo = remember(context.packageName) {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0)
+        }.getOrNull()
+    }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
-        SettingsSectionTitle("ENGINE DIAGNOSTICS")
+        SettingsSectionTitle("RUNTIME DIAGNOSTICS")
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2204,18 +2449,33 @@ private fun SettingsDiagnosticsPage() {
                 .padding(14.dp),
         ) {
             Column {
-                DiagItem("GeckoView Engine", "143.0.20250811-omni (ARM64)")
-                DiagItem("GPU Compositor", "WebRender (Vulkan Direct)")
-                DiagItem("IPC Protocol", "Taho M4 Direct Intent / ContentProvider")
-                DiagItem("Capture Pipeline", "Zero-Allocation Stream Frame Buffer")
-                DiagItem("Architecture Gate", "Pure JVM Isolation Enforced")
+                DiagItem("Application", appInfo?.versionName ?: "Unavailable")
+                DiagItem("Android", android.os.Build.VERSION.RELEASE ?: "Unavailable")
+                DiagItem("SDK", android.os.Build.VERSION.SDK_INT.toString())
+                DiagItem("Device", android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL)
+                DiagItem(
+                    "Browser engine details",
+                    "Available from build/runtime evidence, not hard-coded here",
+                )
             }
         }
 
         Spacer(Modifier.height(18.dp))
         SettingsSectionTitle("CRASH REPORTING & TELEMETRY")
-        SettingsToggleRow("Anonymous Crash Reporting", "Send sanitized crash traces to maintain browser stability", settings.crashReportingEnabled) {
-            TahoBrowserStateStore.updateSettings { it.copy(crashReportingEnabled = !it.crashReportingEnabled) }
+        Text(
+            "No crash-report upload backend is connected in this build. The preference is stored locally only.",
+            color = TahoFaint,
+            fontFamily = TahoMono,
+            fontSize = 9.5.sp,
+        )
+        SettingsToggleRow(
+            "Crash Reporting Preference",
+            "Remember whether future crash-reporting integration may be enabled",
+            settings.crashReportingEnabled,
+        ) {
+            TahoBrowserStateStore.updateSettings {
+                it.copy(crashReportingEnabled = !it.crashReportingEnabled)
+            }
         }
 
         Spacer(Modifier.height(18.dp))
@@ -2226,9 +2486,15 @@ private fun SettingsDiagnosticsPage() {
         ) {
             SettingsSectionTitle("WEBSITE NOTIFICATIONS CENTER (${notifications.size})")
             if (notifications.isNotEmpty()) {
-                Text("Clear All", color = TahoError, fontFamily = TahoMono, fontSize = 9.5.sp, modifier = Modifier.clickable {
-                    TahoBrowserStateStore.clearWebsiteNotifications()
-                })
+                Text(
+                    "Clear All",
+                    color = TahoError,
+                    fontFamily = TahoMono,
+                    fontSize = 9.5.sp,
+                    modifier = Modifier.clickable {
+                        TahoBrowserStateStore.clearWebsiteNotifications()
+                    },
+                )
             }
         }
 
@@ -2241,7 +2507,12 @@ private fun SettingsDiagnosticsPage() {
                     .border(1.dp, TahoHairline, TahoBlockShape)
                     .padding(12.dp),
             ) {
-                Text("No web push or site notifications received.", color = TahoFaint, fontFamily = TahoMono, fontSize = 10.sp)
+                Text(
+                    "No website notifications are recorded by the Browser UI adapter.",
+                    color = TahoFaint,
+                    fontFamily = TahoMono,
+                    fontSize = 10.sp,
+                )
             }
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -2257,12 +2528,30 @@ private fun SettingsDiagnosticsPage() {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(item.title, color = TahoText, fontFamily = TahoMono, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                            Text("${item.origin} · ${item.message}", color = TahoFaint, fontFamily = TahoMono, fontSize = 8.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                item.title,
+                                color = TahoText,
+                                fontFamily = TahoMono,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                "${item.origin} · ${item.message}",
+                                color = TahoFaint,
+                                fontFamily = TahoMono,
+                                fontSize = 8.5.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         }
-                        Text("×", color = TahoMuted, fontSize = 16.sp, modifier = Modifier.clickable {
-                            TahoBrowserStateStore.removeWebsiteNotification(item.id)
-                        }.padding(4.dp))
+                        Text(
+                            "×",
+                            color = TahoMuted,
+                            fontSize = 16.sp,
+                            modifier = Modifier
+                                .clickable { TahoBrowserStateStore.removeWebsiteNotification(item.id) }
+                                .padding(4.dp),
+                        )
                     }
                 }
             }
@@ -2291,7 +2580,89 @@ private fun SettingsDiagnosticsPage() {
 // -------------------------------------------------------------
 @Composable
 private fun SettingsBackupExportPage() {
+    val context = LocalContext.current
     var statusMessage by rememberSaveable { mutableStateOf<String?>(null) }
+
+    fun writeText(uri: Uri, text: String): Boolean =
+        runCatching {
+            context.contentResolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use {
+                it.write(text)
+            } ?: error("Unable to open destination")
+        }.isSuccess
+
+    fun readText(uri: Uri): String? =
+        runCatching {
+            context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use {
+                it.readText()
+            }
+        }.getOrNull()
+
+    val exportBookmarks = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/html"),
+    ) { uri ->
+        if (uri != null) {
+            val content = TahoBrowserStateStore.exportBookmarksHtml()
+            statusMessage = if (writeText(uri, content)) {
+                "Exported ${TahoBrowserStateStore.bookmarks.size} bookmarks."
+            } else {
+                "Bookmark export failed."
+            }
+        }
+    }
+
+    val exportPasswords = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        if (uri != null) {
+            val content = TahoBrowserStateStore.exportPasswordsJson()
+            statusMessage = if (writeText(uri, content)) {
+                "Password export completed. The exported JSON contains readable credentials."
+            } else {
+                "Password export failed."
+            }
+        }
+    }
+
+    val exportSettings = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        if (uri != null) {
+            val content = TahoBrowserStateStore.exportSettingsJson()
+            statusMessage = if (writeText(uri, content)) {
+                "Core browser settings exported."
+            } else {
+                "Settings export failed."
+            }
+        }
+    }
+
+    val importBookmarks = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            val content = readText(uri)
+            statusMessage = if (content != null) {
+                val count = TahoBrowserStateStore.importBookmarksFromHtml(content)
+                "Imported $count bookmark${if (count == 1) "" else "s"}."
+            } else {
+                "Unable to read bookmark file."
+            }
+        }
+    }
+
+    val importPasswords = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            val content = readText(uri)
+            statusMessage = if (content != null) {
+                val count = TahoBrowserStateStore.importPasswordsFromJson(content)
+                "Imported $count credential${if (count == 1) "" else "s"} into the encrypted local vault."
+            } else {
+                "Unable to read password file."
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -2299,54 +2670,67 @@ private fun SettingsBackupExportPage() {
             .verticalScroll(rememberScrollState()),
     ) {
         SettingsSectionTitle("DATA EXPORT & PORTABILITY")
-        Text("Export your browser data in standard open formats for full data sovereignty.", color = TahoMuted, fontFamily = TahoMono, fontSize = 10.sp)
+        Text(
+            "Choose the destination with Android's system document picker. Taho never fabricates an export success.",
+            color = TahoMuted,
+            fontFamily = TahoMono,
+            fontSize = 10.sp,
+        )
         Spacer(Modifier.height(14.dp))
 
-        if (statusMessage != null) {
+        statusMessage?.let { message ->
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(TahoBlockShape)
-                    .background(TahoOk.copy(alpha = 0.15f))
-                    .border(1.dp, TahoOk.copy(alpha = 0.4f), TahoBlockShape)
+                    .background(TahoSurfaceRow)
+                    .border(1.dp, TahoHairlineStrong, TahoBlockShape)
                     .padding(12.dp),
             ) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text(statusMessage ?: "", color = TahoOk, fontFamily = TahoMono, fontSize = 10.5.sp, modifier = Modifier.weight(1f))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        message,
+                        color = TahoText,
+                        fontFamily = TahoMono,
+                        fontSize = 10.5.sp,
+                        modifier = Modifier.weight(1f),
+                    )
                     Spacer(Modifier.width(8.dp))
-                    Text("×", color = TahoOk, fontSize = 14.sp, modifier = Modifier.clickable { statusMessage = null })
+                    Text(
+                        "×",
+                        color = TahoMuted,
+                        fontSize = 14.sp,
+                        modifier = Modifier.clickable { statusMessage = null },
+                    )
                 }
             }
             Spacer(Modifier.height(12.dp))
         }
 
-        M7SecondaryButton("Export Bookmarks (HTML / Netscape Format)", Modifier.fillMaxWidth()) {
-            val html = TahoBrowserStateStore.exportBookmarksHtml()
-            statusMessage = "Exported ${TahoBrowserStateStore.bookmarks.size} bookmarks (${html.length} chars generated)"
+        M7SecondaryButton("Export Bookmarks (HTML)", Modifier.fillMaxWidth()) {
+            exportBookmarks.launch("taho-bookmarks.html")
         }
         Spacer(Modifier.height(8.dp))
-        M7SecondaryButton("Export Password Vault (Encrypted JSON)", Modifier.fillMaxWidth()) {
-            val json = TahoBrowserStateStore.exportPasswordsJson()
-            statusMessage = "Exported ${TahoBrowserStateStore.savedPasswords.size} passwords (${json.length} bytes JSON)"
+        M7SecondaryButton("Export Passwords (JSON — contains secrets)", Modifier.fillMaxWidth()) {
+            exportPasswords.launch("taho-passwords.json")
         }
         Spacer(Modifier.height(8.dp))
-        M7SecondaryButton("Export Full Settings Backup", Modifier.fillMaxWidth()) {
-            val json = TahoBrowserStateStore.exportSettingsJson()
-            statusMessage = "Exported full browser preferences (${json.length} bytes JSON)"
+        M7SecondaryButton("Export Core Settings (JSON)", Modifier.fillMaxWidth()) {
+            exportSettings.launch("taho-settings.json")
         }
 
         Spacer(Modifier.height(20.dp))
         SettingsSectionTitle("DATA IMPORT")
-        M7SecondaryButton("Import Bookmarks & Favorites", Modifier.fillMaxWidth()) {
-            val sampleHtml = "<!DOCTYPE NETSCAPE-Bookmark-file-1><TITLE>Bookmarks</TITLE><H1>Bookmarks</H1><DL><p><DT><A HREF=\"https://developer.mozilla.org\">MDN Web Docs</A></DL><p>"
-            val count = TahoBrowserStateStore.importBookmarksFromHtml(sampleHtml)
-            statusMessage = "Successfully imported $count bookmarks into library"
+        M7SecondaryButton("Import Bookmarks (HTML)", Modifier.fillMaxWidth()) {
+            importBookmarks.launch(arrayOf("text/html", "text/plain", "application/xhtml+xml"))
         }
         Spacer(Modifier.height(8.dp))
-        M7SecondaryButton("Import Passwords from Chrome / Firefox", Modifier.fillMaxWidth()) {
-            val sampleJson = "[{\"domain\":\"accounts.firefox.com\",\"username\":\"user@taho.app\",\"password\":\"Secr3t!P@ss\"}]"
-            val count = TahoBrowserStateStore.importPasswordsFromJson(sampleJson)
-            statusMessage = "Successfully imported $count credentials into password vault"
+        M7SecondaryButton("Import Passwords (Taho JSON)", Modifier.fillMaxWidth()) {
+            importPasswords.launch(arrayOf("application/json", "text/plain"))
         }
     }
 }
@@ -2549,7 +2933,12 @@ private fun SettingsWhatsNewPage() {
 // -------------------------------------------------------------
 @Composable
 private fun SettingsAboutPage() {
-    var updateStatus by rememberSaveable { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val packageInfo = remember(context.packageName) {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0)
+        }.getOrNull()
+    }
 
     Column(
         modifier = Modifier
@@ -2566,39 +2955,33 @@ private fun SettingsAboutPage() {
                 .padding(14.dp),
         ) {
             Column {
-                DiagItem("Version", "0.1.0-release (Build 1)")
-                DiagItem("Commit", "e39f7a2-verified")
-                DiagItem("Engine", "Mozilla GeckoView 143.0.20250811")
-                DiagItem("License", "Apache 2.0 / Mozilla Public License")
+                DiagItem("Version", packageInfo?.versionName ?: "Unavailable")
+                DiagItem(
+                    "Build",
+                    packageInfo?.longVersionCode?.toString() ?: "Unavailable",
+                )
+                DiagItem("Package", context.packageName)
+                DiagItem("Browser engine", "Mozilla GeckoView")
             }
         }
 
         Spacer(Modifier.height(14.dp))
-
-        if (updateStatus != null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(TahoBlockShape)
-                    .background(TahoOk.copy(alpha = 0.15f))
-                    .border(1.dp, TahoOk.copy(alpha = 0.35f), TahoBlockShape)
-                    .padding(10.dp),
-            ) {
-                Text(updateStatus ?: "", color = TahoOk, fontFamily = TahoMono, fontSize = 10.sp)
-            }
-            Spacer(Modifier.height(8.dp))
-        }
-
-        M7SecondaryButton("Check for Updates", Modifier.fillMaxWidth()) {
-            updateStatus = "✓ Taho Browser v0.1.0-release is up to date (Channel: Stable Release)"
-        }
+        Text(
+            "Automatic update checking is not connected in this build. Updates must be verified through the distribution channel that installed the app.",
+            color = TahoFaint,
+            fontFamily = TahoMono,
+            fontSize = 9.5.sp,
+        )
 
         Spacer(Modifier.height(16.dp))
         SettingsSectionTitle("LEGAL & SUPPORT")
         SettingsLinkRow("Privacy Policy", "https://taho.app/privacy")
         SettingsLinkRow("Terms of Service", "https://taho.app/terms")
         SettingsLinkRow("Open Source Licenses", "https://taho.app/licenses")
-        SettingsLinkRow("Report a Problem / Send Feedback", "https://github.com/taho/browser/issues")
+        SettingsLinkRow(
+            "Report a Problem / Send Feedback",
+            "https://github.com/vivek-tester/Taho-Browser/issues",
+        )
     }
 }
 

@@ -158,6 +158,7 @@ fun TahoBrowserApp(
         { _, callback -> callback(false) },
     onExtractReaderContent: ((ReaderPageContentUi?) -> Unit) -> Unit = { callback -> callback(null) },
     onPrintPage: () -> Boolean = { false },
+    onAddToHomeScreen: (String, String) -> Unit = { _, _ -> },
     browserContent: @Composable () -> Unit = {},
 ) {
     var editing by rememberSaveable { mutableStateOf(false) }
@@ -243,6 +244,10 @@ fun TahoBrowserApp(
                 isAppearanceLightNavigationBars = !darkSystemChromeVisible
             }
         }
+    }
+
+    LaunchedEffect(state.tabs) {
+        TahoBrowserStateStore.prunePinnedTabs(state.tabs.mapTo(mutableSetOf()) { it.id })
     }
 
     LaunchedEffect(state.captureRequests, selectedCaptureId) {
@@ -398,6 +403,11 @@ fun TahoBrowserApp(
                             }
                             editing = false
                         },
+                        onSuggestionSelected = { suggestion ->
+                            onNavigate(suggestion)
+                            draft = suggestion
+                            editing = false
+                        },
                         onTabsClick = { showTabs = true },
                         onMenuClick = { showBrowserMenu = true },
                         onHomeClick = {
@@ -547,6 +557,11 @@ fun TahoBrowserApp(
                             if (input.isNotEmpty()) {
                                 onNavigate(input)
                             }
+                            editing = false
+                        },
+                        onSuggestionSelected = { suggestion ->
+                            onNavigate(suggestion)
+                            draft = suggestion
                             editing = false
                         },
                         onTabsClick = { showTabs = true },
@@ -799,11 +814,16 @@ fun TahoBrowserApp(
                         showTabs = false
                     },
                     onCloseOtherTabs = { keepId ->
-                        state.tabs.filterNot { it.id == keepId }.forEach { t -> onCloseTab(t.id) }
+                        state.tabs
+                            .filterNot { it.id == keepId || it.id in TahoBrowserStateStore.pinnedTabIds }
+                            .forEach { t -> onCloseTab(t.id) }
                     },
                     onCloseAllTabs = {
-                        state.tabs.forEach { t -> onCloseTab(t.id) }
-                        onNewTab()
+                        val closable = state.tabs.filterNot { it.id in TahoBrowserStateStore.pinnedTabIds }
+                        closable.forEach { t -> onCloseTab(t.id) }
+                        if (TahoBrowserStateStore.pinnedTabIds.isEmpty()) {
+                            onNewTab()
+                        }
                         showTabs = false
                     },
                     onDuplicateTab = { id ->
@@ -922,7 +942,7 @@ fun TahoBrowserApp(
                     onTranslate = { showTranslationBar = true },
                     onAddToHomeScreen = {
                         currentTab?.location?.let { loc ->
-                            TahoBrowserStateStore.addTopSite(currentTab.title ?: loc, loc, isPinned = true)
+                            onAddToHomeScreen(currentTab.title ?: loc, loc)
                         }
                     },
                     onPrintPage = {
@@ -1263,6 +1283,7 @@ private fun Omnibox(
     onDraftChange: (String) -> Unit,
     onBeginEdit: () -> Unit,
     onSubmit: () -> Unit,
+    onSuggestionSelected: (String) -> Unit,
     onTabsClick: () -> Unit,
     onMenuClick: () -> Unit = {},
     onHomeClick: () -> Unit = {},
@@ -1366,6 +1387,88 @@ private fun Omnibox(
             )
             Spacer(Modifier.width(2.dp))
             OmniboxMenuButton(onClick = onMenuClick)
+        }
+
+        if (editing && draft.isNotBlank()) {
+            val query = draft.trim()
+            val settings = TahoBrowserStateStore.settings
+            val localSuggestions = if (settings.addressBarSuggestionsEnabled) {
+                (
+                    TahoBrowserStateStore.bookmarks.map { it.title to it.url } +
+                        TahoBrowserStateStore.history.map { it.title to it.url }
+                    )
+                    .asSequence()
+                    .filter { (title, url) ->
+                        title.contains(query, ignoreCase = true) ||
+                            url.contains(query, ignoreCase = true)
+                    }
+                    .distinctBy { it.second }
+                    .take(4)
+                    .toList()
+            } else {
+                emptyList()
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                localSuggestions.forEach { (title, url) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { onSuggestionSelected(url) }
+                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("↗", color = TahoFaint, fontSize = 11.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = title,
+                                color = TahoText,
+                                fontFamily = TahoBody,
+                                fontSize = 10.5.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                text = url,
+                                color = TahoFaint,
+                                fontFamily = TahoMono,
+                                fontSize = 8.5.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+
+                if (settings.searchSuggestionsEnabled) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { onSuggestionSelected(query) }
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("⌕", color = TahoGoldHi, fontSize = 11.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "Search for “$query”",
+                            color = TahoGoldHi,
+                            fontFamily = TahoBody,
+                            fontSize = 10.5.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
         }
     }
 }

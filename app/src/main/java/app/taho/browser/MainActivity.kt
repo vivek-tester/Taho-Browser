@@ -6,6 +6,9 @@ import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.ComponentCallbacks2
 import android.content.Intent
+import android.content.pm.ShortcutInfo
+import android.content.pm.ShortcutManager
+import android.graphics.drawable.Icon
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -71,6 +74,8 @@ import app.taho.browser.shell.SitePermissionUiState
 import app.taho.browser.shell.SiteSecurityUiState
 import app.taho.browser.shell.TahoBrowserApp
 import app.taho.browser.shell.TahoBrowserStateStore
+import app.taho.browser.shell.TahoStartupBehavior
+import app.taho.browser.shell.TahoAutoCloseTabs
 import app.taho.browser.transfer.android.TahoDirectTransferIntentFactory
 import app.taho.browser.transfer.android.TahoDirectTransferTarget
 import app.taho.browser.transfer.android.TahoSecureTransferCoordinator
@@ -147,6 +152,13 @@ class MainActivity : ComponentActivity() {
 
         TahoBrowserStateStore.initialize(this)
         controller = BrowserRuntimeStore.get(this)
+        if (savedInstanceState == null && !isIncomingWebIntent(intent)) {
+            applyStartupBehavior()
+        }
+        applyInactiveTabPolicy()
+        TahoBrowserStateStore.prunePinnedTabs(
+            controller.snapshot().tabs.mapTo(mutableSetOf()) { it.id },
+        )
         handleIncomingBrowserIntent(intent)
         controller.snapshot().tabs.forEach { tab ->
             if (!tab.isPrivate) {
@@ -493,6 +505,7 @@ class MainActivity : ComponentActivity() {
                     }
                 },
                 onPrintPage = controller::printCurrentPage,
+                onAddToHomeScreen = ::pinPageShortcut,
                 browserContent = {
                     AndroidView(
                         factory = { context ->
@@ -534,6 +547,44 @@ class MainActivity : ComponentActivity() {
         if (::controller.isInitialized) {
             handleIncomingBrowserIntent(intent)
         }
+    }
+
+    private fun isIncomingWebIntent(source: Intent?): Boolean {
+        if (source?.action != Intent.ACTION_VIEW) return false
+        val scheme = source.data?.scheme?.lowercase()
+        return scheme == "https" || scheme == "http"
+    }
+
+    private fun applyStartupBehavior() {
+        val settings = TahoBrowserStateStore.settings
+        when (settings.startupBehavior) {
+            TahoStartupBehavior.PREVIOUS_TABS -> Unit
+            TahoStartupBehavior.START_PAGE -> controller.resetToSingleTab()
+            TahoStartupBehavior.CUSTOM_PAGE -> {
+                val raw = settings.customStartupUrl.trim()
+                val searchTemplate = TahoBrowserStateStore.searchEngines
+                    .firstOrNull { it.id == settings.defaultSearchEngineId }
+                    ?.queryUrl
+                    ?: "https://www.google.com/search?q=%s"
+                val uri = raw
+                    .takeIf { it.isNotBlank() }
+                    ?.let { NavigationInput.resolve(it, searchTemplate) }
+                controller.resetToSingleTab(uri)
+            }
+        }
+    }
+
+    private fun applyInactiveTabPolicy() {
+        val ageMillis = when (TahoBrowserStateStore.settings.autoCloseTabs) {
+            TahoAutoCloseTabs.NEVER -> return
+            TahoAutoCloseTabs.AFTER_1_DAY -> 24L * 60L * 60L * 1000L
+            TahoAutoCloseTabs.AFTER_1_WEEK -> 7L * 24L * 60L * 60L * 1000L
+            TahoAutoCloseTabs.AFTER_1_MONTH -> 30L * 24L * 60L * 60L * 1000L
+        }
+        controller.closeInactiveTabs(
+            olderThanEpochMs = System.currentTimeMillis() - ageMillis,
+            pinnedTabIds = TahoBrowserStateStore.pinnedTabIds,
+        )
     }
 
     private fun handleIncomingBrowserIntent(source: Intent?) {
@@ -971,6 +1022,45 @@ class MainActivity : ComponentActivity() {
         location
             ?.takeIf { it.startsWith("http://") || it.startsWith("https://") }
             ?.let { runCatching { URI(it).host }.getOrNull() }
+
+    private fun pinPageShortcut(title: String, url: String) {
+        val supportedUrl = Uri.parse(url)
+            .takeIf { it.scheme == "https" || it.scheme == "http" }
+        if (supportedUrl == null) {
+            transferNotice = "Only HTTP(S) pages can be added to the Home screen."
+            return
+        }
+
+        val manager = getSystemService(ShortcutManager::class.java)
+        if (manager == null || !manager.isRequestPinShortcutSupported) {
+            transferNotice = "Your launcher does not support pinned web shortcuts."
+            return
+        }
+
+        val launchIntent = Intent(this, MainActivity::class.java)
+            .setAction(Intent.ACTION_VIEW)
+            .setData(supportedUrl)
+
+        val shortcut = ShortcutInfo.Builder(
+            this,
+            "web-" + Integer.toHexString(url.hashCode()),
+        )
+            .setShortLabel(title.take(40).ifBlank { supportedUrl.host ?: "Web page" })
+            .setLongLabel(title.take(80).ifBlank { url })
+            .setIcon(Icon.createWithResource(this, android.R.drawable.ic_menu_view))
+            .setIntent(launchIntent)
+            .build()
+
+        val requested = runCatching {
+            manager.requestPinShortcut(shortcut, null)
+        }.getOrDefault(false)
+
+        transferNotice = if (requested) {
+            "Home screen shortcut request sent to your launcher."
+        } else {
+            "Unable to request a Home screen shortcut."
+        }
+    }
 
     private fun copyMaskedCurl(text: String) {
         val copied = runCatching {

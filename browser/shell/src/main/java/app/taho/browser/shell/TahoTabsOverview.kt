@@ -85,7 +85,9 @@ fun TahoTabsOverviewSheet(
         tabToMoveGroup = null
     }
 
-    val filteredTabs = tabs.filter { tab ->
+    val filteredTabs = tabs
+        .sortedWith(compareByDescending<BrowserTabUiState> { it.id in TahoBrowserStateStore.pinnedTabIds })
+        .filter { tab ->
         val queryMatch = searchQuery.isBlank() ||
             (tab.title?.contains(searchQuery, ignoreCase = true) == true) ||
             (tab.location?.contains(searchQuery, ignoreCase = true) == true)
@@ -279,17 +281,23 @@ fun TahoTabsOverviewSheet(
         ) {
             items(filteredTabs, key = { it.id }) { tab ->
                 val grp = tabGroups.find { it.tabIds.contains(tab.id) }
+                val pinned = tab.id in TahoBrowserStateStore.pinnedTabIds
                 DetailedTabCard(
                     tab = tab,
                     group = grp,
+                    isPinned = pinned,
                     onSelect = { onSelectTab(tab.id) },
                     onClose = { onCloseTab(tab.id) },
                     onDuplicate = { onDuplicateTab(tab.id) },
                     onCloseOthers = { onCloseOtherTabs(tab.id) },
                     onMoveToGroup = { tabToMoveGroup = tab.id },
                     onArchive = {
+                        TahoBrowserStateStore.unpinTab(tab.id)
                         TahoBrowserStateStore.archiveTab(tab.title ?: tab.location ?: "Tab", tab.location ?: "about:blank")
                         onCloseTab(tab.id)
+                    },
+                    onTogglePin = {
+                        TahoBrowserStateStore.togglePinnedTab(tab.id, tab.isPrivate)
                     },
                     canCloseOthers = tabs.size > 1,
                 )
@@ -643,12 +651,14 @@ private fun TabGroupChip(
 private fun DetailedTabCard(
     tab: BrowserTabUiState,
     group: TabGroupUi?,
+    isPinned: Boolean,
     onSelect: () -> Unit,
     onClose: () -> Unit,
     onDuplicate: () -> Unit,
     onCloseOthers: () -> Unit,
     onMoveToGroup: () -> Unit,
     onArchive: () -> Unit,
+    onTogglePin: () -> Unit,
     canCloseOthers: Boolean,
 ) {
     val borderColor = if (tab.selected) TahoGold.copy(alpha = 0.55f) else TahoHairline
@@ -677,6 +687,17 @@ private fun DetailedTabCard(
                                 .clip(CircleShape)
                                 .background(Color(group.colorHex))
                         )
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    if (isPinned) {
+                        Box(
+                            modifier = Modifier
+                                .clip(TahoBadgeShape)
+                                .background(TahoInfo.copy(alpha = 0.18f))
+                                .padding(horizontal = 4.dp, vertical = 1.dp)
+                        ) {
+                            Text("PINNED", color = TahoInfo, fontFamily = TahoMono, fontSize = 7.5.sp)
+                        }
                         Spacer(Modifier.width(6.dp))
                     }
                     if (tab.isPrivate) {
@@ -714,7 +735,10 @@ private fun DetailedTabCard(
                 modifier = Modifier
                     .size(32.dp)
                     .clip(TahoPillShape)
-                    .clickable(onClick = onClose)
+                    .clickable {
+                        if (isPinned) onTogglePin()
+                        onClose()
+                    }
                     .semantics { role = Role.Button; contentDescription = "Close tab" },
                 contentAlignment = Alignment.Center,
             ) {
@@ -731,6 +755,13 @@ private fun DetailedTabCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (!tab.isPrivate) {
+                    TabActionButton(
+                        label = if (isPinned) "📌 Unpin" else "📌 Pin",
+                        color = if (isPinned) TahoInfo else TahoMuted,
+                        onClick = onTogglePin,
+                    )
+                }
                 TabActionButton(label = "⧉ Duplicate", onClick = onDuplicate)
                 TabActionButton(
                     label = if (group != null) "📁 ${group.name.take(10)}" else "📁 Group",
