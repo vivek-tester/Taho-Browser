@@ -149,7 +149,7 @@ class BrowserRuntimeController(context: Context) {
 
         data class LoginSave(
             override val prompt: BrowserAutofillPrompt,
-            val result: GeckoResult<GeckoSession.PromptDelegate.PromptResponse>,
+            override val result: GeckoResult<GeckoSession.PromptDelegate.PromptResponse>,
             val request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.LoginSaveOption>,
         ) : PendingAutofillPrompt {
             override fun response(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
@@ -159,7 +159,7 @@ class BrowserRuntimeController(context: Context) {
 
         data class LoginSelect(
             override val prompt: BrowserAutofillPrompt,
-            val result: GeckoResult<GeckoSession.PromptDelegate.PromptResponse>,
+            override val result: GeckoResult<GeckoSession.PromptDelegate.PromptResponse>,
             val request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.LoginSelectOption>,
         ) : PendingAutofillPrompt {
             override fun response(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
@@ -169,7 +169,7 @@ class BrowserRuntimeController(context: Context) {
 
         data class AddressSave(
             override val prompt: BrowserAutofillPrompt,
-            val result: GeckoResult<GeckoSession.PromptDelegate.PromptResponse>,
+            override val result: GeckoResult<GeckoSession.PromptDelegate.PromptResponse>,
             val request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.AddressSaveOption>,
         ) : PendingAutofillPrompt {
             override fun response(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
@@ -179,7 +179,7 @@ class BrowserRuntimeController(context: Context) {
 
         data class AddressSelect(
             override val prompt: BrowserAutofillPrompt,
-            val result: GeckoResult<GeckoSession.PromptDelegate.PromptResponse>,
+            override val result: GeckoResult<GeckoSession.PromptDelegate.PromptResponse>,
             val request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.AddressSelectOption>,
         ) : PendingAutofillPrompt {
             override fun response(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
@@ -189,7 +189,7 @@ class BrowserRuntimeController(context: Context) {
 
         data class CreditCardSave(
             override val prompt: BrowserAutofillPrompt,
-            val result: GeckoResult<GeckoSession.PromptDelegate.PromptResponse>,
+            override val result: GeckoResult<GeckoSession.PromptDelegate.PromptResponse>,
             val request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.CreditCardSaveOption>,
         ) : PendingAutofillPrompt {
             override fun response(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
@@ -199,7 +199,7 @@ class BrowserRuntimeController(context: Context) {
 
         data class CreditCardSelect(
             override val prompt: BrowserAutofillPrompt,
-            val result: GeckoResult<GeckoSession.PromptDelegate.PromptResponse>,
+            override val result: GeckoResult<GeckoSession.PromptDelegate.PromptResponse>,
             val request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.CreditCardSelectOption>,
         ) : PendingAutofillPrompt {
             override fun response(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
