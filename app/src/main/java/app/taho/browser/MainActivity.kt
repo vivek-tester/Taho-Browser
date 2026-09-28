@@ -57,6 +57,7 @@ import app.taho.browser.transfer.android.TahoTransferTransport
 import app.taho.browser.transfer.android.TransferReceiptRecoveryStore
 import app.taho.browser.transfer.core.M4PreparationBlock
 import app.taho.browser.transfer.core.M4PreparationResult
+import java.net.URI
 
 class MainActivity : ComponentActivity() {
     private companion object {
@@ -147,11 +148,18 @@ class MainActivity : ComponentActivity() {
             val selectedTabId = snapshot.selectedTabId
             val androidPermission = snapshot.androidPermissionRequest
             val externalNavigation = snapshot.externalNavigationRequest
+            val targetHostsByTab = snapshot.tabs.associate { tab ->
+                tab.id to hostOf(tab.location)
+            }
             val captureRequests = captureUiRequests(
                 captureSnapshot = captureSnapshot,
                 selectedTabId = selectedTabId,
+                targetHost = targetHostsByTab[selectedTabId],
             )
-            val captureCountsByTab = relevantCaptureCounts(captureSnapshot)
+            val captureCountsByTab = relevantCaptureCounts(
+                captureSnapshot = captureSnapshot,
+                targetHostsByTab = targetHostsByTab,
+            )
 
             androidx.compose.runtime.LaunchedEffect(androidPermission?.id) {
                 val request = androidPermission ?: return@LaunchedEffect
@@ -341,6 +349,7 @@ class MainActivity : ComponentActivity() {
 
     private fun relevantCaptureCounts(
         captureSnapshot: M4CaptureRuntimeSnapshot,
+        targetHostsByTab: Map<String, String?>,
     ): Map<String, Int> {
         val liveTransactionIds = captureSnapshot.requests.map { it.transactionId }.toSet()
         val counts = mutableMapOf<String, Int>()
@@ -352,7 +361,7 @@ class MainActivity : ComponentActivity() {
                     url = request.url,
                     resourceType = request.initiator,
                     method = request.method,
-                    targetHost = null,
+                    targetHost = targetHostsByTab[tabId],
                     contentType = request.body?.contentType,
                 ),
             )
@@ -376,6 +385,7 @@ class MainActivity : ComponentActivity() {
     private fun captureUiRequests(
         captureSnapshot: M4CaptureRuntimeSnapshot,
         selectedTabId: String,
+        targetHost: String?,
     ): List<M4CaptureRequestUiState> {
         val liveTransactionIds = captureSnapshot.requests
             .map { it.transactionId }
@@ -390,7 +400,7 @@ class MainActivity : ComponentActivity() {
                         url = request.url,
                         resourceType = request.initiator,
                         method = request.method,
-                        targetHost = null,
+                        targetHost = targetHost,
                         contentType = request.body?.contentType,
                     ),
                 )
@@ -595,6 +605,11 @@ class MainActivity : ComponentActivity() {
             }
         }.start()
     }
+
+    private fun hostOf(location: String?): String? =
+        location
+            ?.takeIf { it.startsWith("http://") || it.startsWith("https://") }
+            ?.let { runCatching { URI(it).host }.getOrNull() }
 
     private fun storageNotice(reason: StorageDegradationReason): String =
         when (reason) {
