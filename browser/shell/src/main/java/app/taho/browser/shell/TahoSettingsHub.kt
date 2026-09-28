@@ -1835,7 +1835,7 @@ private fun SettingsAutofillPage() {
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(pay.cardHolder, color = TahoText, fontFamily = TahoMono, fontSize = 11.sp)
-                    Text("${pay.cardType} · ${pay.cardNumberMasked} (Exp: ${pay.cardExpiry})", color = TahoMuted, fontFamily = TahoMono, fontSize = 9.sp)
+                    Text("${pay.cardType} · ${TahoBrowserStateStore.maskedPaymentNumber(pay)} (Exp: ${pay.cardExpiry})", color = TahoMuted, fontFamily = TahoMono, fontSize = 9.sp)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("💳", fontSize = 14.sp)
