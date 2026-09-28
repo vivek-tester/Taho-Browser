@@ -210,6 +210,16 @@ class MainActivity : FragmentActivity() {
         }
         offlinePageManager = OfflinePageManager(this)
         controller = BrowserRuntimeStore.get(this)
+        TahoBrowserStateStore.profiles
+            .firstOrNull { it.isActive }
+            ?.let { profile ->
+                if (
+                    profile.id != controller.activeProfileId() ||
+                    profile.isGuest
+                ) {
+                    controller.switchProfile(profile.id, profile.isGuest)
+                }
+            }
         controller.setExternalResponseConsumer(downloadManager::accept)
         controller.setAutofillStore(
             object : BrowserAutofillStore {
@@ -1010,6 +1020,28 @@ class MainActivity : FragmentActivity() {
                             }
                         }
                     }
+                },
+                onSwitchProfile = { profileId ->
+                    downloadManager.cancelAllActive()
+                    val target = TahoBrowserStateStore.switchProfile(profileId)
+                    if (target != null) {
+                        controller.switchProfile(target.id, target.isGuest)
+                        committedHistoryLocationByTab.clear()
+                        controller.snapshot().tabs.forEach { tab ->
+                            if (!tab.isPrivate) {
+                                committedHistoryLocationByTab[tab.id] = tab.location
+                            }
+                        }
+                        transferNotice = if (target.isGuest) {
+                            "Guest session started. Guest browsing data will not be persisted."
+                        } else {
+                            "Switched to " + target.name + " profile."
+                        }
+                    }
+                },
+                onCreateLocalProfile = { name ->
+                    val created = TahoBrowserStateStore.addLocalProfile(name)
+                    transferNotice = "Created local profile: " + created.name + "."
                 },
                 onSearchExtensionMarketplace = { query, callback ->
                     extensionMarketplace.search(query, callback)
