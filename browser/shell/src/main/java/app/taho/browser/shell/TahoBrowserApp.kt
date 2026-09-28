@@ -144,6 +144,7 @@ fun TahoBrowserApp(
     onClearBrowserStorage: (Boolean, Boolean, (Boolean) -> Unit) -> Unit =
         { _, _, callback -> callback(true) },
     onExtractReaderContent: ((ReaderPageContentUi?) -> Unit) -> Unit = { callback -> callback(null) },
+    onPrintPage: () -> Boolean = { false },
     browserContent: @Composable () -> Unit = {},
 ) {
     var editing by rememberSaveable { mutableStateOf(false) }
@@ -913,15 +914,7 @@ fun TahoBrowserApp(
                     },
                     onPrintPage = {
                         showBrowserMenu = false
-                        runCatching {
-                            val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                                putExtra(Intent.EXTRA_SUBJECT, "Taho - " + (currentTab?.title ?: "Web Page"))
-                                putExtra(Intent.EXTRA_TEXT, currentTab?.location ?: "")
-                                type = "text/plain"
-                            }
-                            val shareIntent = Intent.createChooser(sendIntent, "Print or Share Webpage")
-                            context.startActivity(shareIntent)
-                        }
+                        onPrintPage()
                     },
                     onSaveOffline = {
                         currentTab?.location?.let { loc ->
