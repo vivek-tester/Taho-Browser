@@ -13,6 +13,7 @@ import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
 import java.io.ObjectInputStream
+import java.io.ObjectStreamClass
 import java.io.ObjectOutputStream
 import java.io.Serializable
 import java.security.SecureRandom
@@ -326,8 +327,30 @@ class BrowserBackupManager(
 
     private fun deserialize(bytes: ByteArray): Any? {
         require(bytes.size <= MAX_CLEAR_ARCHIVE_BYTES)
-        return ObjectInputStream(ByteArrayInputStream(bytes)).use { input ->
+        return SafeBackupObjectInputStream(ByteArrayInputStream(bytes)).use { input ->
             input.readObject()
+        }
+    }
+
+    private class SafeBackupObjectInputStream(
+        input: java.io.InputStream,
+    ) : ObjectInputStream(input) {
+        override fun resolveClass(desc: ObjectStreamClass): Class<*> {
+            val name = desc.name
+            require(isAllowedSerializedClass(name)) {
+                "Backup contains an unsupported serialized type."
+            }
+            return super.resolveClass(desc)
+        }
+
+        private fun isAllowedSerializedClass(name: String): Boolean {
+            if (name.startsWith("app.taho.browser.shell.")) return true
+            if (name == "app.taho.browser.BrowserBackupArchive") return true
+            if (name == "app.taho.browser.BrowserBackupFile") return true
+            if (name.startsWith("[Lapp.taho.browser.shell.")) return true
+            if (name == "[B" || name == "[I" || name == "[J" || name == "[Z") return true
+
+            return name in SAFE_JAVA_TYPES
         }
     }
 
@@ -387,5 +410,27 @@ class BrowserBackupManager(
         const val TRANSFORMATION = "AES/GCM/NoPadding"
         val MAGIC = "TAHO-BROWSER-BACKUP".toByteArray(Charsets.US_ASCII)
         val ID_PATTERN = Regex("""[A-Za-z0-9._-]{1,128}""")
+        val SAFE_JAVA_TYPES = setOf(
+            "java.lang.String",
+            "java.lang.Integer",
+            "java.lang.Long",
+            "java.lang.Float",
+            "java.lang.Double",
+            "java.lang.Boolean",
+            "java.lang.Enum",
+            "java.util.ArrayList",
+            "java.util.LinkedList",
+            "java.util.HashMap",
+            "java.util.LinkedHashMap",
+            "java.util.HashSet",
+            "java.util.LinkedHashSet",
+            "java.util.Collections$EmptyList",
+            "java.util.Collections$SingletonList",
+            "java.util.Collections$UnmodifiableRandomAccessList",
+            "java.util.Collections$EmptySet",
+            "java.util.Collections$SingletonSet",
+            "kotlin.collections.EmptyList",
+            "kotlin.collections.EmptySet",
+        )
     }
 }
