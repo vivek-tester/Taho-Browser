@@ -429,10 +429,20 @@ class MainActivity : ComponentActivity() {
                             secretCategory = secretCategory,
                         )
                     },
+                    requestUrlCompleteness =
+                        M4CompletenessUi.valueOf(request.completeness.requestUrl.name),
+                    requestHeadersCompleteness =
+                        M4CompletenessUi.valueOf(request.completeness.requestHeaders.name),
                     requestBodyCompleteness =
                         M4CompletenessUi.valueOf(display.requestBodyCompleteness.name),
+                    responseHeadersCompleteness =
+                        M4CompletenessUi.valueOf(request.completeness.responseHeaders.name),
                     responseBodyCompleteness =
                         M4CompletenessUi.valueOf(display.responseBodyCompleteness.name),
+                    timingCompleteness =
+                        M4CompletenessUi.valueOf(request.completeness.timing.name),
+                    tlsCompleteness =
+                        M4CompletenessUi.valueOf(request.completeness.tlsInfo.name),
                     bodyRepresentation = display.bodyRepresentation?.name,
                     bodyLimitation = display.bodyLimitation,
                     sensitiveCount = display.sensitiveCount,
