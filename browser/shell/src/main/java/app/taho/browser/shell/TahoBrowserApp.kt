@@ -94,6 +94,28 @@ data class SitePermissionUiState(
     val isPrivate: Boolean,
 )
 
+enum class BrowserAutofillPromptKindUi {
+    LOGIN_SAVE,
+    LOGIN_SELECT,
+    ADDRESS_SAVE,
+    ADDRESS_SELECT,
+    CREDIT_CARD_SAVE,
+    CREDIT_CARD_SELECT,
+}
+
+data class BrowserAutofillPromptOptionUi(
+    val index: Int,
+    val title: String,
+    val subtitle: String?,
+)
+
+data class BrowserAutofillPromptUiState(
+    val id: String,
+    val origin: String?,
+    val kind: BrowserAutofillPromptKindUi,
+    val options: List<BrowserAutofillPromptOptionUi>,
+)
+
 data class SiteSecurityUiState(
     val isSecure: Boolean,
     val isException: Boolean,
@@ -117,6 +139,7 @@ data class BrowserUiState(
     val canGoForward: Boolean = false,
     val securityInfo: SiteSecurityUiState? = null,
     val sitePermission: SitePermissionUiState? = null,
+    val autofillPrompt: BrowserAutofillPromptUiState? = null,
     val notice: String? = null,
     val captureCapabilityNote: String? = null,
     val tabs: List<BrowserTabUiState> = emptyList(),
@@ -140,6 +163,7 @@ fun TahoBrowserApp(
     onSelectTab: (String) -> Unit = {},
     onCloseTab: (String) -> Unit = {},
     onSitePermissionDecision: (String, Boolean) -> Unit = { _, _ -> },
+    onAutofillPromptDecision: (String, Int?) -> Unit = { _, _ -> },
     onDismissNotice: () -> Unit = {},
     onClearCaptureData: () -> Unit = {},
     onCopyCurl: (String) -> Unit = {},
@@ -221,7 +245,8 @@ fun TahoBrowserApp(
             showReaderMode ||
             workspaceExpanded ||
             originWarningTargetUrl != null ||
-            state.sitePermission != null
+            state.sitePermission != null ||
+            state.autofillPrompt != null
     val rootView = LocalView.current
 
     val sensitiveScreenActive = selectedCapture != null || showTransferConfirmation || workspaceExpanded
@@ -264,6 +289,23 @@ fun TahoBrowserApp(
         }
     }
 
+    LaunchedEffect(state.autofillPrompt?.id) {
+        if (state.autofillPrompt != null) {
+            showTabs = false
+            showCaptureSummary = false
+            showSettings = false
+            showBrowserMenu = false
+            showSiteInfo = false
+            showShareQr = false
+            showReaderMode = false
+            selectedCaptureId = null
+            showTransferConfirmation = false
+            workspaceExpanded = false
+            originWarningTargetUrl = null
+            editing = false
+        }
+    }
+
     LaunchedEffect(state.sitePermission?.id) {
         if (state.sitePermission != null) {
             showTabs = false
@@ -290,6 +332,7 @@ fun TahoBrowserApp(
             showShareQr ||
             originWarningTargetUrl != null ||
             workspaceExpanded ||
+            state.autofillPrompt != null ||
             state.sitePermission != null ||
             showTransferConfirmation ||
             selectedCaptureId != null ||
@@ -311,6 +354,8 @@ fun TahoBrowserApp(
             showShareQr -> showShareQr = false
             originWarningTargetUrl != null -> originWarningTargetUrl = null
             workspaceExpanded -> workspaceExpanded = false
+            state.autofillPrompt != null ->
+                onAutofillPromptDecision(state.autofillPrompt.id, null)
             state.sitePermission != null ->
                 onSitePermissionDecision(state.sitePermission.id, false)
             showTransferConfirmation -> showTransferConfirmation = false
@@ -1000,6 +1045,29 @@ fun TahoBrowserApp(
             )
         }
 
+        state.autofillPrompt?.let { prompt ->
+            ModalBottomSheet(
+                onDismissRequest = {
+                    onAutofillPromptDecision(prompt.id, null)
+                },
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                containerColor = TahoSheet,
+                contentColor = TahoText,
+                shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+                tonalElevation = 0.dp,
+                scrimColor = Color.Black.copy(alpha = .50f),
+                dragHandle = { SheetGrabHandle() },
+            ) {
+                AutofillPromptSheet(
+                    prompt = prompt,
+                    onCancel = { onAutofillPromptDecision(prompt.id, null) },
+                    onChoose = { index ->
+                        onAutofillPromptDecision(prompt.id, index)
+                    },
+                )
+            }
+        }
+
         state.sitePermission?.let { prompt ->
             ModalBottomSheet(
                 onDismissRequest = {
@@ -1600,6 +1668,100 @@ private fun TabCountButton(
                 fontSize = 10.sp,
             )
         }
+    }
+}
+
+@Composable
+private fun AutofillPromptSheet(
+    prompt: BrowserAutofillPromptUiState,
+    onCancel: () -> Unit,
+    onChoose: (Int) -> Unit,
+) {
+    val savePrompt = prompt.kind == BrowserAutofillPromptKindUi.LOGIN_SAVE ||
+        prompt.kind == BrowserAutofillPromptKindUi.ADDRESS_SAVE ||
+        prompt.kind == BrowserAutofillPromptKindUi.CREDIT_CARD_SAVE
+    val title = when (prompt.kind) {
+        BrowserAutofillPromptKindUi.LOGIN_SAVE -> "Save login?"
+        BrowserAutofillPromptKindUi.LOGIN_SELECT -> "Choose a saved login"
+        BrowserAutofillPromptKindUi.ADDRESS_SAVE -> "Save address?"
+        BrowserAutofillPromptKindUi.ADDRESS_SELECT -> "Choose a saved address"
+        BrowserAutofillPromptKindUi.CREDIT_CARD_SAVE -> "Save payment card?"
+        BrowserAutofillPromptKindUi.CREDIT_CARD_SELECT -> "Choose a payment card"
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(start = 20.dp, end = 20.dp, bottom = 22.dp),
+    ) {
+        Text(
+            text = title,
+            color = TahoText,
+            fontFamily = TahoDisplay,
+            fontWeight = FontWeight.Medium,
+            fontSize = 17.sp,
+        )
+        prompt.origin?.takeIf(String::isNotBlank)?.let { origin ->
+            Spacer(Modifier.height(5.dp))
+            Text(
+                text = origin,
+                color = TahoGoldHi,
+                fontFamily = TahoMono,
+                fontSize = 9.5.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(Modifier.height(14.dp))
+
+        prompt.options.forEach { option ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(TahoBlockShape)
+                    .background(TahoSurfaceRow)
+                    .border(1.dp, TahoHairline, TahoBlockShape)
+                    .clickable { onChoose(option.index) }
+                    .padding(horizontal = 14.dp, vertical = 11.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = option.title,
+                        color = TahoText,
+                        fontFamily = TahoMono,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    option.subtitle?.takeIf(String::isNotBlank)?.let { subtitle ->
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = subtitle,
+                            color = TahoFaint,
+                            fontFamily = TahoMono,
+                            fontSize = 8.5.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                Text(
+                    text = if (savePrompt) "Save" else "Use",
+                    color = TahoGoldHi,
+                    fontFamily = TahoMono,
+                    fontSize = 9.5.sp,
+                )
+            }
+            Spacer(Modifier.height(7.dp))
+        }
+
+        M7SecondaryButton(
+            label = if (savePrompt) "Not Now" else "Cancel",
+            modifier = Modifier.fillMaxWidth(),
+            onClick = onCancel,
+        )
     }
 }
 
