@@ -56,6 +56,7 @@ internal class TahoBrowserPersistence(context: Context) {
     private val root = File(context.noBackupFilesDir, "browser_state").apply { mkdirs() }
     private val stateFile = File(root, "browser-state-v1.bin")
     private val vaultFile = File(root, "browser-vault-v1.bin")
+    private val profileDataFile = File(root, "browser-profiles-v1.bin")
 
     fun loadState(): BrowserPersistentState? =
         runCatching { readObject(stateFile) as? BrowserPersistentState }.getOrNull()
@@ -75,11 +76,57 @@ internal class TahoBrowserPersistence(context: Context) {
             val cipher = Cipher.getInstance(TRANSFORMATION)
             cipher.init(
                 Cipher.DECRYPT_MODE,
-                getOrCreateKey(),
+                getOrCreateKey(KEY_ALIAS),
                 GCMParameterSpec(128, encrypted.first),
             )
             deserialize(cipher.doFinal(encrypted.second)) as? BrowserSensitiveState
         }.getOrNull()
+
+    fun loadProfileData(): Map<String, BrowserProfileLocalData> =
+        runCatching {
+            if (!profileDataFile.exists()) return@runCatching emptyMap()
+            val encrypted = DataInputStream(profileDataFile.inputStream().buffered()).use { input ->
+                val version = input.readInt()
+                require(version == PROFILE_DATA_VERSION)
+                val ivSize = input.readUnsignedByte()
+                require(ivSize in 12..32)
+                val iv = ByteArray(ivSize).also(input::readFully)
+                val cipherSize = input.readInt()
+                require(cipherSize in 1..MAX_PROFILE_DATA_BYTES)
+                val cipherText = ByteArray(cipherSize).also(input::readFully)
+                Pair(iv, cipherText)
+            }
+            val cipher = Cipher.getInstance(TRANSFORMATION)
+            cipher.init(
+                Cipher.DECRYPT_MODE,
+                getOrCreateKey(PROFILE_KEY_ALIAS),
+                GCMParameterSpec(128, encrypted.first),
+            )
+            @Suppress("UNCHECKED_CAST")
+            (deserialize(cipher.doFinal(encrypted.second))
+                as? Map<String, BrowserProfileLocalData>)
+                .orEmpty()
+                .filterKeys { PROFILE_ID_PATTERN.matches(it) }
+        }.getOrDefault(emptyMap())
+
+    fun saveProfileData(profileData: Map<String, BrowserProfileLocalData>) {
+        val safe = profileData.filterKeys { PROFILE_ID_PATTERN.matches(it) }
+        val clear = serialize(HashMap(safe))
+        require(clear.size <= MAX_PROFILE_DATA_BYTES)
+
+        val cipher = Cipher.getInstance(TRANSFORMATION)
+        cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey(PROFILE_KEY_ALIAS))
+        val cipherText = cipher.doFinal(clear)
+        val output = ByteArrayOutputStream()
+        DataOutputStream(output).use { data ->
+            data.writeInt(PROFILE_DATA_VERSION)
+            data.writeByte(cipher.iv.size)
+            data.write(cipher.iv)
+            data.writeInt(cipherText.size)
+            data.write(cipherText)
+        }
+        writeAtomically(profileDataFile, output.toByteArray())
+    }
 
     fun save(
         state: BrowserPersistentState,
@@ -88,7 +135,7 @@ internal class TahoBrowserPersistence(context: Context) {
         writeAtomically(stateFile, serialize(state))
 
         val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
+        cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey(KEY_ALIAS))
         val cipherText = cipher.doFinal(serialize(sensitive))
         val output = ByteArrayOutputStream()
         DataOutputStream(output).use { data ->
@@ -101,14 +148,14 @@ internal class TahoBrowserPersistence(context: Context) {
         writeAtomically(vaultFile, output.toByteArray())
     }
 
-    private fun getOrCreateKey(): SecretKey {
+    private fun getOrCreateKey(alias: String): SecretKey {
         val keyStore = KeyStore.getInstance(KEYSTORE).apply { load(null) }
-        (keyStore.getKey(KEY_ALIAS, null) as? SecretKey)?.let { return it }
+        (keyStore.getKey(alias, null) as? SecretKey)?.let { return it }
 
         return KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE).run {
             init(
                 KeyGenParameterSpec.Builder(
-                    KEY_ALIAS,
+                    alias,
                     KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
                 )
                     .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
@@ -147,6 +194,10 @@ internal class TahoBrowserPersistence(context: Context) {
         const val VAULT_VERSION = 1
         const val KEYSTORE = "AndroidKeyStore"
         const val KEY_ALIAS = "taho.browser.user-vault.v1"
+        const val PROFILE_KEY_ALIAS = "taho.browser.profile-data.v1"
+        const val PROFILE_DATA_VERSION = 1
+        const val MAX_PROFILE_DATA_BYTES = 64 * 1024 * 1024
         const val TRANSFORMATION = "AES/GCM/NoPadding"
+        val PROFILE_ID_PATTERN = Regex("""[A-Za-z0-9._-]{1,128}""")
     }
 }
