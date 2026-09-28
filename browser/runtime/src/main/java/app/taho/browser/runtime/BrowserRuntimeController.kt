@@ -8,6 +8,7 @@ import org.mozilla.geckoview.AllowOrDeny
 import org.mozilla.geckoview.GeckoResult
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSessionSettings
+import org.mozilla.geckoview.StorageController
 import java.util.UUID
 
 enum class BrowserSitePermissionKind {
@@ -362,6 +363,43 @@ class BrowserRuntimeController(context: Context) {
             else GeckoSessionSettings.VIEWPORT_MODE_MOBILE,
         )
         tab.session.reload()
+    }
+
+    fun clearBrowsingStorage(
+        clearCache: Boolean,
+        clearCookiesAndSiteData: Boolean,
+        onComplete: (Boolean) -> Unit,
+    ) {
+        var flags = 0L
+        if (clearCache) {
+            flags = flags or StorageController.ClearFlags.ALL_CACHES
+        }
+        if (clearCookiesAndSiteData) {
+            flags = flags or StorageController.ClearFlags.SITE_DATA
+        }
+        if (flags == 0L) {
+            onComplete(true)
+            return
+        }
+
+        runtime.storageController.clearData(flags).accept(
+            { onComplete(true) },
+            { onComplete(false) },
+        )
+    }
+
+    fun clearSiteDataForHost(host: String, onComplete: (Boolean) -> Unit) {
+        val normalizedHost = host.trim().lowercase()
+        if (normalizedHost.isBlank() || '/' in normalizedHost || ':' in normalizedHost) {
+            onComplete(false)
+            return
+        }
+        runtime.storageController
+            .clearDataFromHost(normalizedHost, StorageController.ClearFlags.SITE_DATA)
+            .accept(
+                { onComplete(true) },
+                { onComplete(false) },
+            )
     }
 
     fun bind(tabId: String = selectedTabId, surface: BrowserSurfaceView) {
