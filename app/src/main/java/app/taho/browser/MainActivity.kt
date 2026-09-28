@@ -477,6 +477,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 },
+                onPrintPage = controller::printCurrentPage,
                 browserContent = {
                     AndroidView(
                         factory = { context ->
