@@ -137,6 +137,49 @@ object TahoBrowserStateStore {
     }
 
 
+    internal fun resetInMemoryForTests() {
+        persistence = null
+        settings = BrowserSettingsState()
+        searchEngines = listOf(
+            SearchEngineItem("duckduckgo", "DuckDuckGo", "https://duckduckgo.com/?q=%s", "⌕", isDefault = true),
+            SearchEngineItem("google", "Google", "https://www.google.com/search?q=%s", "G"),
+            SearchEngineItem("brave", "Brave Search", "https://search.brave.com/search?q=%s", "B"),
+            SearchEngineItem("bing", "Bing", "https://www.bing.com/search?q=%s", "b"),
+            SearchEngineItem("ecosia", "Ecosia", "https://www.ecosia.org/search?q=%s", "E"),
+        )
+        topSites = emptyList()
+        bookmarkFolders = emptyList()
+        bookmarks = emptyList()
+        readingList = emptyList()
+        history = emptyList()
+        recentlyClosedTabs = emptyList()
+        downloads = emptyList()
+        savedPasswords = emptyList()
+        savedAddresses = emptyList()
+        savedPayments = emptyList()
+        profiles = listOf(
+            BrowserProfileUi(
+                id = "profile_personal",
+                name = "Personal",
+                avatarGlyph = "👤",
+                isActive = true,
+                syncEnabled = false,
+                syncedDevicesCount = 0,
+            ),
+        )
+        syncedDevices = emptyList()
+        tabGroups = emptyList()
+        sitePermissions = emptyList()
+        siteData = emptyList()
+        extensions = emptyList()
+        installedPwas = emptyList()
+        offlinePages = emptyList()
+        collections = emptyList()
+        websiteNotifications = emptyList()
+        archivedTabs = emptyList()
+        readerSettings = ReaderSettingsUi()
+    }
+
     // --- State mutation helpers ---
     fun updateSettings(updater: (BrowserSettingsState) -> BrowserSettingsState) {
         settings = updater(settings)
