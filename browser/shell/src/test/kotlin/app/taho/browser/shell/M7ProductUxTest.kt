@@ -163,4 +163,47 @@ class M7ProductUxTest {
 
         assertTrue(failed)
     }
+
+    @Test
+    fun maskedCurlExportUsesOnlySafeUiProjection() {
+        val protected = request(
+            id = "export",
+            category = "AUTHENTICATION",
+            relevant = true,
+            sensitiveCount = 1,
+            headers = listOf(
+                M4CaptureHeaderUiState(
+                    name = "Authorization",
+                    displayValue = "Bearer ••••••••",
+                    sensitive = true,
+                    secretCategory = "BEARER_TOKEN",
+                ),
+            ),
+        )
+
+        val curl = M7SafeExport.curl(protected)
+
+        assertTrue(curl.contains("Bearer ••••••••"))
+        assertFalse(curl.contains("live-secret"))
+        assertTrue(curl.contains("https://api.example.test/v1/export"))
+    }
+
+    @Test
+    fun maskedCurlIncludesCompleteSafeBodyButOmitsPartialProjection() {
+        val complete = request(
+            id = "body",
+            category = "PRIMARY_API",
+            relevant = true,
+        ).copy(
+            safeBodyPreview = "{\"ok\":true}",
+            requestBodyCompleteness = M4CompletenessUi.COMPLETE,
+        )
+        val partial = complete.copy(
+            requestBodyCompleteness = M4CompletenessUi.PARTIAL,
+        )
+
+        assertTrue(M7SafeExport.curl(complete).contains("{\"ok\":true}"))
+        assertFalse(M7SafeExport.curl(partial).contains("--data-raw"))
+        assertTrue(M7SafeExport.curl(partial).contains("Body omitted"))
+    }
 }
