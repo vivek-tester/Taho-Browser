@@ -24,9 +24,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import app.taho.browser.runtime.DefensiveIntentHandler
 import app.taho.browser.runtime.DefensiveIntentResult
-import androidx.activity.ComponentActivity
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.fragment.app.FragmentActivity
 import app.taho.browser.capture.domain.CaptureQuery
 import app.taho.browser.capture.domain.CaptureRepositoryResult
 import app.taho.browser.capture.domain.CaptureSessionKind
@@ -95,7 +98,7 @@ import app.taho.browser.transfer.core.M4PreparationResult
 import app.taho.browser.transfer.core.M4TransferPreparer
 import java.net.URI
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     private companion object {
         const val TAHO_TRANSFER_REQUEST_CODE = 0x5448
         const val MAX_BODY_PREVIEW_CHARS = 64 * 1024
@@ -116,6 +119,7 @@ class MainActivity : ComponentActivity() {
     private var pendingExternalNavDialog by mutableStateOf<Triple<String, String, Intent>?>(null)
     private var captureRetentionMode by mutableStateOf("Session only")
     private val committedHistoryLocationByTab = mutableMapOf<String, String?>()
+    private val passwordBreachChecker = PasswordBreachChecker()
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
@@ -658,6 +662,8 @@ class MainActivity : ComponentActivity() {
                     }
                 },
                 onPrintPage = controller::printCurrentPage,
+                onAuthenticateSensitive = ::authenticateSensitive,
+                onCheckPasswordBreach = passwordBreachChecker::check,
                 onAddToHomeScreen = ::pinPageShortcut,
                 browserContent = {
                     AndroidView(
@@ -700,6 +706,47 @@ class MainActivity : ComponentActivity() {
         if (::controller.isInitialized) {
             handleIncomingBrowserIntent(intent)
         }
+    }
+
+    private fun authenticateSensitive(
+        reason: String,
+        callback: (Boolean) -> Unit,
+    ) {
+        val authenticators =
+            BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                BiometricManager.Authenticators.DEVICE_CREDENTIAL
+        val manager = BiometricManager.from(this)
+        if (manager.canAuthenticate(authenticators) != BiometricManager.BIOMETRIC_SUCCESS) {
+            transferNotice = "Biometric or device-credential authentication is unavailable."
+            callback(false)
+            return
+        }
+
+        val prompt = BiometricPrompt(
+            this,
+            ContextCompat.getMainExecutor(this),
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(
+                    result: BiometricPrompt.AuthenticationResult,
+                ) {
+                    callback(true)
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    callback(false)
+                }
+
+                override fun onAuthenticationFailed() {
+                    // Keep the system prompt open so the user may retry.
+                }
+            },
+        )
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Unlock Taho Browser")
+            .setSubtitle(reason)
+            .setAllowedAuthenticators(authenticators)
+            .build()
+        prompt.authenticate(promptInfo)
     }
 
     private fun parseCardExpiry(raw: String): Pair<String, String> {
@@ -772,6 +819,7 @@ class MainActivity : ComponentActivity() {
             getSystemService(ConnectivityManager::class.java)?.unregisterNetworkCallback(networkCallback)
         }
         captureRuntime.close()
+        passwordBreachChecker.close()
         super.onDestroy()
     }
 
