@@ -20,9 +20,10 @@ class TahoFeaturesTest {
         assertTrue(store.settings.blockThirdPartyCookies)
         assertTrue(store.settings.fingerprintingProtection)
         assertTrue(store.searchEngines.isNotEmpty())
-        assertTrue(store.topSites.isNotEmpty())
-        assertTrue(store.savedPasswords.isNotEmpty())
-        assertTrue(store.profiles.isNotEmpty())
+        assertTrue(store.topSites.isEmpty())
+        assertTrue(store.savedPasswords.isEmpty())
+        assertEquals(1, store.profiles.size)
+        assertFalse(store.profiles.single().syncEnabled)
     }
 
     @Test
@@ -104,6 +105,19 @@ class TahoFeaturesTest {
     }
 
     @Test
+    fun privateTabsNeverEnterRecentlyClosedHistory() {
+        val store = TahoBrowserStateStore
+        val before = store.recentlyClosedTabs.size
+        store.recordClosedTab(
+            title = "Private",
+            url = "https://private.example",
+            isPrivate = true,
+        )
+        assertEquals(before, store.recentlyClosedTabs.size)
+        assertFalse(store.recentlyClosedTabs.any { it.url == "https://private.example" })
+    }
+
+    @Test
     fun testPasswordGeneratorAndClassification() {
         val store = TahoBrowserStateStore
         val generated = store.generateStrongPassword(length = 20, useSpecial = true)
@@ -140,7 +154,15 @@ class TahoFeaturesTest {
     @Test
     fun testDownloadStatusTransitions() {
         val store = TahoBrowserStateStore
-        val dl = store.downloads.first()
+        val dl = DownloadItemUi(
+            id = "test-download",
+            fileName = "artifact.bin",
+            url = "https://downloads.test/artifact.bin",
+            bytesDownloaded = 128,
+            totalBytes = 1024,
+            status = TahoDownloadStatus.DOWNLOADING,
+        )
+        store.upsertDownload(dl)
 
         store.pauseResumeDownload(dl.id)
         val toggled = store.downloads.find { it.id == dl.id }
@@ -161,6 +183,12 @@ class TahoFeaturesTest {
     @Test
     fun testProfileSwitching() {
         val store = TahoBrowserStateStore
+        store.profiles = store.profiles.filterNot { it.id == "profile_work" } +
+            BrowserProfileUi(
+                id = "profile_work",
+                name = "Work",
+                avatarGlyph = "W",
+            )
         store.switchProfile("profile_work")
 
         val active = store.profiles.find { it.isActive }
@@ -325,6 +353,11 @@ class TahoFeaturesTest {
         store.removeCollection(col.id)
         assertFalse(store.collections.any { it.id == col.id })
 
+        store.addWebsiteNotification(
+            origin = "https://notify.test",
+            title = "Test notification",
+            message = "Created by the test",
+        )
         val notifCount = store.websiteNotifications.size
         assertTrue(notifCount >= 1)
         val notif = store.websiteNotifications.first()
