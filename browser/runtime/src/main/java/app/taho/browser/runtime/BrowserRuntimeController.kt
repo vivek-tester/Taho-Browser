@@ -143,58 +143,65 @@ class BrowserRuntimeController(context: Context) {
 
     private sealed interface PendingAutofillPrompt {
         val prompt: BrowserAutofillPrompt
-        fun complete(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse
+        val result: GeckoResult<GeckoSession.PromptDelegate.PromptResponse>
+        fun response(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse
 
         data class LoginSave(
             override val prompt: BrowserAutofillPrompt,
+            val result: GeckoResult<GeckoSession.PromptDelegate.PromptResponse>,
             val request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.LoginSaveOption>,
         ) : PendingAutofillPrompt {
-            override fun complete(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
+            override fun response(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
                 selectedIndex?.let { request.options.getOrNull(it) }?.let(request::confirm)
                     ?: request.dismiss()
         }
 
         data class LoginSelect(
             override val prompt: BrowserAutofillPrompt,
+            val result: GeckoResult<GeckoSession.PromptDelegate.PromptResponse>,
             val request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.LoginSelectOption>,
         ) : PendingAutofillPrompt {
-            override fun complete(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
+            override fun response(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
                 selectedIndex?.let { request.options.getOrNull(it) }?.let(request::confirm)
                     ?: request.dismiss()
         }
 
         data class AddressSave(
             override val prompt: BrowserAutofillPrompt,
+            val result: GeckoResult<GeckoSession.PromptDelegate.PromptResponse>,
             val request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.AddressSaveOption>,
         ) : PendingAutofillPrompt {
-            override fun complete(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
+            override fun response(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
                 selectedIndex?.let { request.options.getOrNull(it) }?.let(request::confirm)
                     ?: request.dismiss()
         }
 
         data class AddressSelect(
             override val prompt: BrowserAutofillPrompt,
+            val result: GeckoResult<GeckoSession.PromptDelegate.PromptResponse>,
             val request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.AddressSelectOption>,
         ) : PendingAutofillPrompt {
-            override fun complete(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
+            override fun response(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
                 selectedIndex?.let { request.options.getOrNull(it) }?.let(request::confirm)
                     ?: request.dismiss()
         }
 
         data class CreditCardSave(
             override val prompt: BrowserAutofillPrompt,
+            val result: GeckoResult<GeckoSession.PromptDelegate.PromptResponse>,
             val request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.CreditCardSaveOption>,
         ) : PendingAutofillPrompt {
-            override fun complete(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
+            override fun response(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
                 selectedIndex?.let { request.options.getOrNull(it) }?.let(request::confirm)
                     ?: request.dismiss()
         }
 
         data class CreditCardSelect(
             override val prompt: BrowserAutofillPrompt,
+            val result: GeckoResult<GeckoSession.PromptDelegate.PromptResponse>,
             val request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.CreditCardSelectOption>,
         ) : PendingAutofillPrompt {
-            override fun complete(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
+            override fun response(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
                 selectedIndex?.let { request.options.getOrNull(it) }?.let(request::confirm)
                     ?: request.dismiss()
         }
@@ -342,7 +349,11 @@ class BrowserRuntimeController(context: Context) {
         val pending = pendingAutofillPrompt
         if (pending?.prompt?.id != requestId) return
         pendingAutofillPrompt = null
-        runCatching { pending.complete(selectedIndex) }
+        runCatching {
+            pending.result.complete(pending.response(selectedIndex))
+        }.onFailure {
+            pending.result.completeExceptionally(it)
+        }
         notifyChanged()
     }
 
@@ -937,12 +948,14 @@ class BrowserRuntimeController(context: Context) {
                 ) {
                     return GeckoResult.fromValue(request.dismiss())
                 }
+                val result = GeckoResult<GeckoSession.PromptDelegate.PromptResponse>()
                 pendingAutofillPrompt = PendingAutofillPrompt.LoginSave(
                     prompt = loginPrompt(tab, BrowserAutofillPromptKind.LOGIN_SAVE, request.options),
+                    result = result,
                     request = request,
                 )
                 notifyChangedIfReady()
-                return GeckoResult()
+                return result
             }
 
             override fun onLoginSelect(
@@ -959,12 +972,14 @@ class BrowserRuntimeController(context: Context) {
                 if (request.options.size == 1) {
                     return GeckoResult.fromValue(request.confirm(request.options[0]))
                 }
+                val result = GeckoResult<GeckoSession.PromptDelegate.PromptResponse>()
                 pendingAutofillPrompt = PendingAutofillPrompt.LoginSelect(
                     prompt = loginPrompt(tab, BrowserAutofillPromptKind.LOGIN_SELECT, request.options),
+                    result = result,
                     request = request,
                 )
                 notifyChangedIfReady()
-                return GeckoResult()
+                return result
             }
 
             override fun onAddressSave(
@@ -979,12 +994,14 @@ class BrowserRuntimeController(context: Context) {
                 ) {
                     return GeckoResult.fromValue(request.dismiss())
                 }
+                val result = GeckoResult<GeckoSession.PromptDelegate.PromptResponse>()
                 pendingAutofillPrompt = PendingAutofillPrompt.AddressSave(
                     prompt = addressPrompt(tab, BrowserAutofillPromptKind.ADDRESS_SAVE, request.options),
+                    result = result,
                     request = request,
                 )
                 notifyChangedIfReady()
-                return GeckoResult()
+                return result
             }
 
             override fun onAddressSelect(
@@ -1001,12 +1018,14 @@ class BrowserRuntimeController(context: Context) {
                 if (request.options.size == 1) {
                     return GeckoResult.fromValue(request.confirm(request.options[0]))
                 }
+                val result = GeckoResult<GeckoSession.PromptDelegate.PromptResponse>()
                 pendingAutofillPrompt = PendingAutofillPrompt.AddressSelect(
                     prompt = addressPrompt(tab, BrowserAutofillPromptKind.ADDRESS_SELECT, request.options),
+                    result = result,
                     request = request,
                 )
                 notifyChangedIfReady()
-                return GeckoResult()
+                return result
             }
 
             override fun onCreditCardSave(
@@ -1021,12 +1040,14 @@ class BrowserRuntimeController(context: Context) {
                 ) {
                     return GeckoResult.fromValue(request.dismiss())
                 }
+                val result = GeckoResult<GeckoSession.PromptDelegate.PromptResponse>()
                 pendingAutofillPrompt = PendingAutofillPrompt.CreditCardSave(
                     prompt = creditCardPrompt(tab, BrowserAutofillPromptKind.CREDIT_CARD_SAVE, request.options),
+                    result = result,
                     request = request,
                 )
                 notifyChangedIfReady()
-                return GeckoResult()
+                return result
             }
 
             override fun onCreditCardSelect(
@@ -1043,12 +1064,14 @@ class BrowserRuntimeController(context: Context) {
                 if (request.options.size == 1) {
                     return GeckoResult.fromValue(request.confirm(request.options[0]))
                 }
+                val result = GeckoResult<GeckoSession.PromptDelegate.PromptResponse>()
                 pendingAutofillPrompt = PendingAutofillPrompt.CreditCardSelect(
                     prompt = creditCardPrompt(tab, BrowserAutofillPromptKind.CREDIT_CARD_SELECT, request.options),
+                    result = result,
                     request = request,
                 )
                 notifyChangedIfReady()
-                return GeckoResult()
+                return result
             }
         })
 
