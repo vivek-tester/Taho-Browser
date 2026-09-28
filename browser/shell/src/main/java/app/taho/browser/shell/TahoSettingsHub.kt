@@ -2069,12 +2069,47 @@ private fun SettingsDefaultBrowserPage() {
             Column {
                 Text("Make Taho your default browser", color = TahoText, fontFamily = TahoDisplay, fontSize = 14.sp)
                 Spacer(Modifier.height(4.dp))
-                Text("Open all web links, authentication handshakes, and API endpoints directly inside Taho Browser with zero-trust protection.", color = TahoMuted, fontFamily = TahoMono, fontSize = 10.sp)
+                Text(
+                    "Choose Taho as Android's web browser and control which verified links may open directly in it.",
+                    color = TahoMuted,
+                    fontFamily = TahoMono,
+                    fontSize = 10.sp,
+                )
                 Spacer(Modifier.height(14.dp))
                 M7PrimaryButton("Set as Default Browser", modifier = Modifier.fillMaxWidth()) {
                     runCatching {
-                        val intent = Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)
-                        context.startActivity(intent)
+                        if (android.os.Build.VERSION.SDK_INT >= 29) {
+                            val roleManager = context.getSystemService(android.app.role.RoleManager::class.java)
+                            if (roleManager?.isRoleAvailable(android.app.role.RoleManager.ROLE_BROWSER) == true) {
+                                context.startActivity(
+                                    roleManager.createRequestRoleIntent(android.app.role.RoleManager.ROLE_BROWSER),
+                                )
+                            } else {
+                                context.startActivity(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
+                            }
+                        } else {
+                            context.startActivity(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                M7SecondaryButton("Open Supported Links Settings", Modifier.fillMaxWidth()) {
+                    runCatching {
+                        context.startActivity(
+                            Intent(
+                                Settings.ACTION_APP_OPEN_BY_DEFAULT_SETTINGS,
+                                Uri.parse("package:" + context.packageName),
+                            ),
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                M7SecondaryButton("Open App Notification Settings", Modifier.fillMaxWidth()) {
+                    runCatching {
+                        context.startActivity(
+                            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+                        )
                     }
                 }
             }
