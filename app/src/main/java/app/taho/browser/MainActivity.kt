@@ -455,6 +455,13 @@ class MainActivity : ComponentActivity() {
                 },
                 onClearFindInPage = controller::clearFindInPage,
                 onSetDesktopMode = controller::setDesktopMode,
+                onClearBrowserStorage = { clearCache, clearCookies, callback ->
+                    controller.clearBrowsingStorage(
+                        clearCache = clearCache,
+                        clearCookiesAndSiteData = clearCookies,
+                        onComplete = callback,
+                    )
+                },
                 browserContent = {
                     AndroidView(
                         factory = { context ->
