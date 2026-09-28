@@ -102,6 +102,7 @@ internal val TahoSpringEasing = CubicBezierEasing(0.34f, 1.4f, 0.44f, 1f)
 
 internal const val TahoDurationScreen = 600
 internal const val TahoDurationSheet = 750
+internal const val TahoDurationVeil = 550
 
 /** True when the user has disabled system animations (animator scale 0). */
 @Composable
