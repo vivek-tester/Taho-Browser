@@ -2985,6 +2985,29 @@ private fun SettingsBackupExportPage(
         }
     }
 
+    val importBrowserPasswordsCsv = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            val content = readText(uri)
+            statusMessage = if (content != null) {
+                val result = TahoBrowserStateStore.importPasswordsFromCsv(content)
+                buildString {
+                    append(result.format)
+                    append(" CSV: imported ")
+                    append(result.imported)
+                    append(", skipped existing ")
+                    append(result.skippedExisting)
+                    append(", rejected ")
+                    append(result.rejectedRows)
+                    append(".")
+                }
+            } else {
+                "Unable to read browser password CSV."
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -3060,6 +3083,10 @@ private fun SettingsBackupExportPage(
         Spacer(Modifier.height(8.dp))
         M7SecondaryButton("Import Passwords (Taho JSON)", Modifier.fillMaxWidth()) {
             importPasswords.launch(arrayOf("application/json", "text/plain"))
+        }
+        Spacer(Modifier.height(8.dp))
+        M7SecondaryButton("Import Chrome / Firefox Passwords (CSV)", Modifier.fillMaxWidth()) {
+            importBrowserPasswordsCsv.launch(arrayOf("text/csv", "text/plain", "application/csv"))
         }
     }
 }
