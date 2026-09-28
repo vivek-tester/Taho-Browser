@@ -443,6 +443,16 @@ class MainActivity : ComponentActivity() {
                 onReplayRequest = { url ->
                     controller.load(uri = url)
                 },
+                onFindInPage = { query, backwards, callback ->
+                    controller.findInPage(
+                        query = query,
+                        backwards = backwards,
+                    ) { result ->
+                        callback(result.currentIndex, result.totalMatches)
+                    }
+                },
+                onClearFindInPage = controller::clearFindInPage,
+                onSetDesktopMode = controller::setDesktopMode,
                 browserContent = {
                     AndroidView(
                         factory = { context ->
