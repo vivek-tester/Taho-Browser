@@ -85,6 +85,7 @@ import app.taho.browser.shell.BrowserAutofillPromptOptionUi
 import app.taho.browser.shell.BrowserAutofillPromptUiState
 import app.taho.browser.shell.BrowserTabUiState
 import app.taho.browser.shell.BrowserUiState
+import app.taho.browser.shell.BrowserUpdateStatusUi
 import app.taho.browser.shell.DownloadItemUi
 import app.taho.browser.shell.M4CaptureHeaderUiState
 import app.taho.browser.shell.M4CaptureRequestUiState
@@ -121,6 +122,7 @@ class MainActivity : FragmentActivity() {
     private lateinit var captureRuntime: M4CaptureRuntime
     private lateinit var captureRepository: RoomCaptureRepository
     private lateinit var transferCoordinator: TahoSecureTransferCoordinator
+    private lateinit var updateChecker: BrowserUpdateChecker
     private var activeAndroidPermissionRequestId: String? = null
     private var pendingNotificationSitePermissionId: String? = null
     private var activeAndroidPermissions: List<String> = emptyList()
@@ -370,6 +372,7 @@ class MainActivity : FragmentActivity() {
         captureRepository = CapturePersistenceStore.repository(this)
         CaptureMaintenance.schedule(this)
         transferCoordinator = TahoSecureTransferCoordinator(this)
+        updateChecker = BrowserUpdateChecker(this)
         TransferArtifactMaintenance.schedule(this)
 
         runCatching {
@@ -901,6 +904,18 @@ class MainActivity : FragmentActivity() {
                 onRestorePageTranslation = { callback ->
                     controller.restoreOriginalPageTranslation { success, error ->
                         runOnUiThread { callback(success, error) }
+                    }
+                },
+                onCheckForUpdates = { callback ->
+                    updateChecker.check { result ->
+                        callback(
+                            BrowserUpdateStatusUi(
+                                latestVersion = result.latestVersion,
+                                releaseUrl = result.releaseUrl,
+                                updateAvailable = result.updateAvailable,
+                                error = result.error,
+                            ),
+                        )
                     }
                 },
                 onRefreshExtensions = {
