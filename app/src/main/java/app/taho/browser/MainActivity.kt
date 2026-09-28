@@ -150,6 +150,7 @@ class MainActivity : ComponentActivity() {
                 captureSnapshot = captureSnapshot,
                 selectedTabId = selectedTabId,
             )
+            val captureCountsByTab = relevantCaptureCounts(captureSnapshot)
 
             androidx.compose.runtime.LaunchedEffect(androidPermission?.id) {
                 val request = androidPermission ?: return@LaunchedEffect
@@ -231,9 +232,7 @@ class MainActivity : ComponentActivity() {
                             loadFailed = tab.loadFailed,
                             crashed = tab.crashed,
                             selected = tab.id == snapshot.selectedTabId,
-                            relevantCaptureCount = captureRequests.count {
-                                it.tabId == tab.id && it.relevantByDefault
-                            },
+                            relevantCaptureCount = captureCountsByTab[tab.id] ?: 0,
                         )
                     },
                     captureRequests = captureRequests,
@@ -339,6 +338,40 @@ class MainActivity : ComponentActivity() {
         captureRuntime.syncSessions(observed)
     }
 
+    private fun relevantCaptureCounts(
+        captureSnapshot: M4CaptureRuntimeSnapshot,
+    ): Map<String, Int> {
+        val liveTransactionIds = captureSnapshot.requests.map { it.transactionId }.toSet()
+        val counts = mutableMapOf<String, Int>()
+
+        captureSnapshot.requests.forEach { request ->
+            val tabId = request.tabId ?: return@forEach
+            val relevance = RelevanceClassifier.classify(
+                RelevanceInput(
+                    url = request.url,
+                    resourceType = request.initiator,
+                    method = request.method,
+                    targetHost = null,
+                    contentType = request.body?.contentType,
+                ),
+            )
+            if (RelevanceClassifier.isRelevantByDefault(relevance)) {
+                counts[tabId] = (counts[tabId] ?: 0) + 1
+            }
+        }
+
+        captureSnapshot.persistedRecords
+            .asSequence()
+            .filter { it.id !in liveTransactionIds }
+            .filter { RelevanceClassifier.isRelevantByDefault(it.relevance) }
+            .forEach { stored ->
+                val tabId = stored.tahoTabId ?: return@forEach
+                counts[tabId] = (counts[tabId] ?: 0) + 1
+            }
+
+        return counts
+    }
+
     private fun captureUiRequests(
         captureSnapshot: M4CaptureRuntimeSnapshot,
         selectedTabId: String,
@@ -408,7 +441,6 @@ class MainActivity : ComponentActivity() {
             .asSequence()
             .filter { it.tahoTabId == selectedTabId }
             .filter { it.id !in liveTransactionIds }
-            .filter { RelevanceClassifier.isRelevantByDefault(it.relevance) }
             .map { stored ->
                 M4CaptureRequestUiState(
                     id = "stored:" + stored.id,
@@ -428,7 +460,7 @@ class MainActivity : ComponentActivity() {
                     fromPrivateSession = false,
                     transferBlockedReason =
                         "Stored capture survived lifecycle/process recovery. " +
-                            "Direct re-transfer from durable ciphertext is deferred to M6.",
+                            "Re-transfer from durable encrypted storage is not exposed by the current Browser UI.",
                     explicitPolicyAllowed = false,
                     relevanceCategory = stored.relevance.category.name,
                     relevantByDefault = RelevanceClassifier.isRelevantByDefault(stored.relevance),
