@@ -55,7 +55,11 @@ import app.taho.browser.observation.M4CaptureRuntime
 import app.taho.browser.observation.M4CaptureRuntimeSnapshot
 import app.taho.browser.observation.ObservedBrowserSession
 import app.taho.browser.observation.ProductionCaptureGate
+import app.taho.browser.runtime.BrowserAutofillStore
 import app.taho.browser.runtime.BrowserRuntimeController
+import app.taho.browser.runtime.BrowserStoredAddress
+import app.taho.browser.runtime.BrowserStoredCreditCard
+import app.taho.browser.runtime.BrowserStoredLogin
 import app.taho.browser.runtime.BrowserRuntimeStore
 import app.taho.browser.runtime.BrowserSitePermissionKind
 import app.taho.browser.runtime.BrowserSnapshot
@@ -152,6 +156,123 @@ class MainActivity : ComponentActivity() {
 
         TahoBrowserStateStore.initialize(this)
         controller = BrowserRuntimeStore.get(this)
+        controller.setAutofillStore(
+            object : BrowserAutofillStore {
+                override val loginAutofillEnabled: Boolean
+                    get() = TahoBrowserStateStore.settings.passwordAutofillEnabled
+                override val passwordSavePromptEnabled: Boolean
+                    get() = TahoBrowserStateStore.settings.passwordSavePromptEnabled
+                override val addressAutofillEnabled: Boolean
+                    get() = TahoBrowserStateStore.settings.addressAutofillEnabled
+                override val paymentAutofillEnabled: Boolean
+                    get() = TahoBrowserStateStore.settings.paymentAutofillEnabled
+
+                override fun loginsForDomain(domain: String): List<BrowserStoredLogin> {
+                    if (!loginAutofillEnabled) return emptyList()
+                    val normalized = domain
+                        .removePrefix("https://")
+                        .removePrefix("http://")
+                        .substringBefore('/')
+                        .lowercase()
+                    return TahoBrowserStateStore.savedPasswords
+                        .filter { it.domain.equals(normalized, ignoreCase = true) }
+                        .map { item ->
+                            BrowserStoredLogin(
+                                id = item.id,
+                                domain = item.domain,
+                                username = item.username,
+                                password = item.password,
+                            )
+                        }
+                }
+
+                override fun allLogins(): List<BrowserStoredLogin> {
+                    if (!loginAutofillEnabled) return emptyList()
+                    return TahoBrowserStateStore.savedPasswords.map { item ->
+                        BrowserStoredLogin(
+                            id = item.id,
+                            domain = item.domain,
+                            username = item.username,
+                            password = item.password,
+                        )
+                    }
+                }
+
+                override fun addresses(): List<BrowserStoredAddress> {
+                    if (!addressAutofillEnabled) return emptyList()
+                    return TahoBrowserStateStore.savedAddresses.map { item ->
+                        BrowserStoredAddress(
+                            id = item.id,
+                            label = item.label,
+                            fullName = item.fullName,
+                            street = item.street,
+                            city = item.city,
+                            state = item.state,
+                            postalCode = item.zipCode,
+                            country = item.country,
+                            phone = item.phone,
+                            email = item.email,
+                        )
+                    }
+                }
+
+                override fun creditCards(): List<BrowserStoredCreditCard> {
+                    if (!paymentAutofillEnabled) return emptyList()
+                    return TahoBrowserStateStore.savedPayments.mapNotNull { item ->
+                        val number = TahoBrowserStateStore.paymentCardNumberOrNull(item)
+                            ?: return@mapNotNull null
+                        val (month, year) = parseCardExpiry(item.cardExpiry)
+                        BrowserStoredCreditCard(
+                            id = item.id,
+                            cardholderName = item.cardHolder,
+                            number = number,
+                            expirationMonth = month,
+                            expirationYear = year,
+                        )
+                    }
+                }
+
+                override fun saveLogin(login: BrowserStoredLogin) {
+                    TahoBrowserStateStore.upsertAutofillLogin(
+                        id = login.id,
+                        domain = login.domain,
+                        username = login.username,
+                        pass = login.password,
+                    )
+                }
+
+                override fun markLoginUsed(id: String) {
+                    TahoBrowserStateStore.markSavedPasswordUsed(id)
+                }
+
+                override fun saveAddress(address: BrowserStoredAddress) {
+                    TahoBrowserStateStore.upsertSavedAddress(
+                        id = address.id,
+                        label = address.label,
+                        fullName = address.fullName,
+                        street = address.street,
+                        city = address.city,
+                        state = address.state,
+                        zipCode = address.postalCode,
+                        country = address.country,
+                        phone = address.phone,
+                        email = address.email,
+                    )
+                }
+
+                override fun saveCreditCard(card: BrowserStoredCreditCard) {
+                    val expiry = listOf(card.expirationMonth, card.expirationYear)
+                        .filter(String::isNotBlank)
+                        .joinToString("/")
+                    TahoBrowserStateStore.upsertSavedPayment(
+                        id = card.id,
+                        cardHolder = card.cardholderName,
+                        cardNumber = card.number,
+                        cardExpiry = expiry,
+                    )
+                }
+            },
+        )
         if (savedInstanceState == null && !isIncomingWebIntent(intent)) {
             applyStartupBehavior()
         }
@@ -547,6 +668,20 @@ class MainActivity : ComponentActivity() {
         if (::controller.isInitialized) {
             handleIncomingBrowserIntent(intent)
         }
+    }
+
+    private fun parseCardExpiry(raw: String): Pair<String, String> {
+        val parts = raw
+            .trim()
+            .split('/', '-', ' ')
+            .filter(String::isNotBlank)
+        val month = parts.getOrNull(0)?.filter(Char::isDigit).orEmpty()
+        val yearRaw = parts.getOrNull(1)?.filter(Char::isDigit).orEmpty()
+        val year = when (yearRaw.length) {
+            2 -> "20$yearRaw"
+            else -> yearRaw
+        }
+        return month to year
     }
 
     private fun isIncomingWebIntent(source: Intent?): Boolean {
