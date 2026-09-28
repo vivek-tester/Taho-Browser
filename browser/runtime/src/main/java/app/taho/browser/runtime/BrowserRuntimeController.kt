@@ -18,6 +18,7 @@ import java.util.UUID
 enum class BrowserSitePermissionKind {
     LOCATION,
     PERSISTENT_STORAGE,
+    NOTIFICATIONS,
     CAMERA,
     MICROPHONE,
     CAMERA_AND_MICROPHONE,
@@ -1390,6 +1391,9 @@ class BrowserRuntimeController(context: Context) {
 
                     GeckoSession.PermissionDelegate.PERMISSION_PERSISTENT_STORAGE ->
                         BrowserSitePermissionKind.PERSISTENT_STORAGE
+
+                    GeckoSession.PermissionDelegate.PERMISSION_DESKTOP_NOTIFICATION ->
+                        BrowserSitePermissionKind.NOTIFICATIONS
 
                     else -> return GeckoResult.fromValue(
                         GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY,
