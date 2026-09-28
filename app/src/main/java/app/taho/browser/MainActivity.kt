@@ -1350,6 +1350,7 @@ class MainActivity : FragmentActivity() {
             .putExtra(TahoPwaActivity.EXTRA_PWA_ID, pwa.id)
             .putExtra(TahoPwaActivity.EXTRA_START_URL, manifest.startUrl)
             .putExtra(TahoPwaActivity.EXTRA_NAME, manifest.name)
+            .putExtra(TahoPwaActivity.EXTRA_SCOPE, manifest.scope)
             .putExtra(TahoPwaActivity.EXTRA_DISPLAY, manifest.display)
             .putExtra(TahoPwaActivity.EXTRA_THEME_COLOR, manifest.themeColor)
             .setAction(Intent.ACTION_VIEW)
