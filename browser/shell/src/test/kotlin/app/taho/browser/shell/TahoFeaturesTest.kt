@@ -198,11 +198,16 @@ class TahoFeaturesTest {
     fun testBookmarkFoldersAndHtmlExportImport() {
         val store = TahoBrowserStateStore
         store.addBookmarkFolder("Research")
-        store.addBookmark("ArXiv Paper", "https://arxiv.org/abs/2301.00001", folder = "Research")
+        val folder = store.bookmarkFolders.last { it.name == "Research" }
+        store.addBookmark(
+            "ArXiv Paper",
+            "https://arxiv.org/abs/2301.00001",
+            folderId = folder.id,
+        )
 
         val bm = store.bookmarks.find { it.url == "https://arxiv.org/abs/2301.00001" }
         assertNotNull(bm)
-        assertEquals("Research", bm.folder)
+        assertEquals(folder.id, bm.folderId)
 
         val html = store.exportBookmarksHtml()
         assertTrue(html.contains("ArXiv Paper"))
@@ -333,7 +338,7 @@ class TahoFeaturesTest {
     @Test
     fun testTabArchiveAndRestore() {
         val store = TahoBrowserStateStore
-        store.archiveTab("tab-999", "Archived Article", "https://news.ycombinator.com", isPrivate = false)
+        store.archiveTab("Archived Article", "https://news.ycombinator.com")
         val archived = store.archivedTabs.find { it.url == "https://news.ycombinator.com" }
         assertNotNull(archived)
         assertEquals("Archived Article", archived.title)
@@ -359,10 +364,10 @@ class TahoFeaturesTest {
         store.toggleDesktopModeForOrigin(origin)
         assertFalse(store.isDesktopModeForOrigin(origin))
 
-        assertFalse(store.settings.trackingExceptions.contains(origin))
+        assertFalse(store.settings.perSiteTrackingExceptions.contains(origin))
         store.toggleTrackingException(origin)
-        assertTrue(store.settings.trackingExceptions.contains(origin))
+        assertTrue(store.settings.perSiteTrackingExceptions.contains(origin))
         store.toggleTrackingException(origin)
-        assertFalse(store.settings.trackingExceptions.contains(origin))
+        assertFalse(store.settings.perSiteTrackingExceptions.contains(origin))
     }
 }
