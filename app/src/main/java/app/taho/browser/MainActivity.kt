@@ -125,6 +125,7 @@ class MainActivity : ComponentActivity() {
                     CaptureQuery(limit = 500),
                 )
             },
+            clearStorage = captureRepository::clearCaptureData,
         )
         captureRuntime.start()
 
@@ -667,17 +668,18 @@ class MainActivity : ComponentActivity() {
         }
 
     private fun clearCaptureData() {
-        Thread {
-            when (val result = captureRepository.clearCaptureData()) {
-                is CaptureRepositoryResult.Success -> runOnUiThread {
-                    captureRuntime.clearPresentationHistory()
-                    transferNotice = "Captured requests cleared. Websites and login sessions were preserved."
+        captureRuntime.clearCaptureData { result ->
+            when (result) {
+                is CaptureRepositoryResult.Success -> {
+                    transferNotice =
+                        "Captured requests cleared. Websites and login sessions were preserved."
                 }
-                is CaptureRepositoryResult.Degraded -> runOnUiThread {
+
+                is CaptureRepositoryResult.Degraded -> {
                     transferNotice = storageNotice(result.reason)
                 }
             }
-        }.start()
+        }
     }
 
     private fun hostOf(location: String?): String? =
