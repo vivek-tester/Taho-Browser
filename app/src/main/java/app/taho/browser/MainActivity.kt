@@ -24,6 +24,7 @@ import app.taho.browser.capture.domain.CaptureSessionKind
 import app.taho.browser.capture.domain.CaptureSessionLifecycle
 import app.taho.browser.capture.domain.DurableCaptureSession
 import app.taho.browser.capture.domain.RelevanceClassifier
+import app.taho.browser.capture.domain.RelevanceInput
 import app.taho.browser.capture.domain.RetentionPolicy
 import app.taho.browser.capture.domain.SecretPolicy
 import app.taho.browser.capture.domain.StorageDegradationReason
@@ -52,6 +53,7 @@ import app.taho.browser.transfer.android.TahoDirectTransferIntentFactory
 import app.taho.browser.transfer.android.TahoDirectTransferTarget
 import app.taho.browser.transfer.android.TahoSecureTransferCoordinator
 import app.taho.browser.transfer.android.TransferArtifactMaintenance
+import app.taho.browser.transfer.android.TahoTransferTransport
 import app.taho.browser.transfer.android.TransferReceiptRecoveryStore
 import app.taho.browser.transfer.core.M4PreparationBlock
 import app.taho.browser.transfer.core.M4PreparationResult
@@ -190,7 +192,7 @@ class MainActivity : ComponentActivity() {
             TahoBrowserApp(
                 state = BrowserUiState(
                     captureState = captureSnapshot.state,
-                    relevantCount = captureRequests.size,
+                    relevantCount = captureRequests.count { it.relevantByDefault },
                     omniboxText = visibleLocation,
                     tabCount = snapshot.tabCount,
                     isLoading = snapshot.isLoading,
@@ -202,6 +204,13 @@ class MainActivity : ComponentActivity() {
                     notice = transferNotice
                         ?: captureSnapshot.storageDegradedReason?.let(::storageNotice)
                         ?: snapshot.notice,
+                    captureCapabilityNote = when {
+                        !BuildConfig.M1_ATTRIBUTION_VERIFIED ->
+                            "Production capture remains off until on-device tab attribution is verified."
+                        captureSnapshot.storageDegradedReason != null ->
+                            storageNotice(requireNotNull(captureSnapshot.storageDegradedReason))
+                        else -> null
+                    },
                     sitePermission = snapshot.sitePermission?.let { permission ->
                         val copy = permissionCopy(permission.kind)
                         SitePermissionUiState(
@@ -222,6 +231,9 @@ class MainActivity : ComponentActivity() {
                             loadFailed = tab.loadFailed,
                             crashed = tab.crashed,
                             selected = tab.id == snapshot.selectedTabId,
+                            relevantCaptureCount = captureRequests.count {
+                                it.tabId == tab.id && it.relevantByDefault
+                            },
                         )
                     },
                     captureRequests = captureRequests,
@@ -252,6 +264,7 @@ class MainActivity : ComponentActivity() {
                         controller.dismissNotice()
                     }
                 },
+                onClearCaptureData = ::clearCaptureData,
                 onSendToTaho = ::sendToTaho,
                 browserContent = {
                     AndroidView(
@@ -338,6 +351,15 @@ class MainActivity : ComponentActivity() {
             .filter { it.tabId == selectedTabId }
             .mapNotNull { request ->
                 val display = captureRuntime.display(request.transferId) ?: return@mapNotNull null
+                val relevance = RelevanceClassifier.classify(
+                    RelevanceInput(
+                        url = request.url,
+                        resourceType = request.initiator,
+                        method = request.method,
+                        targetHost = null,
+                        contentType = request.body?.contentType,
+                    ),
+                )
                 M4CaptureRequestUiState(
                     id = request.transferId,
                     method = display.method,
@@ -367,6 +389,18 @@ class MainActivity : ComponentActivity() {
                         else -> null
                     },
                     explicitPolicyAllowed = false,
+                    relevanceCategory = relevance.category.name,
+                    relevantByDefault = RelevanceClassifier.isRelevantByDefault(relevance),
+                    captureSessionId = request.captureSessionId,
+                    tabId = request.tabId,
+                    capturedAtEpochMs = request.capturedAt,
+                    sourceVersion = request.appVersion,
+                    captureEngineVersion = request.engineVersion,
+                    observationSource = request.observation.name,
+                    redirectCount = request.redirectCount,
+                    requestBodyCapturedBytes = request.body?.size,
+                    requestBodyDeclaredBytes = request.body?.declaredSize,
+                    safeBodyPreview = request.body?.content,
                 )
             }
 
@@ -396,6 +430,12 @@ class MainActivity : ComponentActivity() {
                         "Stored capture survived lifecycle/process recovery. " +
                             "Direct re-transfer from durable ciphertext is deferred to M6.",
                     explicitPolicyAllowed = false,
+                    relevanceCategory = stored.relevance.category.name,
+                    relevantByDefault = RelevanceClassifier.isRelevantByDefault(stored.relevance),
+                    captureSessionId = stored.captureSessionId,
+                    tabId = stored.tahoTabId,
+                    capturedAtEpochMs = stored.createdAtEpochMs,
+                    transactionState = stored.state.name,
                 )
             }
             .toList()
@@ -434,7 +474,7 @@ class MainActivity : ComponentActivity() {
                     action = BuildConfig.TAHO_TRANSFER_ACTION,
                 )
                 if (!transferCoordinator.isTargetAvailable(target)) {
-                    transferNotice = "Compatible Project-Taho receiver is not installed."
+                    transferNotice = "Taho API Testing isn't installed."
                     return
                 }
 
@@ -473,13 +513,17 @@ class MainActivity : ComponentActivity() {
                 }
 
                 pendingTransferId = expectedTransferId
+                if (dispatch.transport == TahoTransferTransport.ARTIFACT_URI) {
+                    transferNotice = "This request is large. Using secure file transfer…"
+                }
                 runCatching {
                     @Suppress("DEPRECATION")
                     startActivityForResult(dispatch.intent, TAHO_TRANSFER_REQUEST_CODE)
                 }.onFailure {
                     pendingTransferId = null
                     transferCoordinator.cancel(expectedTransferId)
-                    transferNotice = "Unable to open Project-Taho."
+                    transferNotice =
+                        "Taho could not receive this request. Your captured request remains in Taho Browser."
                 }
             }
         }
@@ -500,9 +544,22 @@ class MainActivity : ComponentActivity() {
             receipt.errorCode?.name == "TAHO_TRANSFER_ACCESS_DENIED" ->
                 "Taho could not be given access to the transfer."
             else ->
-                "Taho rejected the request" +
-                    (receipt.errorCode?.let { ": " + it.name } ?: ".")
+                "Taho could not import this request. No network request was sent."
         }
+
+    private fun clearCaptureData() {
+        Thread {
+            when (val result = captureRepository.clearCaptureData()) {
+                is CaptureRepositoryResult.Success -> runOnUiThread {
+                    captureRuntime.clearPresentationHistory()
+                    transferNotice = "Captured requests cleared. Websites and login sessions were preserved."
+                }
+                is CaptureRepositoryResult.Degraded -> runOnUiThread {
+                    transferNotice = storageNotice(result.reason)
+                }
+            }
+        }.start()
+    }
 
     private fun storageNotice(reason: StorageDegradationReason): String =
         when (reason) {
