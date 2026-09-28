@@ -14,6 +14,7 @@ class BrowserSessionCodecTest {
                     title = "Example",
                     location = "https://example.com",
                     serializedSessionState = "{opaque-gecko-state}",
+                    lastAccessedAtEpochMs = 123456789L,
                 ),
             ),
             selectedTabId = "tab-1",
@@ -48,5 +49,21 @@ class BrowserSessionCodecTest {
         assertEquals(1, decoded.tabs.size)
         assertEquals("first", decoded.tabs.single().title)
         assertNull(decoded.selectedTabId)
+    }
+
+    @Test
+    fun versionOneStateRemainsReadableWithoutActivityTimestamp() {
+        val decoded = BrowserSessionCodec.decode(
+            """{
+              "version":1,
+              "tabs":[
+                {"id":"legacy","title":"Legacy","location":"https://legacy.test","sessionState":"state"}
+              ],
+              "selectedTabId":"legacy"
+            }""".trimIndent(),
+        )!!
+
+        assertEquals("legacy", decoded.selectedTabId)
+        assertNull(decoded.tabs.single().lastAccessedAtEpochMs)
     }
 }
