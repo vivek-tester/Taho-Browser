@@ -89,6 +89,7 @@ import app.taho.browser.shell.TahoBrowserApp
 import app.taho.browser.shell.TahoBrowserStateStore
 import app.taho.browser.shell.TahoStartupBehavior
 import app.taho.browser.shell.TahoAutoCloseTabs
+import app.taho.browser.shell.WebAppManifestUi
 import app.taho.browser.transfer.android.TahoDirectTransferIntentFactory
 import app.taho.browser.transfer.android.TahoDirectTransferTarget
 import app.taho.browser.transfer.android.TahoSecureTransferCoordinator
@@ -465,6 +466,10 @@ class MainActivity : FragmentActivity() {
                 ),
             )
 
+            val selectedWebAppManifest = snapshot.tabs
+                .firstOrNull { it.id == snapshot.selectedTabId }
+                ?.webAppManifest
+
             TahoBrowserApp(
                 state = BrowserUiState(
                     captureState = captureSnapshot.state,
@@ -486,6 +491,17 @@ class MainActivity : FragmentActivity() {
                             certificateIssuer = security.certificateIssuer,
                             activeMixedContentLoaded = security.activeMixedContentLoaded,
                             passiveMixedContentLoaded = security.passiveMixedContentLoaded,
+                        )
+                    },
+                    webAppManifest = selectedWebAppManifest?.let { manifest ->
+                        WebAppManifestUi(
+                            name = manifest.name,
+                            shortName = manifest.shortName,
+                            startUrl = manifest.startUrl,
+                            scope = manifest.scope,
+                            display = manifest.display,
+                            themeColor = manifest.themeColor,
+                            backgroundColor = manifest.backgroundColor,
                         )
                     },
                     isTahoInstalled = isTahoInstalled,
@@ -725,6 +741,7 @@ class MainActivity : FragmentActivity() {
                     }
                 },
                 onAddToHomeScreen = ::pinPageShortcut,
+                onInstallWebApp = ::installWebApp,
                 browserContent = {
                     AndroidView(
                         factory = { context ->
@@ -1303,6 +1320,58 @@ class MainActivity : FragmentActivity() {
         location
             ?.takeIf { it.startsWith("http://") || it.startsWith("https://") }
             ?.let { runCatching { URI(it).host }.getOrNull() }
+
+    private fun installWebApp(manifest: WebAppManifestUi) {
+        val startUri = Uri.parse(manifest.startUrl)
+        if (startUri.scheme != "https" && startUri.scheme != "http") {
+            transferNotice = "This web app has an unsupported start URL."
+            return
+        }
+
+        val existing = TahoBrowserStateStore.installedPwas
+            .firstOrNull { it.url == manifest.startUrl }
+        val pwa = existing ?: app.taho.browser.shell.InstalledPwaUi(
+            id = java.util.UUID.randomUUID().toString(),
+            name = manifest.name,
+            url = manifest.startUrl,
+            iconGlyph = (manifest.shortName ?: manifest.name)
+                .take(2)
+                .uppercase()
+                .ifBlank { "PW" },
+        )
+
+        if (existing == null) {
+            TahoBrowserStateStore.installedPwas =
+                TahoBrowserStateStore.installedPwas + pwa
+            TahoBrowserStateStore.persistNow()
+        }
+
+        val launchIntent = Intent(this, TahoPwaActivity::class.java)
+            .putExtra(TahoPwaActivity.EXTRA_PWA_ID, pwa.id)
+            .putExtra(TahoPwaActivity.EXTRA_START_URL, manifest.startUrl)
+            .putExtra(TahoPwaActivity.EXTRA_NAME, manifest.name)
+            .putExtra(TahoPwaActivity.EXTRA_DISPLAY, manifest.display)
+            .putExtra(TahoPwaActivity.EXTRA_THEME_COLOR, manifest.themeColor)
+            .setAction(Intent.ACTION_VIEW)
+            .setData(startUri)
+
+        val manager = getSystemService(ShortcutManager::class.java)
+        if (manager != null) {
+            val shortcut = ShortcutInfo.Builder(this, "pwa-" + pwa.id)
+                .setShortLabel((manifest.shortName ?: manifest.name).take(40))
+                .setLongLabel(manifest.name.take(80))
+                .setIcon(Icon.createWithResource(this, android.R.drawable.ic_menu_view))
+                .setIntent(launchIntent)
+                .build()
+
+            runCatching { manager.addDynamicShortcuts(listOf(shortcut)) }
+            if (manager.isRequestPinShortcutSupported) {
+                runCatching { manager.requestPinShortcut(shortcut, null) }
+            }
+        }
+
+        transferNotice = "Web app installed in Taho."
+    }
 
     private fun pinPageShortcut(title: String, url: String) {
         val supportedUrl = Uri.parse(url)
