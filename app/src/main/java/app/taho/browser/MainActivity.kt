@@ -224,13 +224,21 @@ class MainActivity : FragmentActivity() {
         controller.setAutofillStore(
             object : BrowserAutofillStore {
                 override val loginAutofillEnabled: Boolean
-                    get() = TahoBrowserStateStore.settings.passwordAutofillEnabled
+                    get() =
+                        !TahoBrowserStateStore.activeProfileIsGuest() &&
+                            TahoBrowserStateStore.settings.passwordAutofillEnabled
                 override val passwordSavePromptEnabled: Boolean
-                    get() = TahoBrowserStateStore.settings.passwordSavePromptEnabled
+                    get() =
+                        !TahoBrowserStateStore.activeProfileIsGuest() &&
+                            TahoBrowserStateStore.settings.passwordSavePromptEnabled
                 override val addressAutofillEnabled: Boolean
-                    get() = TahoBrowserStateStore.settings.addressAutofillEnabled
+                    get() =
+                        !TahoBrowserStateStore.activeProfileIsGuest() &&
+                            TahoBrowserStateStore.settings.addressAutofillEnabled
                 override val paymentAutofillEnabled: Boolean
-                    get() = TahoBrowserStateStore.settings.paymentAutofillEnabled
+                    get() =
+                        !TahoBrowserStateStore.activeProfileIsGuest() &&
+                            TahoBrowserStateStore.settings.paymentAutofillEnabled
 
                 override fun loginsForDomain(domain: String): List<BrowserStoredLogin> {
                     if (!loginAutofillEnabled) return emptyList()
@@ -298,6 +306,7 @@ class MainActivity : FragmentActivity() {
                 }
 
                 override fun saveLogin(login: BrowserStoredLogin) {
+                    if (TahoBrowserStateStore.activeProfileIsGuest()) return
                     TahoBrowserStateStore.upsertAutofillLogin(
                         id = login.id,
                         domain = login.domain,
@@ -307,10 +316,13 @@ class MainActivity : FragmentActivity() {
                 }
 
                 override fun markLoginUsed(id: String) {
-                    TahoBrowserStateStore.markSavedPasswordUsed(id)
+                    if (!TahoBrowserStateStore.activeProfileIsGuest()) {
+                        TahoBrowserStateStore.markSavedPasswordUsed(id)
+                    }
                 }
 
                 override fun saveAddress(address: BrowserStoredAddress) {
+                    if (TahoBrowserStateStore.activeProfileIsGuest()) return
                     TahoBrowserStateStore.upsertSavedAddress(
                         id = address.id,
                         label = address.label,
@@ -326,6 +338,7 @@ class MainActivity : FragmentActivity() {
                 }
 
                 override fun saveCreditCard(card: BrowserStoredCreditCard) {
+                    if (TahoBrowserStateStore.activeProfileIsGuest()) return
                     val expiry = listOf(card.expirationMonth, card.expirationYear)
                         .filter(String::isNotBlank)
                         .joinToString("/")
