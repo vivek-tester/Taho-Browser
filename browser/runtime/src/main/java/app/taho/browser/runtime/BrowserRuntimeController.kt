@@ -234,12 +234,15 @@ class BrowserRuntimeController(context: Context) {
     private var autofillStore: BrowserAutofillStore? = null
     private var externalResponseConsumer: ((BrowserDownloadResponse) -> Unit)? = null
     private var appliedRuntimePreferences: BrowserRuntimePreferences? = null
+    private var activeProfileId: String = BrowserSessionStore.PERSONAL_PROFILE_ID
+    private var activeGuestProfile: Boolean = false
+    private var profileSwitchInProgress: Boolean = false
     private var notice: String? = null
 
     private val persistRunnable = Runnable { persistNow() }
 
     init {
-        val restored = sessionStore.load()
+        val restored = sessionStore.load(activeProfileId)
         if (restored.tabs.isNotEmpty()) {
             restored.tabs.forEach { saved ->
                 val state = saved.serializedSessionState
@@ -307,6 +310,90 @@ class BrowserRuntimeController(context: Context) {
     fun setListener(listener: ((BrowserSnapshot) -> Unit)?) {
         this.listener = listener
         listener?.invoke(snapshot())
+    }
+
+    fun activeProfileId(): String = activeProfileId
+
+    fun switchProfile(
+        profileId: String,
+        guest: Boolean,
+    ) {
+        val normalized = profileId.trim()
+        require(PROFILE_ID_PATTERN.matches(normalized)) { "Invalid browser profile ID" }
+        if (normalized == activeProfileId && guest == activeGuestProfile) return
+
+        persistNow()
+        profileSwitchInProgress = true
+        try {
+            pendingAutofillPrompt?.let { pending ->
+                pendingAutofillPrompt = null
+                pending.result.complete(pending.response(null))
+            }
+            tabs.toList().forEach { tab ->
+                rejectPermissionsForTab(tab.id)
+                clearExternalNavigationForTab(tab.id)
+                if (!tab.crashed) {
+                    runCatching {
+                        tab.session.setFocused(false)
+                        tab.session.setActive(false)
+                        tab.session.close()
+                    }
+                }
+            }
+            tabs.clear()
+            pendingSitePermission = null
+            pendingAndroidPermission = null
+            pendingExternalNavigation = null
+
+            activeProfileId = normalized
+            activeGuestProfile = guest
+
+            val restored = if (guest) {
+                PersistedBrowserState(emptyList(), null)
+            } else {
+                sessionStore.load(normalized)
+            }
+
+            restored.tabs.forEach { saved ->
+                val state = saved.serializedSessionState
+                    ?.let(GeckoSession.SessionState::fromString)
+                createRuntimeTab(
+                    id = saved.id,
+                    privateMode = false,
+                    initialLocation = saved.location,
+                    initialTitle = saved.title,
+                    restoredState = state,
+                    restoredLastAccessedAtEpochMs = saved.lastAccessedAtEpochMs,
+                )
+            }
+
+            selectedTabId = restored.selectedTabId
+                ?.takeIf { candidate -> tabs.any { it.id == candidate } }
+                ?: tabs.firstOrNull()?.id
+                ?: createRuntimeTab(
+                    id = UUID.randomUUID().toString(),
+                    privateMode = false,
+                    initialLocation = null,
+                    initialTitle = null,
+                    restoredState = null,
+                    restoredLastAccessedAtEpochMs = null,
+                ).id
+
+            selectTab(selectedTabId, persist = false)
+
+            appliedRuntimePreferences?.let { preferences ->
+                appliedRuntimePreferences = null
+                applyRuntimePreferences(preferences)
+            }
+            if (guest) {
+                sessionStore.clear(normalized)
+            } else {
+                persistSoon()
+            }
+        } finally {
+            profileSwitchInProgress = false
+        }
+        notifyChanged()
     }
 
     fun setExternalResponseConsumer(
@@ -1066,9 +1153,14 @@ class BrowserRuntimeController(context: Context) {
 
     fun persistNow() {
         mainHandler.removeCallbacks(persistRunnable)
+        if (activeGuestProfile) {
+            sessionStore.clear(activeProfileId)
+            return
+        }
 
         sessionStore.save(
-            BrowserPersistencePolicy.stateForDisk(
+            profileId = activeProfileId,
+            state = BrowserPersistencePolicy.stateForDisk(
                 tabs = tabs.map { tab ->
                     BrowserPersistableTab(
                         id = tab.id,
@@ -1124,11 +1216,23 @@ class BrowserRuntimeController(context: Context) {
     }
 
     private fun newSession(privateMode: Boolean): GeckoSession {
-        val settings = GeckoSessionSettings.Builder()
-            .usePrivateMode(privateMode)
+        val enginePrivateMode = privateMode || activeGuestProfile
+        val builder = GeckoSessionSettings.Builder()
+            .usePrivateMode(enginePrivateMode)
             .useTrackingProtection(true)
-            .build()
-        return GeckoSession(settings)
+
+        if (!enginePrivateMode && activeProfileId != BrowserSessionStore.PERSONAL_PROFILE_ID) {
+            builder.contextId("taho-profile:" + activeProfileId)
+        }
+
+        appliedRuntimePreferences?.let { preferences ->
+            builder
+                .allowJavascript(preferences.javascriptEnabled)
+                .fullAccessibilityTree(preferences.forceAccessibilityTree)
+                .suspendMediaWhenInactive(preferences.suspendBackgroundMedia)
+        }
+
+        return GeckoSession(builder.build())
     }
 
     private fun attachDelegates(tab: RuntimeTab) {
@@ -1837,7 +1941,13 @@ class BrowserRuntimeController(context: Context) {
     }
 
     private fun notifyChangedIfReady() {
-        if (::selectedTabId.isInitialized) notifyChanged()
+        if (
+            ::selectedTabId.isInitialized &&
+            !profileSwitchInProgress &&
+            tabs.any { it.id == selectedTabId }
+        ) {
+            notifyChanged()
+        }
     }
 
     private fun notifyChanged() {
@@ -1846,6 +1956,7 @@ class BrowserRuntimeController(context: Context) {
 
     companion object {
         private const val PERSIST_DEBOUNCE_MS = 500L
+        private val PROFILE_ID_PATTERN = Regex("""[A-Za-z0-9._-]{1,128}""")
         private val SUPPORTED_ANDROID_PERMISSIONS = setOf(
             Manifest.permission.ACCESS_COARSE_LOCATION,
             Manifest.permission.ACCESS_FINE_LOCATION,
