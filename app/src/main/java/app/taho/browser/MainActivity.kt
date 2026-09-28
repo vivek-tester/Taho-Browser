@@ -61,6 +61,7 @@ import app.taho.browser.transfer.core.M4PreparationResult
 class MainActivity : ComponentActivity() {
     private companion object {
         const val TAHO_TRANSFER_REQUEST_CODE = 0x5448
+        const val MAX_BODY_PREVIEW_CHARS = 64 * 1024
     }
 
     private lateinit var controller: BrowserRuntimeController
@@ -433,7 +434,9 @@ class MainActivity : ComponentActivity() {
                     redirectCount = request.redirectCount,
                     requestBodyCapturedBytes = request.body?.size,
                     requestBodyDeclaredBytes = request.body?.declaredSize,
-                    safeBodyPreview = request.body?.content,
+                    safeBodyPreview = request.body?.content?.take(MAX_BODY_PREVIEW_CHARS),
+                    safeBodyPreviewTruncated =
+                        (request.body?.content?.length ?: 0) > MAX_BODY_PREVIEW_CHARS,
                 )
             }
 
