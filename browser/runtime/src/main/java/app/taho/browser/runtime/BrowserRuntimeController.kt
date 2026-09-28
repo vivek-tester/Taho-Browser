@@ -8,6 +8,7 @@ import org.mozilla.geckoview.AllowOrDeny
 import org.mozilla.geckoview.GeckoResult
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSessionSettings
+import org.mozilla.geckoview.PageExtractionController
 import org.mozilla.geckoview.StorageController
 import java.util.UUID
 
@@ -44,6 +45,14 @@ data class BrowserFindResult(
     val currentIndex: Int,
     val totalMatches: Int,
     val found: Boolean,
+)
+
+data class BrowserReaderContent(
+    val text: String,
+    val wordCount: Int,
+    val language: String,
+    val isReaderable: Boolean,
+    val isGated: Boolean,
 )
 
 data class BrowserTabSnapshot(
@@ -348,6 +357,45 @@ class BrowserRuntimeController(context: Context) {
 
     fun clearFindInPage() {
         requireSelected().session.finder.clear()
+    }
+
+    fun extractReaderContent(onResult: (BrowserReaderContent?) -> Unit) {
+        val tab = requireSelected()
+        if (tab.crashed || tab.location.isNullOrBlank()) {
+            onResult(null)
+            return
+        }
+
+        val extractor = tab.session.sessionPageExtractor
+        extractor.getPageMetadata().accept(
+            { metadata ->
+                extractor.getPageContent(
+                    PageExtractionController.ContentParams(
+                        true, // remove boilerplate through reader-mode extraction
+                        true, // plain prose, not markdown
+                    ),
+                ).accept(
+                    { content ->
+                        val text = content?.trim().orEmpty()
+                        if (text.isBlank()) {
+                            onResult(null)
+                        } else {
+                            onResult(
+                                BrowserReaderContent(
+                                    text = text,
+                                    wordCount = metadata?.wordCount ?: 0,
+                                    language = metadata?.language.orEmpty(),
+                                    isReaderable = metadata?.isReaderable == true,
+                                    isGated = metadata?.isGated == true,
+                                ),
+                            )
+                        }
+                    },
+                    { onResult(null) },
+                )
+            },
+            { onResult(null) },
+        )
     }
 
     fun setDesktopMode(enabled: Boolean) {
