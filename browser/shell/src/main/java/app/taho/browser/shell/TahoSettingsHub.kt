@@ -97,6 +97,11 @@ fun TahoSettingsHubSheet(
         { _, callback -> callback(false) },
     onCheckPasswordBreach: (String, (Int?) -> Unit) -> Unit =
         { _, callback -> callback(null) },
+    onDownloadPauseResume: (String) -> Unit = {},
+    onDownloadCancel: (String) -> Unit = {},
+    onDownloadRetry: (DownloadItemUi) -> Unit = {},
+    onDownloadOpen: (DownloadItemUi) -> Unit = {},
+    onDownloadDelete: (DownloadItemUi) -> Unit = {},
     onDismiss: () -> Unit,
 ) {
     var currentSubPage by rememberSaveable { mutableStateOf(initialSubPage) }
@@ -205,7 +210,13 @@ fun TahoSettingsHubSheet(
                 )
                 SettingsSubPage.BOOKMARKS -> SettingsBookmarksPage(onNavigate = { onDismiss(); onNavigateUrl(it) })
                 SettingsSubPage.HISTORY -> SettingsHistoryPage(onNavigate = { onDismiss(); onNavigateUrl(it) })
-                SettingsSubPage.DOWNLOADS -> SettingsDownloadsPage()
+                SettingsSubPage.DOWNLOADS -> SettingsDownloadsPage(
+                    onPauseResume = onDownloadPauseResume,
+                    onCancel = onDownloadCancel,
+                    onRetry = onDownloadRetry,
+                    onOpen = onDownloadOpen,
+                    onDelete = onDownloadDelete,
+                )
                 SettingsSubPage.PASSWORDS -> SettingsPasswordsPage(
                     onAuthenticateSensitive = onAuthenticateSensitive,
                     onCheckPasswordBreach = onCheckPasswordBreach,
@@ -1309,7 +1320,13 @@ private fun SettingsHistoryPage(onNavigate: (String) -> Unit) {
 // 7. DOWNLOAD MANAGER
 // -------------------------------------------------------------
 @Composable
-private fun SettingsDownloadsPage() {
+private fun SettingsDownloadsPage(
+    onPauseResume: (String) -> Unit,
+    onCancel: (String) -> Unit,
+    onRetry: (DownloadItemUi) -> Unit,
+    onOpen: (DownloadItemUi) -> Unit,
+    onDelete: (DownloadItemUi) -> Unit,
+) {
     val downloads = TahoBrowserStateStore.downloads
 
     LazyColumn(
@@ -1377,15 +1394,27 @@ private fun SettingsDownloadsPage() {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("${dl.bytesDownloaded / 1024} KB / ${dl.totalBytes / 1024} KB", color = TahoFaint, fontFamily = TahoMono, fontSize = 9.sp)
+                    Text(
+                        if (dl.totalBytes > 0) {
+                            "${dl.bytesDownloaded / 1024} KB / ${dl.totalBytes / 1024} KB"
+                        } else {
+                            "${dl.bytesDownloaded / 1024} KB downloaded"
+                        },
+                        color = TahoFaint,
+                        fontFamily = TahoMono,
+                        fontSize = 9.sp,
+                    )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (dl.status == TahoDownloadStatus.DOWNLOADING || dl.status == TahoDownloadStatus.PAUSED) {
-                            Text(if (dl.status == TahoDownloadStatus.DOWNLOADING) "Pause" else "Resume", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable { TahoBrowserStateStore.pauseResumeDownload(dl.id) })
-                            Text("Cancel", color = TahoError, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable { TahoBrowserStateStore.cancelDownload(dl.id) })
+                            Text(if (dl.status == TahoDownloadStatus.DOWNLOADING) "Pause" else "Resume", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable { onPauseResume(dl.id) })
+                            Text("Cancel", color = TahoError, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable { onCancel(dl.id) })
                         } else if (dl.status == TahoDownloadStatus.FAILED) {
-                            Text("Retry", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable { TahoBrowserStateStore.retryDownload(dl.id) })
+                            Text("Retry", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable { onRetry(dl) })
                         }
-                        Text("Delete", color = TahoFaint, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable { TahoBrowserStateStore.removeDownload(dl.id) })
+                        if (dl.status == TahoDownloadStatus.COMPLETED && dl.localPath != null) {
+                            Text("Open", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable { onOpen(dl) })
+                        }
+                        Text("Delete", color = TahoFaint, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable { onDelete(dl) })
                     }
                 }
             }
