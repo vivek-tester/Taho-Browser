@@ -475,6 +475,9 @@ class MainActivity : ComponentActivity() {
                         onComplete = callback,
                     )
                 },
+                onClearSiteDataForHost = { host, callback ->
+                    controller.clearSiteDataForHost(host, callback)
+                },
                 onExtractReaderContent = { callback ->
                     controller.extractReaderContent { extracted ->
                         callback(
