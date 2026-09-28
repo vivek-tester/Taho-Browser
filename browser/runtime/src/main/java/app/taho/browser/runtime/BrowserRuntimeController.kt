@@ -224,6 +224,7 @@ class BrowserRuntimeController(context: Context) {
     private var pendingAutofillPrompt: PendingAutofillPrompt? = null
     private var autofillStore: BrowserAutofillStore? = null
     private var externalResponseConsumer: ((BrowserDownloadResponse) -> Unit)? = null
+    private var appliedRuntimePreferences: BrowserRuntimePreferences? = null
     private var notice: String? = null
 
     private val persistRunnable = Runnable { persistNow() }
@@ -302,6 +303,161 @@ class BrowserRuntimeController(context: Context) {
     ) {
         externalResponseConsumer = consumer
     }
+
+    fun applyRuntimePreferences(preferences: BrowserRuntimePreferences) {
+        val previous = appliedRuntimePreferences
+        if (previous == preferences) return
+        appliedRuntimePreferences = preferences
+
+        val runtimeSettings = runtime.settings
+        val content = runtimeSettings.contentBlocking
+
+        val antiTracking = when (preferences.trackingLevel) {
+            BrowserTrackingLevel.STANDARD ->
+                if (preferences.blockTrackers) ContentBlocking.AntiTracking.DEFAULT
+                else ContentBlocking.AntiTracking.NONE
+            BrowserTrackingLevel.STRICT ->
+                if (preferences.blockTrackers) ContentBlocking.AntiTracking.STRICT
+                else ContentBlocking.AntiTracking.NONE
+            BrowserTrackingLevel.CUSTOM -> {
+                if (!preferences.blockTrackers) {
+                    ContentBlocking.AntiTracking.NONE
+                } else {
+                    var categories =
+                        ContentBlocking.AntiTracking.AD or
+                            ContentBlocking.AntiTracking.ANALYTIC
+                    if (preferences.blockSocialTrackers) {
+                        categories = categories or
+                            ContentBlocking.AntiTracking.SOCIAL or
+                            ContentBlocking.AntiTracking.STP
+                    }
+                    if (preferences.blockCryptomining) {
+                        categories = categories or ContentBlocking.AntiTracking.CRYPTOMINING
+                    }
+                    if (preferences.blockFingerprinting) {
+                        categories = categories or ContentBlocking.AntiTracking.FINGERPRINTING
+                    }
+                    categories
+                }
+            }
+        }
+
+        val etpLevel = when (preferences.trackingLevel) {
+            BrowserTrackingLevel.STANDARD -> ContentBlocking.EtpLevel.DEFAULT
+            BrowserTrackingLevel.STRICT -> ContentBlocking.EtpLevel.STRICT
+            BrowserTrackingLevel.CUSTOM ->
+                if (preferences.blockTrackers) ContentBlocking.EtpLevel.DEFAULT
+                else ContentBlocking.EtpLevel.NONE
+        }
+
+        val cookieBehavior = when (preferences.cookiePolicy) {
+            BrowserCookiePolicy.BLOCK_THIRD_PARTY ->
+                ContentBlocking.CookieBehavior.ACCEPT_FIRST_PARTY_AND_ISOLATE_OTHERS
+            BrowserCookiePolicy.BLOCK_ALL ->
+                ContentBlocking.CookieBehavior.ACCEPT_NONE
+            BrowserCookiePolicy.ALLOW_ALL ->
+                ContentBlocking.CookieBehavior.ACCEPT_ALL
+        }
+
+        val safeBrowsing = if (!preferences.safeBrowsingEnabled) {
+            ContentBlocking.SafeBrowsing.NONE
+        } else {
+            var categories =
+                ContentBlocking.SafeBrowsing.MALWARE or
+                    ContentBlocking.SafeBrowsing.UNWANTED or
+                    ContentBlocking.SafeBrowsing.HARMFUL or
+                    ContentBlocking.SafeBrowsing.HARMFULADDON
+            if (preferences.phishingProtectionEnabled) {
+                categories = categories or ContentBlocking.SafeBrowsing.PHISHING
+            }
+            categories
+        }
+
+        content
+            .setAntiTracking(antiTracking)
+            .setEnhancedTrackingProtectionLevel(etpLevel)
+            .setCookieBehavior(cookieBehavior)
+            .setCookieBehaviorPrivateMode(cookieBehavior)
+            .setStrictSocialTrackingProtection(preferences.blockSocialTrackers)
+            .setSafeBrowsing(safeBrowsing)
+
+        runtimeSettings
+            .setAllowInsecureConnections(
+                if (preferences.httpsOnlyEnabled) {
+                    GeckoRuntimeSettings.HTTPS_ONLY
+                } else {
+                    GeckoRuntimeSettings.ALLOW_ALL
+                },
+            )
+            .setGlobalPrivacyControl(preferences.globalPrivacyControlEnabled)
+            .setFingerprintingProtection(preferences.blockFingerprinting)
+            .setFingerprintingProtectionPrivateBrowsing(preferences.blockFingerprinting)
+            .setJavaScriptEnabled(preferences.javascriptEnabled)
+            .setForceUserScalableEnabled(preferences.forceUserScalable)
+            .setAutomaticFontSizeAdjustment(false)
+            .setFontSizeFactor(preferences.fontScale.coerceIn(0.75f, 2.0f))
+            .setForceEnableAccessibility(preferences.forceAccessibilityTree)
+            .setPreferredColorScheme(
+                when (preferences.webColorScheme) {
+                    BrowserWebColorScheme.SYSTEM -> GeckoRuntimeSettings.COLOR_SCHEME_SYSTEM
+                    BrowserWebColorScheme.DARK -> GeckoRuntimeSettings.COLOR_SCHEME_DARK
+                    BrowserWebColorScheme.LIGHT -> GeckoRuntimeSettings.COLOR_SCHEME_LIGHT
+                },
+            )
+
+        when (preferences.secureDnsMode) {
+            BrowserSecureDnsMode.OFF -> {
+                runtimeSettings.setTrustedRecursiveResolverMode(
+                    GeckoRuntimeSettings.TRR_MODE_DISABLED,
+                )
+            }
+            BrowserSecureDnsMode.FIRST,
+            BrowserSecureDnsMode.ONLY,
+            -> {
+                preferences.secureDnsUri
+                    ?.takeIf(::isSafeDohUri)
+                    ?.let(runtimeSettings::setTrustedRecursiveResolverUri)
+                runtimeSettings.setTrustedRecursiveResolverMode(
+                    if (preferences.secureDnsMode == BrowserSecureDnsMode.ONLY) {
+                        GeckoRuntimeSettings.TRR_MODE_ONLY
+                    } else {
+                        GeckoRuntimeSettings.TRR_MODE_FIRST
+                    },
+                )
+            }
+        }
+
+        tabs.filterNot { it.crashed }.forEach { tab ->
+            tab.session.settings.apply {
+                setUseTrackingProtection(antiTracking != ContentBlocking.AntiTracking.NONE)
+                setAllowJavascript(preferences.javascriptEnabled)
+                setFullAccessibilityTree(preferences.forceAccessibilityTree)
+                setSuspendMediaWhenInactive(preferences.suspendBackgroundMedia)
+            }
+        }
+
+        val requiresReload =
+            previous != null &&
+                (
+                    previous.fontScale != preferences.fontScale ||
+                        previous.javascriptEnabled != preferences.javascriptEnabled ||
+                        previous.forceUserScalable != preferences.forceUserScalable ||
+                        previous.webColorScheme != preferences.webColorScheme
+                    )
+        if (requiresReload) {
+            tabs.filterNot { it.crashed || it.location.isNullOrBlank() }.forEach { tab ->
+                tab.session.reload()
+            }
+        }
+    }
+
+    private fun isSafeDohUri(raw: String): Boolean =
+        runCatching {
+            val uri = java.net.URI(raw)
+            uri.scheme.equals("https", ignoreCase = true) &&
+                !uri.host.isNullOrBlank() &&
+                uri.userInfo == null
+        }.getOrDefault(false)
 
     fun setAutofillStore(store: BrowserAutofillStore?) {
         autofillStore = store
