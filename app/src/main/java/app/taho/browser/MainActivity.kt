@@ -143,6 +143,7 @@ class MainActivity : ComponentActivity() {
             isAppearanceLightNavigationBars = true
         }
 
+        TahoBrowserStateStore.initialize(this)
         controller = BrowserRuntimeStore.get(this)
         handleIncomingBrowserIntent(intent)
         controller.snapshot().tabs.forEach { tab ->
@@ -505,6 +506,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        TahoBrowserStateStore.persistNow()
         controller.persistNow()
         super.onStop()
     }
