@@ -118,6 +118,10 @@ fun TahoSettingsHubSheet(
     onSetExtensionPrivate: (String, Boolean) -> Unit = { _, _ -> },
     onUpdateExtension: (String) -> Unit = {},
     onUninstallExtension: (String) -> Unit = {},
+    onSearchExtensionMarketplace: (
+        String,
+        (List<ExtensionMarketplaceItemUi>, String?) -> Unit,
+    ) -> Unit = { _, callback -> callback(emptyList(), "Marketplace search is unavailable.") },
     onExportFullBackup: (Uri, String, (Boolean, String) -> Unit) -> Unit =
         { _, _, callback -> callback(false, "Full backup export is unavailable.") },
     onRestoreFullBackup: (Uri, String, (Boolean, String) -> Unit) -> Unit =
@@ -265,10 +269,7 @@ fun TahoSettingsHubSheet(
                     onSetPrivate = onSetExtensionPrivate,
                     onUpdate = onUpdateExtension,
                     onUninstall = onUninstallExtension,
-                    onBrowseMarketplace = {
-                        onDismiss()
-                        onNavigateUrl("https://addons.mozilla.org/android/")
-                    },
+                    onSearchMarketplace = onSearchExtensionMarketplace,
                 )
                 SettingsSubPage.ACCESSIBILITY -> SettingsAccessibilityPage()
                 SettingsSubPage.LANGUAGES -> SettingsLanguagesPage()
@@ -2115,11 +2116,19 @@ private fun SettingsExtensionsPage(
     onSetPrivate: (String, Boolean) -> Unit,
     onUpdate: (String) -> Unit,
     onUninstall: (String) -> Unit,
-    onBrowseMarketplace: () -> Unit,
+    onSearchMarketplace: (
+        String,
+        (List<ExtensionMarketplaceItemUi>, String?) -> Unit,
+    ) -> Unit,
 ) {
     val exts = TahoBrowserStateStore.extensions
     val pwas = TahoBrowserStateStore.installedPwas
     var xpiUrl by rememberSaveable { mutableStateOf("") }
+    var marketplaceOpen by rememberSaveable { mutableStateOf(false) }
+    var marketplaceQuery by rememberSaveable { mutableStateOf("") }
+    var marketplaceLoading by rememberSaveable { mutableStateOf(false) }
+    var marketplaceError by rememberSaveable { mutableStateOf<String?>(null) }
+    var marketplaceResults by remember { mutableStateOf(emptyList<ExtensionMarketplaceItemUi>()) }
 
     Column(
         modifier = Modifier
@@ -2139,15 +2148,171 @@ private fun SettingsExtensionsPage(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             M7SecondaryButton(
-                "Browse Mozilla Add-ons",
+                if (marketplaceOpen) "Hide Marketplace" else "Browse Mozilla Add-ons",
                 Modifier.weight(1f),
-                onClick = onBrowseMarketplace,
+                onClick = { marketplaceOpen = !marketplaceOpen },
             )
             M7SecondaryButton(
                 "Refresh",
                 Modifier.weight(0.55f),
                 onClick = onRefresh,
             )
+        }
+
+        if (marketplaceOpen) {
+            Spacer(Modifier.height(10.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(TahoCardShape)
+                    .background(TahoSurfaceRow)
+                    .border(1.dp, TahoHairline, TahoCardShape)
+                    .padding(12.dp),
+            ) {
+                Text(
+                    "Mozilla Add-ons Marketplace",
+                    color = TahoText,
+                    fontFamily = TahoDisplay,
+                    fontSize = 13.sp,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Results come from addons.mozilla.org. Gecko still verifies the signed XPI and shows its permission request before installation.",
+                    color = TahoFaint,
+                    fontFamily = TahoMono,
+                    fontSize = 8.5.sp,
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(7.dp),
+                ) {
+                    BasicTextField(
+                        value = marketplaceQuery,
+                        onValueChange = { marketplaceQuery = it.take(100) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(TahoBlockShape)
+                            .background(TahoSurfaceControl)
+                            .border(1.dp, TahoHairline, TahoBlockShape)
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        singleLine = true,
+                        textStyle = TextStyle(
+                            color = TahoText,
+                            fontFamily = TahoMono,
+                            fontSize = 10.sp,
+                        ),
+                        cursorBrush = SolidColor(TahoGold),
+                        decorationBox = { inner ->
+                            Box {
+                                if (marketplaceQuery.isBlank()) {
+                                    Text(
+                                        "Search public Android extensions…",
+                                        color = TahoFaint,
+                                        fontFamily = TahoMono,
+                                        fontSize = 9.5.sp,
+                                    )
+                                }
+                                inner()
+                            }
+                        },
+                    )
+                    M7SecondaryButton(
+                        if (marketplaceLoading) "…" else "Search",
+                        Modifier.width(78.dp),
+                    ) {
+                        if (!marketplaceLoading) {
+                            marketplaceLoading = true
+                            marketplaceError = null
+                            onSearchMarketplace(marketplaceQuery) { items, error ->
+                                marketplaceLoading = false
+                                marketplaceResults = items
+                                marketplaceError = error
+                            }
+                        }
+                    }
+                }
+
+                marketplaceError?.let { error ->
+                    Spacer(Modifier.height(7.dp))
+                    Text(
+                        error,
+                        color = TahoError,
+                        fontFamily = TahoMono,
+                        fontSize = 8.5.sp,
+                    )
+                }
+
+                if (!marketplaceLoading && marketplaceResults.isEmpty() && marketplaceError == null) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Search to load public extensions.",
+                        color = TahoFaint,
+                        fontFamily = TahoMono,
+                        fontSize = 8.5.sp,
+                    )
+                }
+
+                marketplaceResults.forEach { item ->
+                    Spacer(Modifier.height(8.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(TahoBlockShape)
+                            .background(TahoSurfaceControl)
+                            .padding(10.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    item.name,
+                                    color = TahoText,
+                                    fontFamily = TahoMono,
+                                    fontSize = 10.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Text(
+                                    "v" + item.version + " · " + item.author,
+                                    color = TahoFaint,
+                                    fontFamily = TahoMono,
+                                    fontSize = 8.sp,
+                                )
+                            }
+                            M7SecondaryButton("Install", Modifier.width(72.dp)) {
+                                onInstall(item.installUrl)
+                            }
+                        }
+                        if (item.summary.isNotBlank()) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                item.summary,
+                                color = TahoMuted,
+                                fontFamily = TahoMono,
+                                fontSize = 8.5.sp,
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        val metadata = buildList {
+                            item.rating?.let { add(String.format("%.1f★", it)) }
+                            item.users?.let { add(it.toString() + " users") }
+                        }.joinToString(" · ")
+                        if (metadata.isNotBlank()) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                metadata,
+                                color = TahoFaint,
+                                fontFamily = TahoMono,
+                                fontSize = 8.sp,
+                            )
+                        }
+                    }
+                }
+            }
         }
 
         Spacer(Modifier.height(10.dp))
