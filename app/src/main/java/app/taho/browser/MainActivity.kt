@@ -55,6 +55,7 @@ import app.taho.browser.observation.M4CaptureRuntime
 import app.taho.browser.observation.M4CaptureRuntimeSnapshot
 import app.taho.browser.observation.ObservedBrowserSession
 import app.taho.browser.observation.ProductionCaptureGate
+import app.taho.browser.runtime.BrowserAutofillPromptKind
 import app.taho.browser.runtime.BrowserAutofillStore
 import app.taho.browser.runtime.BrowserRuntimeController
 import app.taho.browser.runtime.BrowserStoredAddress
@@ -66,6 +67,9 @@ import app.taho.browser.runtime.BrowserSnapshot
 import app.taho.browser.runtime.BrowserSurfaceView
 import app.taho.browser.runtime.GeckoRuntimeHolder
 import app.taho.browser.runtime.NavigationInput
+import app.taho.browser.shell.BrowserAutofillPromptKindUi
+import app.taho.browser.shell.BrowserAutofillPromptOptionUi
+import app.taho.browser.shell.BrowserAutofillPromptUiState
 import app.taho.browser.shell.BrowserTabUiState
 import app.taho.browser.shell.BrowserUiState
 import app.taho.browser.shell.M4CaptureHeaderUiState
@@ -486,6 +490,33 @@ class MainActivity : ComponentActivity() {
                             storageNotice(requireNotNull(captureSnapshot.storageDegradedReason))
                         else -> null
                     },
+                    autofillPrompt = snapshot.autofillPrompt?.let { prompt ->
+                        BrowserAutofillPromptUiState(
+                            id = prompt.id,
+                            origin = prompt.origin,
+                            kind = when (prompt.kind) {
+                                BrowserAutofillPromptKind.LOGIN_SAVE ->
+                                    BrowserAutofillPromptKindUi.LOGIN_SAVE
+                                BrowserAutofillPromptKind.LOGIN_SELECT ->
+                                    BrowserAutofillPromptKindUi.LOGIN_SELECT
+                                BrowserAutofillPromptKind.ADDRESS_SAVE ->
+                                    BrowserAutofillPromptKindUi.ADDRESS_SAVE
+                                BrowserAutofillPromptKind.ADDRESS_SELECT ->
+                                    BrowserAutofillPromptKindUi.ADDRESS_SELECT
+                                BrowserAutofillPromptKind.CREDIT_CARD_SAVE ->
+                                    BrowserAutofillPromptKindUi.CREDIT_CARD_SAVE
+                                BrowserAutofillPromptKind.CREDIT_CARD_SELECT ->
+                                    BrowserAutofillPromptKindUi.CREDIT_CARD_SELECT
+                            },
+                            options = prompt.options.map { option ->
+                                BrowserAutofillPromptOptionUi(
+                                    index = option.index,
+                                    title = option.title,
+                                    subtitle = option.subtitle,
+                                )
+                            },
+                        )
+                    },
                     sitePermission = snapshot.sitePermission?.let { permission ->
                         val copy = permissionCopy(permission.kind)
                         SitePermissionUiState(
@@ -549,6 +580,7 @@ class MainActivity : ComponentActivity() {
                     controller.closeTab(tabId)
                 },
                 onSitePermissionDecision = controller::resolveSitePermission,
+                onAutofillPromptDecision = controller::resolveAutofillPrompt,
                 onCopyCurl = ::copyMaskedCurl,
                 onShare = ::shareMaskedRequest,
                 onDismissNotice = {
