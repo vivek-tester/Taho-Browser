@@ -61,6 +61,13 @@ import androidx.compose.ui.unit.sp
 import java.text.DateFormat
 import java.util.Date
 
+data class BrowserUpdateStatusUi(
+    val latestVersion: String?,
+    val releaseUrl: String?,
+    val updateAvailable: Boolean,
+    val error: String? = null,
+)
+
 enum class SettingsSubPage {
     MAIN,
     APPEARANCE,
@@ -110,6 +117,17 @@ fun TahoSettingsHubSheet(
     onSetExtensionPrivate: (String, Boolean) -> Unit = { _, _ -> },
     onUpdateExtension: (String) -> Unit = {},
     onUninstallExtension: (String) -> Unit = {},
+    onCheckForUpdates: ((BrowserUpdateStatusUi) -> Unit) -> Unit =
+        { callback ->
+            callback(
+                BrowserUpdateStatusUi(
+                    latestVersion = null,
+                    releaseUrl = null,
+                    updateAvailable = false,
+                    error = "Update checking is unavailable.",
+                ),
+            )
+        },
     onDismiss: () -> Unit,
 ) {
     var currentSubPage by rememberSaveable { mutableStateOf(initialSubPage) }
@@ -259,7 +277,7 @@ fun TahoSettingsHubSheet(
                 SettingsSubPage.COLLECTIONS -> SettingsCollectionsPage()
                 SettingsSubPage.ONBOARDING -> SettingsOnboardingPage(onFinish = { currentSubPage = SettingsSubPage.MAIN })
                 SettingsSubPage.WHATS_NEW -> SettingsWhatsNewPage()
-                SettingsSubPage.ABOUT -> SettingsAboutPage()
+                SettingsSubPage.ABOUT -> SettingsAboutPage(onCheckForUpdates = onCheckForUpdates)
             }
         }
     }
@@ -3243,13 +3261,17 @@ private fun SettingsWhatsNewPage() {
 // 22. ABOUT
 // -------------------------------------------------------------
 @Composable
-private fun SettingsAboutPage() {
+private fun SettingsAboutPage(
+    onCheckForUpdates: ((BrowserUpdateStatusUi) -> Unit) -> Unit,
+) {
     val context = LocalContext.current
     val packageInfo = remember(context.packageName) {
         runCatching {
             context.packageManager.getPackageInfo(context.packageName, 0)
         }.getOrNull()
     }
+    var checking by rememberSaveable { mutableStateOf(false) }
+    var updateStatus by remember { mutableStateOf<BrowserUpdateStatusUi?>(null) }
 
     Column(
         modifier = Modifier
@@ -3277,12 +3299,47 @@ private fun SettingsAboutPage() {
         }
 
         Spacer(Modifier.height(14.dp))
-        Text(
-            "Automatic update checking is not connected in this build. Updates must be verified through the distribution channel that installed the app.",
-            color = TahoFaint,
-            fontFamily = TahoMono,
-            fontSize = 9.5.sp,
-        )
+        M7SecondaryButton(
+            label = if (checking) "Checking…" else "Check for Updates",
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            if (!checking) {
+                checking = true
+                updateStatus = null
+                onCheckForUpdates { result ->
+                    checking = false
+                    updateStatus = result
+                }
+            }
+        }
+
+        updateStatus?.let { status ->
+            Spacer(Modifier.height(10.dp))
+            val message = when {
+                status.error != null -> status.error
+                status.updateAvailable ->
+                    "Update available: " + (status.latestVersion ?: "new release")
+                status.latestVersion != null ->
+                    "Installed version is current relative to release " + status.latestVersion + "."
+                else -> "No release information was returned."
+            }
+            Text(
+                text = message,
+                color = if (status.updateAvailable) TahoGoldHi else TahoFaint,
+                fontFamily = TahoMono,
+                fontSize = 9.5.sp,
+            )
+            if (status.updateAvailable && status.releaseUrl != null) {
+                Spacer(Modifier.height(8.dp))
+                M7SecondaryButton("Open Release Page", Modifier.fillMaxWidth()) {
+                    runCatching {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse(status.releaseUrl)),
+                        )
+                    }
+                }
+            }
+        }
 
         Spacer(Modifier.height(16.dp))
         SettingsSectionTitle("LEGAL & SUPPORT")
