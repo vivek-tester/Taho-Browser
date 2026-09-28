@@ -658,6 +658,12 @@ private fun PermissionItemToggle(
 fun TahoReaderModeView(
     title: String,
     url: String,
+    content: String?,
+    wordCount: Int = 0,
+    language: String = "",
+    isGated: Boolean = false,
+    isLoading: Boolean = false,
+    errorMessage: String? = null,
     onClose: () -> Unit,
 ) {
     var readerSettings by remember { mutableStateOf(TahoBrowserStateStore.readerSettings) }
@@ -725,8 +731,15 @@ fun TahoReaderModeView(
 
             Spacer(Modifier.height(8.dp))
 
+            val minutes = if (wordCount > 0) ((wordCount + 199) / 200).coerceAtLeast(1) else null
             Text(
-                text = "Extracted from ${URI(url).host ?: url} · ~4 min read",
+                text = buildString {
+                    append("Extracted from ")
+                    append(URI(url).host ?: url)
+                    minutes?.let { append(" · ~").append(it).append(" min read") }
+                    language.takeIf { it.isNotBlank() }?.let { append(" · ").append(it) }
+                    if (isGated) append(" · gated content")
+                },
                 color = TahoFaint,
                 fontFamily = TahoMono,
                 fontSize = 10.sp,
@@ -734,22 +747,39 @@ fun TahoReaderModeView(
 
             Spacer(Modifier.height(24.dp))
 
-            // Sample Article Body
             val fontFam = when (readerSettings.fontFamily) {
                 "Mono" -> TahoMono
                 "Sans" -> TahoBody
                 else -> FontFamily.Serif
             }
 
-            Text(
-                text = "Architectural invariants must be preserved unconditionally across runtime lifecycles. When client connections bridge between isolated sandbox domains and high-performance render pipelines, intermediate transport proxies must ensure non-repudiation and strict capability verification.\n\n" +
-                    "Zero-trust design patterns mandate that network transactions and credential stores operate in distinct privilege rings. No background telemetry or external third-party script can intercept session cookies or authentication tokens when defensive content isolation rules are applied.\n\n" +
-                    "By leveraging native hardware acceleration alongside strict subresource integrity checks, modern web navigation remains both resilient against hostile cross-site scripting vectors and responsive to user input gestures.",
-                color = textCol,
-                fontFamily = fontFam,
-                fontSize = readerSettings.fontSizeSp.sp,
-                lineHeight = (readerSettings.fontSizeSp * readerSettings.lineSpacingMultiplier).sp,
-            )
+            when {
+                isLoading -> Text(
+                    text = "Extracting readable content…",
+                    color = TahoMuted,
+                    fontFamily = TahoBody,
+                    fontSize = readerSettings.fontSizeSp.sp,
+                )
+                errorMessage != null -> Text(
+                    text = errorMessage,
+                    color = TahoWarn,
+                    fontFamily = TahoBody,
+                    fontSize = readerSettings.fontSizeSp.sp,
+                )
+                content.isNullOrBlank() -> Text(
+                    text = "Readable page content is unavailable.",
+                    color = TahoMuted,
+                    fontFamily = TahoBody,
+                    fontSize = readerSettings.fontSizeSp.sp,
+                )
+                else -> Text(
+                    text = content,
+                    color = textCol,
+                    fontFamily = fontFam,
+                    fontSize = readerSettings.fontSizeSp.sp,
+                    lineHeight = (readerSettings.fontSizeSp * readerSettings.lineSpacingMultiplier).sp,
+                )
+            }
 
             Spacer(Modifier.height(100.dp))
         }
