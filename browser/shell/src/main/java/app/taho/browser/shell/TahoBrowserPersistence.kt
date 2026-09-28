@@ -30,6 +30,7 @@ internal data class BrowserPersistentState(
     val profiles: List<BrowserProfileUi>,
     val syncedDevices: List<SyncedDeviceUi>,
     val tabGroups: List<TabGroupUi>,
+    val sitePermissions: List<SitePermissionEntry>,
     val installedPwas: List<InstalledPwaUi>,
     val offlinePages: List<OfflinePageUi>,
     val collections: List<BrowserCollectionItem>,
