@@ -94,20 +94,65 @@ internal object M7CaptureUx {
         request: M4CaptureRequestUiState,
         policy: M4SecretPolicyUi,
     ): String {
-        if (request.sensitiveCount == 0) return "No protected credential fields are included."
-        return when (policy) {
-            M4SecretPolicyUi.PARAMETERIZE ->
-                "Authorization: Bearer {{AUTH_TOKEN}}"
-            M4SecretPolicyUi.MASK ->
-                "Authorization: Bearer ••••••••"
-            M4SecretPolicyUi.EXPLICIT ->
-                if (request.explicitPolicyAllowed) {
-                    "A live credential will be included after explicit consent."
-                } else {
-                    "Explicit live credentials are unavailable for this capture."
-                }
+        if (request.sensitiveCount == 0) {
+            return "No protected credential fields are included."
         }
+
+        val protectedHeaders = request.headers.filter { it.sensitive }
+        if (protectedHeaders.isEmpty()) {
+            return when (policy) {
+                M4SecretPolicyUi.PARAMETERIZE ->
+                    "Protected request fields will be replaced with placeholders."
+                M4SecretPolicyUi.MASK ->
+                    "Protected request fields will be replaced with masked values."
+                M4SecretPolicyUi.EXPLICIT ->
+                    if (request.explicitPolicyAllowed) {
+                        "A live credential will be included only after explicit consent."
+                    } else {
+                        "Explicit live credentials are unavailable for this capture."
+                    }
+            }
+        }
+
+        return protectedHeaders
+            .take(3)
+            .joinToString("\n") { header ->
+                val effective = if (
+                    header.secretCategory == "COOKIE" &&
+                    policy != M4SecretPolicyUi.EXPLICIT
+                ) {
+                    M4SecretPolicyUi.MASK
+                } else {
+                    policy
+                }
+
+                val value = when (effective) {
+                    M4SecretPolicyUi.PARAMETERIZE ->
+                        parameterName(header.secretCategory)
+                    M4SecretPolicyUi.MASK ->
+                        header.displayValue
+                    M4SecretPolicyUi.EXPLICIT ->
+                        if (request.explicitPolicyAllowed) {
+                            "<live value requires separate consent>"
+                        } else {
+                            "<explicit unavailable>"
+                        }
+                }
+                header.name + ": " + value
+            }
     }
+
+    private fun parameterName(category: String?): String =
+        when (category) {
+            "API_KEY" -> "{{API_KEY}}"
+            "CSRF_TOKEN" -> "{{CSRF_TOKEN}}"
+            "SESSION_ID" -> "{{SESSION_ID}}"
+            "CLIENT_SECRET" -> "{{CLIENT_SECRET}}"
+            "PASSWORD" -> "{{PASSWORD}}"
+            "QUERY_TOKEN" -> "{{QUERY_TOKEN}}"
+            "COOKIE" -> "{{COOKIE}}"
+            else -> "{{AUTH_TOKEN}}"
+        }
 
     private val API_CATEGORIES = setOf(
         "AUTHENTICATION",
