@@ -809,13 +809,13 @@ private fun SettingsBookmarksPage(onNavigate: (String) -> Unit) {
     var newFolderName by rememberSaveable { mutableStateOf("") }
 
     val allBookmarks = TahoBrowserStateStore.bookmarks
-    val folders = allBookmarks.mapNotNull { it.folder }.distinct()
+    val folders = TahoBrowserStateStore.bookmarkFolders
 
     val filteredBookmarks = allBookmarks.filter { item ->
         val matchesSearch = bookmarkSearch.isBlank() ||
             item.title.contains(bookmarkSearch, ignoreCase = true) ||
             item.url.contains(bookmarkSearch, ignoreCase = true)
-        val matchesFolder = selectedFolder == null || item.folder == selectedFolder
+        val matchesFolder = selectedFolder == null || item.folderId == selectedFolder
         matchesSearch && matchesFolder
     }
 
@@ -908,16 +908,16 @@ private fun SettingsBookmarksPage(onNavigate: (String) -> Unit) {
                         Text("All", color = if (allSel) TahoGoldHi else TahoMuted, fontFamily = TahoMono, fontSize = 8.5.sp)
                     }
                     folders.forEach { f ->
-                        val fSel = selectedFolder == f
+                        val fSel = selectedFolder == f.id
                         Box(
                             modifier = Modifier
                                 .clip(TahoBadgeShape)
                                 .background(if (fSel) TahoGoldHi.copy(alpha = 0.2f) else TahoSurfaceControl)
                                 .border(1.dp, if (fSel) TahoGoldHi else TahoHairline, TahoBadgeShape)
-                                .clickable { selectedFolder = f }
+                                .clickable { selectedFolder = f.id }
                                 .padding(horizontal = 7.dp, vertical = 3.dp),
                         ) {
-                            Text("📁 $f", color = if (fSel) TahoGoldHi else TahoMuted, fontFamily = TahoMono, fontSize = 8.5.sp)
+                            Text("📁 undefined", color = if (fSel) TahoGoldHi else TahoMuted, fontFamily = TahoMono, fontSize = 8.5.sp)
                         }
                     }
                     Box(
@@ -1029,7 +1029,9 @@ private fun SettingsBookmarksPage(onNavigate: (String) -> Unit) {
                             TahoBrowserStateStore.addBookmark(
                                 title = newBookmarkTitle.trim(),
                                 url = newBookmarkUrl.trim(),
-                                folder = if (newBookmarkFolder.isBlank()) null else newBookmarkFolder.trim(),
+                                folderId = TahoBrowserStateStore.bookmarkFolders
+                                    .firstOrNull { it.name.equals(newBookmarkFolder.trim(), ignoreCase = true) }
+                                    ?.id,
                             )
                             newBookmarkTitle = ""
                             newBookmarkUrl = ""
@@ -1069,7 +1071,9 @@ private fun SettingsBookmarksPage(onNavigate: (String) -> Unit) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(item.title, color = TahoText, fontFamily = TahoMono, fontSize = 11.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    item.folder?.let { f ->
+                                    item.folderId
+                                        ?.let { folderId -> TahoBrowserStateStore.bookmarkFolders.firstOrNull { it.id == folderId } }
+                                        ?.let { f ->
                                         Spacer(Modifier.width(6.dp))
                                         Box(
                                             modifier = Modifier
@@ -1077,7 +1081,7 @@ private fun SettingsBookmarksPage(onNavigate: (String) -> Unit) {
                                                 .background(TahoSurfaceControl)
                                                 .padding(horizontal = 5.dp, vertical = 1.dp)
                                         ) {
-                                            Text(f, color = TahoGoldHi, fontFamily = TahoMono, fontSize = 7.5.sp)
+                                            Text(f.name, color = TahoGoldHi, fontFamily = TahoMono, fontSize = 7.5.sp)
                                         }
                                     }
                                 }
@@ -1607,11 +1611,11 @@ private fun SettingsAutofillPage() {
             .verticalScroll(rememberScrollState()),
     ) {
         SettingsSectionTitle("AUTOFILL SETTINGS")
-        SettingsToggleRow("Autofill Addresses & Forms", "Save and fill addresses automatically on web forms", settings.saveFormDataEnabled) {
-            TahoBrowserStateStore.updateSettings { it.copy(saveFormDataEnabled = !it.saveFormDataEnabled) }
+        SettingsToggleRow("Autofill Addresses & Forms", "Save and fill addresses automatically on web forms", settings.addressAutofillEnabled) {
+            TahoBrowserStateStore.updateSettings { it.copy(addressAutofillEnabled = !it.saveFormDataEnabled) }
         }
-        SettingsToggleRow("Autofill Payment Cards", "Securely fill payment details on checkout forms", settings.saveCreditCardsEnabled) {
-            TahoBrowserStateStore.updateSettings { it.copy(saveCreditCardsEnabled = !it.saveCreditCardsEnabled) }
+        SettingsToggleRow("Autofill Payment Cards", "Securely fill payment details on checkout forms", settings.paymentAutofillEnabled) {
+            TahoBrowserStateStore.updateSettings { it.copy(paymentAutofillEnabled = !it.saveCreditCardsEnabled) }
         }
 
         Spacer(Modifier.height(18.dp))
@@ -1918,7 +1922,7 @@ private fun SettingsExtensionsPage() {
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(pwa.name, color = TahoText, fontFamily = TahoMono, fontSize = 11.5.sp, fontWeight = FontWeight.Medium)
-                        Text(pwa.startUrl, color = TahoFaint, fontFamily = TahoMono, fontSize = 8.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(pwa.url, color = TahoFaint, fontFamily = TahoMono, fontSize = 8.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Text("Uninstall", color = TahoError, fontFamily = TahoMono, fontSize = 9.5.sp, modifier = Modifier.clickable {
                         TahoBrowserStateStore.uninstallPwa(pwa.id)
@@ -2401,7 +2405,7 @@ private fun SettingsCollectionsPage() {
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(col.name, color = TahoText, fontFamily = TahoMono, fontSize = 11.5.sp, fontWeight = FontWeight.Medium)
-                        Text("${col.urls.size} links · ${col.description}", color = TahoFaint, fontFamily = TahoMono, fontSize = 8.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("${col.linkCount} links · ${col.description}", color = TahoFaint, fontFamily = TahoMono, fontSize = 8.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Text("×", color = TahoMuted, fontSize = 16.sp, modifier = Modifier.clickable {
                         TahoBrowserStateStore.removeCollection(col.id)
