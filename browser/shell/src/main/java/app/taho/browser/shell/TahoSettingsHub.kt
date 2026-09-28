@@ -1857,14 +1857,13 @@ private fun SettingsAutofillPage() {
 private fun SettingsProfilesSyncPage() {
     val profiles = TahoBrowserStateStore.profiles
     val devices = TahoBrowserStateStore.syncedDevices
-    val settings = TahoBrowserStateStore.settings
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
-        SettingsSectionTitle("SWITCH BROWSER PROFILE")
+        SettingsSectionTitle("LOCAL BROWSER PROFILES")
         profiles.forEach { profile ->
             Row(
                 modifier = Modifier
@@ -1882,7 +1881,12 @@ private fun SettingsProfilesSyncPage() {
                     Spacer(Modifier.width(10.dp))
                     Column {
                         Text(profile.name, color = TahoText, fontFamily = TahoMono, fontSize = 11.5.sp)
-                        Text(if (profile.isGuest) "Zero persistence" else "Sync active · ${profile.syncedDevicesCount} devices", color = TahoFaint, fontFamily = TahoMono, fontSize = 8.5.sp)
+                        Text(
+                            if (profile.isGuest) "Guest profile" else "Local profile metadata",
+                            color = TahoFaint,
+                            fontFamily = TahoMono,
+                            fontSize = 8.5.sp,
+                        )
                     }
                 }
                 if (profile.isActive) {
@@ -1893,25 +1897,54 @@ private fun SettingsProfilesSyncPage() {
         }
 
         Spacer(Modifier.height(18.dp))
-        SettingsSectionTitle("SYNCED DEVICES")
-        devices.forEach { dev ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(TahoBlockShape)
-                    .background(TahoSurfaceRow)
-                    .border(1.dp, TahoHairline, TahoBlockShape)
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column {
-                    Text(dev.name, color = TahoText, fontFamily = TahoMono, fontSize = 11.sp)
-                    Text("Type: ${dev.deviceType}", color = TahoFaint, fontFamily = TahoMono, fontSize = 9.sp)
-                }
-                Text("Send Tab ↗", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable { /* Send tab simulated */ })
+        SettingsSectionTitle("CROSS-DEVICE SYNC")
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(TahoCardShape)
+                .background(TahoSurfaceRow)
+                .border(1.dp, TahoHairline, TahoCardShape)
+                .padding(14.dp),
+        ) {
+            Column {
+                Text(
+                    "Sync service not connected",
+                    color = TahoText,
+                    fontFamily = TahoDisplay,
+                    fontSize = 13.sp,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Bookmarks, history, passwords, open tabs, settings and device-to-device tab sending remain local until a real authenticated sync backend is connected.",
+                    color = TahoMuted,
+                    fontFamily = TahoMono,
+                    fontSize = 9.5.sp,
+                )
             }
-            Spacer(Modifier.height(6.dp))
+        }
+
+        if (devices.isNotEmpty()) {
+            Spacer(Modifier.height(14.dp))
+            SettingsSectionTitle("SYNCED DEVICES")
+            devices.forEach { dev ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(TahoBlockShape)
+                        .background(TahoSurfaceRow)
+                        .border(1.dp, TahoHairline, TahoBlockShape)
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text(dev.name, color = TahoText, fontFamily = TahoMono, fontSize = 11.sp)
+                        Text("Type: ${dev.deviceType}", color = TahoFaint, fontFamily = TahoMono, fontSize = 9.sp)
+                    }
+                    Text("Read only", color = TahoFaint, fontFamily = TahoMono, fontSize = 9.sp)
+                }
+                Spacer(Modifier.height(6.dp))
+            }
         }
     }
 }
@@ -2320,19 +2353,37 @@ private fun SettingsPerformanceMediaPage() {
 @Composable
 private fun SettingsStorageUsagePage() {
     val siteData = TahoBrowserStateStore.siteData
+    val offlinePages = TahoBrowserStateStore.offlinePages
+    val offlineBytes = offlinePages.sumOf { it.sizeBytes }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
-        SettingsSectionTitle("STORAGE BREAKDOWN")
-        StorageBarRow("Cached Content", "24.6 MB", 0.45f, TahoGold)
-        StorageBarRow("Cookies & LocalStorage", "12.8 MB", 0.25f, TahoInfo)
-        StorageBarRow("Offline Reading Pages", "4.2 MB", 0.12f, TahoOk)
-        StorageBarRow("GeckoView IndexedDB", "8.9 MB", 0.18f, TahoNeutral)
+        SettingsSectionTitle("LOCAL BROWSER STORAGE")
+        DiagItem("Offline page records", offlinePages.size.toString())
+        DiagItem("Recorded offline bytes", "${offlineBytes / 1024} KB")
+        DiagItem("Tracked site-data origins", siteData.size.toString())
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Exact Gecko cache, IndexedDB and cookie byte totals are not exposed by the current Browser storage adapter, so Taho does not estimate them.",
+            color = TahoFaint,
+            fontFamily = TahoMono,
+            fontSize = 9.5.sp,
+        )
 
         Spacer(Modifier.height(20.dp))
         SettingsSectionTitle("SITE STORAGE (${siteData.size} DOMAINS)")
+
+        if (siteData.isEmpty()) {
+            Text(
+                "No per-origin storage measurements are available from the current runtime adapter.",
+                color = TahoFaint,
+                fontFamily = TahoMono,
+                fontSize = 10.sp,
+            )
+        }
 
         siteData.forEach { data ->
             Row(
@@ -2347,11 +2398,22 @@ private fun SettingsStorageUsagePage() {
             ) {
                 Column {
                     Text(data.origin, color = TahoText, fontFamily = TahoMono, fontSize = 11.sp)
-                    Text("${data.cookieCount} cookies · ${data.storageSizeBytes / 1024} KB", color = TahoFaint, fontFamily = TahoMono, fontSize = 8.5.sp)
+                    Text(
+                        "${data.cookieCount} cookies · ${data.storageSizeBytes / 1024} KB",
+                        color = TahoFaint,
+                        fontFamily = TahoMono,
+                        fontSize = 8.5.sp,
+                    )
                 }
-                Text("Clear", color = TahoError, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable {
-                    TahoBrowserStateStore.clearSiteDataForOrigin(data.origin)
-                })
+                Text(
+                    "Clear",
+                    color = TahoError,
+                    fontFamily = TahoMono,
+                    fontSize = 9.sp,
+                    modifier = Modifier.clickable {
+                        TahoBrowserStateStore.clearSiteDataForOrigin(data.origin)
+                    },
+                )
             }
             Spacer(Modifier.height(6.dp))
         }
