@@ -310,11 +310,16 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFinder(
 @Composable
 fun TahoSiteInfoSheet(
     url: String,
+    securityInfo: SiteSecurityUiState?,
     onDismiss: () -> Unit,
     onClearSiteData: (String) -> Unit,
 ) {
     val host = runCatching { URI(url).host }.getOrNull() ?: url
     val isHttps = url.startsWith("https://")
+    val isSecure = securityInfo?.isSecure == true
+    val hasMixedContent =
+        securityInfo?.activeMixedContentLoaded == true ||
+            securityInfo?.passiveMixedContentLoaded == true
     val perms = TahoBrowserStateStore.sitePermissions.filter { it.origin.contains(host, ignoreCase = true) }
     val siteData = TahoBrowserStateStore.siteData.find { it.origin.contains(host, ignoreCase = true) }
 
@@ -343,10 +348,10 @@ fun TahoSiteInfoSheet(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(if (isHttps) TahoOk.copy(alpha = 0.15f) else TahoWarn.copy(alpha = 0.15f)),
+                        .background(if (isSecure && !hasMixedContent) TahoOk.copy(alpha = 0.15f) else TahoWarn.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(if (isHttps) "🔒" else "⚠️", fontSize = 16.sp)
+                    Text(if (isSecure && !hasMixedContent) "🔒" else "⚠️", fontSize = 16.sp)
                 }
                 Spacer(Modifier.width(12.dp))
                 Column {
@@ -358,8 +363,15 @@ fun TahoSiteInfoSheet(
                         fontSize = 15.sp,
                     )
                     Text(
-                        text = if (isHttps) "Connection is secure (TLS 1.3)" else "Connection is not secure (HTTP)",
-                        color = if (isHttps) TahoOk else TahoWarn,
+                        text = when {
+                            !isHttps -> "Connection is not secure (HTTP)"
+                            securityInfo == null -> "Security details are not available yet"
+                            securityInfo.isException -> "Connection uses a security exception"
+                            !securityInfo.isSecure -> "Connection is not verified as secure"
+                            hasMixedContent -> "Secure transport with mixed content loaded"
+                            else -> "Connection is secure"
+                        },
+                        color = if (isSecure && !hasMixedContent && securityInfo?.isException != true) TahoOk else TahoWarn,
                         fontFamily = TahoMono,
                         fontSize = 9.5.sp,
                     )
@@ -387,11 +399,26 @@ fun TahoSiteInfoSheet(
                         letterSpacing = 0.8.sp,
                     )
                     Spacer(Modifier.height(8.dp))
-                    SiteDetailRow("Common Name", host)
-                    SiteDetailRow("Issued by", "Let's Encrypt Authority X3 / DigiCert")
-                    SiteDetailRow("Cipher Suite", "TLS_AES_256_GCM_SHA384 (256-bit)")
-                    SiteDetailRow("Protocol", "HTTP/3 over QUIC (RFC 9000)")
-                    SiteDetailRow("Key Exchange", "X25519 (ECDHE)")
+                    SiteDetailRow("Host", securityInfo?.host?.takeIf { it.isNotBlank() } ?: host)
+                    SiteDetailRow(
+                        "Certificate subject",
+                        securityInfo?.certificateSubject ?: "Unavailable",
+                    )
+                    SiteDetailRow(
+                        "Certificate issuer",
+                        securityInfo?.certificateIssuer ?: "Unavailable",
+                    )
+                    SiteDetailRow(
+                        "Active mixed content",
+                        if (securityInfo?.activeMixedContentLoaded == true) "Loaded" else "Not reported as loaded",
+                    )
+                    SiteDetailRow(
+                        "Passive mixed content",
+                        if (securityInfo?.passiveMixedContentLoaded == true) "Loaded" else "Not reported as loaded",
+                    )
+                    if (securityInfo == null) {
+                        SiteDetailRow("Security evidence", "Awaiting GeckoView")
+                    }
                 }
             }
 
@@ -547,13 +574,15 @@ fun TahoSiteInfoSheet(
                     ) {
                         Column {
                             Text(
-                                text = "${siteData?.cookieCount ?: 6} cookies stored",
+                                text = siteData?.let { "${it.cookieCount} cookies recorded" }
+                                    ?: "Site-storage inventory unavailable",
                                 color = TahoText,
                                 fontFamily = TahoMono,
                                 fontSize = 11.sp,
                             )
                             Text(
-                                text = "Disk usage: ${siteData?.let { "${it.storageSizeBytes / 1024} KB" } ?: "1.2 MB"}",
+                                text = siteData?.let { "Recorded usage: ${it.storageSizeBytes / 1024} KB" }
+                                    ?: "You can still clear Gecko site data for this host.",
                                 color = TahoFaint,
                                 fontFamily = TahoMono,
                                 fontSize = 9.sp,
