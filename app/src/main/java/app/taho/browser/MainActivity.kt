@@ -390,6 +390,7 @@ class MainActivity : FragmentActivity() {
         CaptureMaintenance.schedule(this)
         transferCoordinator = TahoSecureTransferCoordinator(this)
         updateChecker = BrowserUpdateChecker(this)
+        BrowserUpdateWorker.schedule(this)
         backupManager = BrowserBackupManager(this)
         extensionMarketplace = BrowserExtensionMarketplace()
         TransferArtifactMaintenance.schedule(this)
