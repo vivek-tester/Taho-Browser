@@ -3,7 +3,6 @@ package app.taho.browser
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.FileProvider
-import app.taho.browser.runtime.SecureDownloadSanitizer
 import app.taho.browser.shell.OfflinePageUi
 import java.io.File
 import java.io.InputStream
@@ -29,21 +28,17 @@ class OfflinePageManager(
         executor.execute {
             val result = runCatching {
                 stream.use { input ->
-                    val base = SecureDownloadSanitizer.sanitizeFilename(
-                        title.ifBlank { "offline-page" },
-                    ).removeSuffix(".pdf")
+                    val id = UUID.randomUUID().toString()
                     val directory = File(appContext.filesDir, "offline_pages").apply { mkdirs() }
-                    val file = uniqueFile(directory, "$base.pdf")
+                    val file = File(directory, "$id.pdf")
                     file.outputStream().buffered().use { output ->
                         input.copyTo(output)
                     }
                     OfflinePageUi(
-                        id = UUID.randomUUID().toString(),
+                        id = id,
                         title = title.ifBlank { url },
                         url = url,
                         sizeBytes = file.length(),
-                        localPath = file.absolutePath,
-                        mimeType = "application/pdf",
                     )
                 }
             }
@@ -61,8 +56,7 @@ class OfflinePageManager(
     }
 
     fun open(page: OfflinePageUi): Boolean {
-        val path = page.localPath ?: return false
-        val file = File(path)
+        val file = snapshotFile(page)
         if (!file.isFile) return false
         return runCatching {
             val uri = FileProvider.getUriForFile(
@@ -72,7 +66,7 @@ class OfflinePageManager(
             )
             appContext.startActivity(
                 Intent(Intent.ACTION_VIEW)
-                    .setDataAndType(uri, page.mimeType)
+                    .setDataAndType(uri, "application/pdf")
                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             )
@@ -81,9 +75,8 @@ class OfflinePageManager(
     }
 
     fun delete(page: OfflinePageUi): Boolean {
-        val path = page.localPath ?: return true
         return runCatching {
-            val file = File(path)
+            val file = snapshotFile(page)
             !file.exists() || file.delete()
         }.getOrDefault(false)
     }
@@ -92,17 +85,7 @@ class OfflinePageManager(
         executor.shutdownNow()
     }
 
-    private fun uniqueFile(directory: File, candidate: String): File {
-        val first = File(directory, candidate)
-        if (!first.exists()) return first
+    private fun snapshotFile(page: OfflinePageUi): File =
+        File(File(appContext.filesDir, "offline_pages"), page.id + ".pdf")
 
-        val ext = candidate.substringAfterLast('.', "")
-        val base = if (ext.isBlank()) candidate else candidate.removeSuffix(".$ext")
-        for (index in 1..9_999) {
-            val name = if (ext.isBlank()) "$base ($index)" else "$base ($index).$ext"
-            val next = File(directory, name)
-            if (!next.exists()) return next
-        }
-        return File(directory, UUID.randomUUID().toString() + ".pdf")
-    }
 }
