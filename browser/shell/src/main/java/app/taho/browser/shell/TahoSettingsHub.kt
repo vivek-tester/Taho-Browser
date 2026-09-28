@@ -2427,13 +2427,19 @@ private fun SettingsStorageUsagePage() {
 private fun SettingsDiagnosticsPage() {
     val settings = TahoBrowserStateStore.settings
     val notifications = TahoBrowserStateStore.websiteNotifications
+    val context = LocalContext.current
+    val appInfo = remember(context.packageName) {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0)
+        }.getOrNull()
+    }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
-        SettingsSectionTitle("ENGINE DIAGNOSTICS")
+        SettingsSectionTitle("RUNTIME DIAGNOSTICS")
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2443,18 +2449,33 @@ private fun SettingsDiagnosticsPage() {
                 .padding(14.dp),
         ) {
             Column {
-                DiagItem("GeckoView Engine", "143.0.20250811-omni (ARM64)")
-                DiagItem("GPU Compositor", "WebRender (Vulkan Direct)")
-                DiagItem("IPC Protocol", "Taho M4 Direct Intent / ContentProvider")
-                DiagItem("Capture Pipeline", "Zero-Allocation Stream Frame Buffer")
-                DiagItem("Architecture Gate", "Pure JVM Isolation Enforced")
+                DiagItem("Application", appInfo?.versionName ?: "Unavailable")
+                DiagItem("Android", android.os.Build.VERSION.RELEASE ?: "Unavailable")
+                DiagItem("SDK", android.os.Build.VERSION.SDK_INT.toString())
+                DiagItem("Device", android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL)
+                DiagItem(
+                    "Browser engine details",
+                    "Available from build/runtime evidence, not hard-coded here",
+                )
             }
         }
 
         Spacer(Modifier.height(18.dp))
         SettingsSectionTitle("CRASH REPORTING & TELEMETRY")
-        SettingsToggleRow("Anonymous Crash Reporting", "Send sanitized crash traces to maintain browser stability", settings.crashReportingEnabled) {
-            TahoBrowserStateStore.updateSettings { it.copy(crashReportingEnabled = !it.crashReportingEnabled) }
+        Text(
+            "No crash-report upload backend is connected in this build. The preference is stored locally only.",
+            color = TahoFaint,
+            fontFamily = TahoMono,
+            fontSize = 9.5.sp,
+        )
+        SettingsToggleRow(
+            "Crash Reporting Preference",
+            "Remember whether future crash-reporting integration may be enabled",
+            settings.crashReportingEnabled,
+        ) {
+            TahoBrowserStateStore.updateSettings {
+                it.copy(crashReportingEnabled = !it.crashReportingEnabled)
+            }
         }
 
         Spacer(Modifier.height(18.dp))
@@ -2465,9 +2486,15 @@ private fun SettingsDiagnosticsPage() {
         ) {
             SettingsSectionTitle("WEBSITE NOTIFICATIONS CENTER (${notifications.size})")
             if (notifications.isNotEmpty()) {
-                Text("Clear All", color = TahoError, fontFamily = TahoMono, fontSize = 9.5.sp, modifier = Modifier.clickable {
-                    TahoBrowserStateStore.clearWebsiteNotifications()
-                })
+                Text(
+                    "Clear All",
+                    color = TahoError,
+                    fontFamily = TahoMono,
+                    fontSize = 9.5.sp,
+                    modifier = Modifier.clickable {
+                        TahoBrowserStateStore.clearWebsiteNotifications()
+                    },
+                )
             }
         }
 
@@ -2480,7 +2507,12 @@ private fun SettingsDiagnosticsPage() {
                     .border(1.dp, TahoHairline, TahoBlockShape)
                     .padding(12.dp),
             ) {
-                Text("No web push or site notifications received.", color = TahoFaint, fontFamily = TahoMono, fontSize = 10.sp)
+                Text(
+                    "No website notifications are recorded by the Browser UI adapter.",
+                    color = TahoFaint,
+                    fontFamily = TahoMono,
+                    fontSize = 10.sp,
+                )
             }
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -2496,12 +2528,30 @@ private fun SettingsDiagnosticsPage() {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(item.title, color = TahoText, fontFamily = TahoMono, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                            Text("${item.origin} · ${item.message}", color = TahoFaint, fontFamily = TahoMono, fontSize = 8.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                item.title,
+                                color = TahoText,
+                                fontFamily = TahoMono,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                "${item.origin} · ${item.message}",
+                                color = TahoFaint,
+                                fontFamily = TahoMono,
+                                fontSize = 8.5.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         }
-                        Text("×", color = TahoMuted, fontSize = 16.sp, modifier = Modifier.clickable {
-                            TahoBrowserStateStore.removeWebsiteNotification(item.id)
-                        }.padding(4.dp))
+                        Text(
+                            "×",
+                            color = TahoMuted,
+                            fontSize = 16.sp,
+                            modifier = Modifier
+                                .clickable { TahoBrowserStateStore.removeWebsiteNotification(item.id) }
+                                .padding(4.dp),
+                        )
                     }
                 }
             }
@@ -2883,7 +2933,12 @@ private fun SettingsWhatsNewPage() {
 // -------------------------------------------------------------
 @Composable
 private fun SettingsAboutPage() {
-    var updateStatus by rememberSaveable { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val packageInfo = remember(context.packageName) {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0)
+        }.getOrNull()
+    }
 
     Column(
         modifier = Modifier
@@ -2900,39 +2955,33 @@ private fun SettingsAboutPage() {
                 .padding(14.dp),
         ) {
             Column {
-                DiagItem("Version", "0.1.0-release (Build 1)")
-                DiagItem("Commit", "e39f7a2-verified")
-                DiagItem("Engine", "Mozilla GeckoView 143.0.20250811")
-                DiagItem("License", "Apache 2.0 / Mozilla Public License")
+                DiagItem("Version", packageInfo?.versionName ?: "Unavailable")
+                DiagItem(
+                    "Build",
+                    packageInfo?.longVersionCode?.toString() ?: "Unavailable",
+                )
+                DiagItem("Package", context.packageName)
+                DiagItem("Browser engine", "Mozilla GeckoView")
             }
         }
 
         Spacer(Modifier.height(14.dp))
-
-        if (updateStatus != null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(TahoBlockShape)
-                    .background(TahoOk.copy(alpha = 0.15f))
-                    .border(1.dp, TahoOk.copy(alpha = 0.35f), TahoBlockShape)
-                    .padding(10.dp),
-            ) {
-                Text(updateStatus ?: "", color = TahoOk, fontFamily = TahoMono, fontSize = 10.sp)
-            }
-            Spacer(Modifier.height(8.dp))
-        }
-
-        M7SecondaryButton("Check for Updates", Modifier.fillMaxWidth()) {
-            updateStatus = "✓ Taho Browser v0.1.0-release is up to date (Channel: Stable Release)"
-        }
+        Text(
+            "Automatic update checking is not connected in this build. Updates must be verified through the distribution channel that installed the app.",
+            color = TahoFaint,
+            fontFamily = TahoMono,
+            fontSize = 9.5.sp,
+        )
 
         Spacer(Modifier.height(16.dp))
         SettingsSectionTitle("LEGAL & SUPPORT")
         SettingsLinkRow("Privacy Policy", "https://taho.app/privacy")
         SettingsLinkRow("Terms of Service", "https://taho.app/terms")
         SettingsLinkRow("Open Source Licenses", "https://taho.app/licenses")
-        SettingsLinkRow("Report a Problem / Send Feedback", "https://github.com/taho/browser/issues")
+        SettingsLinkRow(
+            "Report a Problem / Send Feedback",
+            "https://github.com/vivek-tester/Taho-Browser/issues",
+        )
     }
 }
 
