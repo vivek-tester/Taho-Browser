@@ -357,7 +357,7 @@ class MainActivity : ComponentActivity() {
 
         captureSnapshot.requests.forEach { request ->
             val tabId = request.tabId ?: return@forEach
-            val relevance = RelevanceClassifier.classify(
+            val relevance = request.relevance ?: RelevanceClassifier.classify(
                 RelevanceInput(
                     url = request.url,
                     resourceType = request.initiator,
@@ -396,7 +396,7 @@ class MainActivity : ComponentActivity() {
             .filter { it.tabId == selectedTabId }
             .mapNotNull { request ->
                 val display = captureRuntime.display(request.transferId) ?: return@mapNotNull null
-                val relevance = RelevanceClassifier.classify(
+                val relevance = request.relevance ?: RelevanceClassifier.classify(
                     RelevanceInput(
                         url = request.url,
                         resourceType = request.initiator,
