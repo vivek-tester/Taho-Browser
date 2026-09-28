@@ -2094,27 +2094,123 @@ private fun SettingsPerformanceMediaPage() {
             .verticalScroll(rememberScrollState()),
     ) {
         SettingsSectionTitle("STARTUP & SESSION RESTORATION")
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
             listOf(
-                TahoHomePageMode.START_PAGE to "Start Page",
-                TahoHomePageMode.CUSTOM_URL to "Custom URL",
+                TahoStartupBehavior.PREVIOUS_TABS to "Continue Previous Tabs",
+                TahoStartupBehavior.START_PAGE to "Open Start Page",
+                TahoStartupBehavior.CUSTOM_PAGE to "Open Custom Page",
             ).forEach { (mode, label) ->
-                val sel = settings.homePageMode == mode
-                Box(
+                val selected = settings.startupBehavior == mode
+                Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .clip(TahoPillShape)
-                        .background(if (sel) TahoGold else TahoSurfaceControl)
-                        .clickable { TahoBrowserStateStore.updateSettings { it.copy(homePageMode = mode) } }
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center,
+                        .fillMaxWidth()
+                        .clip(TahoBlockShape)
+                        .background(if (selected) TahoGold.copy(alpha = .14f) else TahoSurfaceRow)
+                        .border(
+                            1.dp,
+                            if (selected) TahoGold.copy(alpha = .45f) else TahoHairline,
+                            TahoBlockShape,
+                        )
+                        .clickable {
+                            TahoBrowserStateStore.updateSettings { it.copy(startupBehavior = mode) }
+                        }
+                        .padding(horizontal = 13.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(label, color = if (sel) TahoBg else TahoText, fontFamily = TahoMono, fontSize = 10.sp)
+                    Text(
+                        text = label,
+                        color = if (selected) TahoGoldHi else TahoText,
+                        fontFamily = TahoMono,
+                        fontSize = 10.sp,
+                    )
+                    if (selected) {
+                        Text("✓", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 10.sp)
+                    }
                 }
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        if (settings.startupBehavior == TahoStartupBehavior.CUSTOM_PAGE) {
+            Spacer(Modifier.height(8.dp))
+            BasicTextField(
+                value = settings.customStartupUrl,
+                onValueChange = { value ->
+                    TahoBrowserStateStore.updateSettings { it.copy(customStartupUrl = value) }
+                },
+                singleLine = true,
+                textStyle = TextStyle(
+                    color = TahoText,
+                    fontFamily = TahoMono,
+                    fontSize = 10.5.sp,
+                ),
+                cursorBrush = SolidColor(TahoGold),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(TahoBlockShape)
+                    .background(TahoSurfaceControl)
+                    .border(1.dp, TahoHairline, TahoBlockShape)
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                decorationBox = { inner ->
+                    Box {
+                        if (settings.customStartupUrl.isBlank()) {
+                            Text(
+                                "https://example.com",
+                                color = TahoFaint,
+                                fontFamily = TahoMono,
+                                fontSize = 10.5.sp,
+                            )
+                        }
+                        inner()
+                    }
+                },
+            )
+        }
+
+        Spacer(Modifier.height(18.dp))
+        SettingsSectionTitle("AUTOMATIC INACTIVE TAB CLOSING")
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            listOf(
+                TahoAutoCloseTabs.NEVER to "Never",
+                TahoAutoCloseTabs.AFTER_1_DAY to "1 Day",
+                TahoAutoCloseTabs.AFTER_1_WEEK to "1 Week",
+                TahoAutoCloseTabs.AFTER_1_MONTH to "1 Month",
+            ).forEach { (policy, label) ->
+                val selected = settings.autoCloseTabs == policy
+                Box(
+                    modifier = Modifier
+                        .clip(TahoPillShape)
+                        .background(if (selected) TahoGold else TahoSurfaceControl)
+                        .border(1.dp, if (selected) TahoGoldHi else TahoHairline, TahoPillShape)
+                        .clickable {
+                            TahoBrowserStateStore.updateSettings { it.copy(autoCloseTabs = policy) }
+                        }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = label,
+                        color = if (selected) TahoBg else TahoText,
+                        fontFamily = TahoMono,
+                        fontSize = 9.5.sp,
+                    )
+                }
+            }
+        }
+        Text(
+            text = "Pinned tabs are excluded from automatic cleanup.",
+            color = TahoFaint,
+            fontFamily = TahoMono,
+            fontSize = 8.5.sp,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+
+        Spacer(Modifier.height(18.dp))
         SettingsSectionTitle("MEMORY & SYSTEM EFFICIENCY")
         SettingsToggleRow("Memory Saver Mode", "Discard background tabs when memory is low", settings.memorySaverEnabled) {
             TahoBrowserStateStore.updateSettings { it.copy(memorySaverEnabled = !it.memorySaverEnabled) }
