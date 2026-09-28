@@ -6,6 +6,7 @@ data class BrowserPersistableTab(
     val location: String?,
     val serializedSessionState: String?,
     val isPrivate: Boolean,
+    val lastAccessedAtEpochMs: Long? = null,
 )
 
 object BrowserPersistencePolicy {
@@ -21,6 +22,7 @@ object BrowserPersistencePolicy {
                     title = tab.title,
                     location = tab.location,
                     serializedSessionState = tab.serializedSessionState,
+                    lastAccessedAtEpochMs = tab.lastAccessedAtEpochMs,
                 )
             }
 
