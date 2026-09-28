@@ -93,6 +93,10 @@ fun TahoSettingsHubSheet(
     onNavigateUrl: (String) -> Unit = {},
     onClearEngineData: (Boolean, Boolean, (Boolean) -> Unit) -> Unit =
         { _, _, callback -> callback(true) },
+    onAuthenticateSensitive: (String, (Boolean) -> Unit) -> Unit =
+        { _, callback -> callback(false) },
+    onCheckPasswordBreach: (String, (Int?) -> Unit) -> Unit =
+        { _, callback -> callback(null) },
     onDismiss: () -> Unit,
 ) {
     var currentSubPage by rememberSaveable { mutableStateOf(initialSubPage) }
@@ -202,7 +206,10 @@ fun TahoSettingsHubSheet(
                 SettingsSubPage.BOOKMARKS -> SettingsBookmarksPage(onNavigate = { onDismiss(); onNavigateUrl(it) })
                 SettingsSubPage.HISTORY -> SettingsHistoryPage(onNavigate = { onDismiss(); onNavigateUrl(it) })
                 SettingsSubPage.DOWNLOADS -> SettingsDownloadsPage()
-                SettingsSubPage.PASSWORDS -> SettingsPasswordsPage()
+                SettingsSubPage.PASSWORDS -> SettingsPasswordsPage(
+                    onAuthenticateSensitive = onAuthenticateSensitive,
+                    onCheckPasswordBreach = onCheckPasswordBreach,
+                )
                 SettingsSubPage.AUTOFILL -> SettingsAutofillPage()
                 SettingsSubPage.PROFILES_SYNC -> SettingsProfilesSyncPage()
                 SettingsSubPage.EXTENSIONS -> SettingsExtensionsPage()
@@ -212,7 +219,9 @@ fun TahoSettingsHubSheet(
                 SettingsSubPage.PERFORMANCE_MEDIA -> SettingsPerformanceMediaPage()
                 SettingsSubPage.STORAGE_USAGE -> SettingsStorageUsagePage()
                 SettingsSubPage.DIAGNOSTICS -> SettingsDiagnosticsPage()
-                SettingsSubPage.BACKUP_EXPORT -> SettingsBackupExportPage()
+                SettingsSubPage.BACKUP_EXPORT -> SettingsBackupExportPage(
+                    onAuthenticateSensitive = onAuthenticateSensitive,
+                )
                 SettingsSubPage.COLLECTIONS -> SettingsCollectionsPage()
                 SettingsSubPage.ONBOARDING -> SettingsOnboardingPage(onFinish = { currentSubPage = SettingsSubPage.MAIN })
                 SettingsSubPage.WHATS_NEW -> SettingsWhatsNewPage()
@@ -1388,12 +1397,16 @@ private fun SettingsDownloadsPage() {
 // 8. PASSWORD MANAGER
 // -------------------------------------------------------------
 @Composable
-private fun SettingsPasswordsPage() {
+private fun SettingsPasswordsPage(
+    onAuthenticateSensitive: (String, (Boolean) -> Unit) -> Unit,
+    onCheckPasswordBreach: (String, (Int?) -> Unit) -> Unit,
+) {
     var search by rememberSaveable { mutableStateOf("") }
     var revealedId by rememberSaveable { mutableStateOf<String?>(null) }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var editingCredentialId by rememberSaveable { mutableStateOf<String?>(null) }
     var generatedPassword by rememberSaveable { mutableStateOf("") }
+    var breachStatus by rememberSaveable { mutableStateOf<String?>(null) }
 
     var newDomain by rememberSaveable { mutableStateOf("") }
     var newUsername by rememberSaveable { mutableStateOf("") }
@@ -1414,6 +1427,20 @@ private fun SettingsPasswordsPage() {
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
+        breachStatus?.let { message ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(TahoBlockShape)
+                    .background(TahoSurfaceRow)
+                    .border(1.dp, TahoHairline, TahoBlockShape)
+                    .padding(10.dp),
+            ) {
+                Text(message, color = TahoMuted, fontFamily = TahoMono, fontSize = 9.5.sp)
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+
         // Search & Header
         Box(
             modifier = Modifier
@@ -1643,8 +1670,41 @@ private fun SettingsPasswordsPage() {
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(if (isRevealed) "Hide" else "Reveal", color = TahoMuted, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable {
-                                revealedId = if (isRevealed) null else pw.id
+                                if (isRevealed) {
+                                    revealedId = null
+                                } else if (TahoBrowserStateStore.settings.biometricLockForPasswords) {
+                                    onAuthenticateSensitive("Reveal saved password") { success ->
+                                        if (success) revealedId = pw.id
+                                    }
+                                } else {
+                                    revealedId = pw.id
+                                }
                             })
+                            Text(
+                                if (pw.isCompromised) "Breached" else "Check Breach",
+                                color = if (pw.isCompromised) TahoError else TahoMuted,
+                                fontFamily = TahoMono,
+                                fontSize = 9.sp,
+                                modifier = Modifier.clickable {
+                                    breachStatus = "Checking ${pw.domain}…"
+                                    onCheckPasswordBreach(pw.password) { count ->
+                                        when {
+                                            count == null -> {
+                                                breachStatus = "Breach check failed for ${pw.domain}."
+                                            }
+                                            count > 0 -> {
+                                                TahoBrowserStateStore.setSavedPasswordCompromised(pw.id, true)
+                                                breachStatus = "Password for ${pw.domain} appears in the breach corpus."
+                                            }
+                                            else -> {
+                                                TahoBrowserStateStore.setSavedPasswordCompromised(pw.id, false)
+                                                breachStatus = "No match found for ${pw.domain}."
+                                            }
+                                        }
+                                    }
+                                },
+                            )
+                            Spacer(Modifier.width(10.dp))
                             Text("Edit", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable {
                                 editingCredentialId = pw.id
                                 editUsername = pw.username
@@ -2579,7 +2639,9 @@ private fun SettingsDiagnosticsPage() {
 // 18. BACKUP & EXPORT
 // -------------------------------------------------------------
 @Composable
-private fun SettingsBackupExportPage() {
+private fun SettingsBackupExportPage(
+    onAuthenticateSensitive: (String, (Boolean) -> Unit) -> Unit,
+) {
     val context = LocalContext.current
     var statusMessage by rememberSaveable { mutableStateOf<String?>(null) }
 
@@ -2716,7 +2778,15 @@ private fun SettingsBackupExportPage() {
         }
         Spacer(Modifier.height(8.dp))
         M7SecondaryButton("Export Passwords (JSON — contains secrets)", Modifier.fillMaxWidth()) {
-            exportPasswords.launch("taho-passwords.json")
+            val launchExport = { exportPasswords.launch("taho-passwords.json") }
+            if (TahoBrowserStateStore.settings.biometricLockForPasswords) {
+                onAuthenticateSensitive("Export saved passwords") { success ->
+                    if (success) launchExport()
+                    else statusMessage = "Password export was not authorized."
+                }
+            } else {
+                launchExport()
+            }
         }
         Spacer(Modifier.height(8.dp))
         M7SecondaryButton("Export Core Settings (JSON)", Modifier.fillMaxWidth()) {
