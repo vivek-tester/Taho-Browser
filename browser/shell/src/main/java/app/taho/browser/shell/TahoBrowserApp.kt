@@ -189,6 +189,9 @@ fun TahoBrowserApp(
     onDownloadRetry: (DownloadItemUi) -> Unit = {},
     onDownloadOpen: (DownloadItemUi) -> Unit = {},
     onDownloadDelete: (DownloadItemUi) -> Unit = {},
+    onSaveOfflinePage: (String, String) -> Unit = { _, _ -> },
+    onOpenOfflinePage: (OfflinePageUi) -> Unit = {},
+    onDeleteOfflinePage: (OfflinePageUi) -> Unit = {},
     onExtractReaderContent: ((ReaderPageContentUi?) -> Unit) -> Unit = { callback -> callback(null) },
     onPrintPage: () -> Boolean = { false },
     onAddToHomeScreen: (String, String) -> Unit = { _, _ -> },
@@ -928,6 +931,8 @@ fun TahoBrowserApp(
                     onDownloadRetry = onDownloadRetry,
                     onDownloadOpen = onDownloadOpen,
                     onDownloadDelete = onDownloadDelete,
+                    onOpenOfflinePage = onOpenOfflinePage,
+                    onDeleteOfflinePage = onDeleteOfflinePage,
                     onDismiss = {
                         showSettings = false
                         settingsInitialSubPage = null
@@ -1012,11 +1017,7 @@ fun TahoBrowserApp(
                     },
                     onSaveOffline = {
                         currentTab?.location?.let { loc ->
-                            TahoBrowserStateStore.offlinePages = TahoBrowserStateStore.offlinePages + OfflinePageUi(
-                                id = java.util.UUID.randomUUID().toString(),
-                                title = currentTab.title ?: loc,
-                                url = loc,
-                            )
+                            onSaveOfflinePage(currentTab.title ?: loc, loc)
                         }
                     },
                     onSiteInfo = { showSiteInfo = true },
