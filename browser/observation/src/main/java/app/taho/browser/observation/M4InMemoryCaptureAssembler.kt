@@ -115,6 +115,12 @@ class M4InMemoryCaptureAssembler(
 
     fun allCompleted(): List<M4CapturedRequest> = completed.toList()
 
+    fun clearForUser() {
+        active.clear()
+        completed.clear()
+        limited = false
+    }
+
     private fun acceptBulk(event: ProductionObservationEvent.Bulk) {
         val message = event.message
         if (message is ProductionObservationMessage.Hello) return
