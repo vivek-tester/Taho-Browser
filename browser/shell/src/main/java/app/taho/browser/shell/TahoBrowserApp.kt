@@ -203,6 +203,12 @@ fun TahoBrowserApp(
     onSaveOfflinePage: (String, String) -> Unit = { _, _ -> },
     onOpenOfflinePage: (OfflinePageUi) -> Unit = {},
     onDeleteOfflinePage: (OfflinePageUi) -> Unit = {},
+    onRefreshExtensions: () -> Unit = {},
+    onInstallExtension: (String) -> Unit = {},
+    onSetExtensionEnabled: (String, Boolean) -> Unit = { _, _ -> },
+    onSetExtensionPrivate: (String, Boolean) -> Unit = { _, _ -> },
+    onUpdateExtension: (String) -> Unit = {},
+    onUninstallExtension: (String) -> Unit = {},
     onExtractReaderContent: ((ReaderPageContentUi?) -> Unit) -> Unit = { callback -> callback(null) },
     onPrintPage: () -> Boolean = { false },
     onAddToHomeScreen: (String, String) -> Unit = { _, _ -> },
@@ -945,6 +951,12 @@ fun TahoBrowserApp(
                     onDownloadDelete = onDownloadDelete,
                     onOpenOfflinePage = onOpenOfflinePage,
                     onDeleteOfflinePage = onDeleteOfflinePage,
+                    onRefreshExtensions = onRefreshExtensions,
+                    onInstallExtension = onInstallExtension,
+                    onSetExtensionEnabled = onSetExtensionEnabled,
+                    onSetExtensionPrivate = onSetExtensionPrivate,
+                    onUpdateExtension = onUpdateExtension,
+                    onUninstallExtension = onUninstallExtension,
                     onDismiss = {
                         showSettings = false
                         settingsInitialSubPage = null
