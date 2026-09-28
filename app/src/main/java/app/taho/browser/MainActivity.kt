@@ -68,6 +68,7 @@ import app.taho.browser.shell.M4SecretPolicyUi
 import app.taho.browser.shell.M7TransferPhaseUi
 import app.taho.browser.shell.SitePermissionUiState
 import app.taho.browser.shell.TahoBrowserApp
+import app.taho.browser.shell.TahoBrowserStateStore
 import app.taho.browser.transfer.android.TahoDirectTransferIntentFactory
 import app.taho.browser.transfer.android.TahoDirectTransferTarget
 import app.taho.browser.transfer.android.TahoSecureTransferCoordinator
@@ -99,6 +100,7 @@ class MainActivity : ComponentActivity() {
     private var originatingTabId: String? = null
     private var pendingExternalNavDialog by mutableStateOf<Triple<String, String, Intent>?>(null)
     private var captureRetentionMode by mutableStateOf("Session only")
+    private val committedHistoryLocationByTab = mutableMapOf<String, String?>()
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
@@ -142,6 +144,11 @@ class MainActivity : ComponentActivity() {
         }
 
         controller = BrowserRuntimeStore.get(this)
+        controller.snapshot().tabs.forEach { tab ->
+            if (!tab.isPrivate) {
+                committedHistoryLocationByTab[tab.id] = tab.location
+            }
+        }
         captureRepository = CapturePersistenceStore.repository(this)
         CaptureMaintenance.schedule(this)
         transferCoordinator = TahoSecureTransferCoordinator(this)
@@ -194,6 +201,7 @@ class MainActivity : ComponentActivity() {
                 controller.setListener { next ->
                     snapshot = next
                     syncCaptureSessions(next)
+                    syncBrowserHistory(next)
                 }
                 captureRuntime.setListener { captureSnapshot = it }
                 onDispose {
@@ -356,7 +364,14 @@ class MainActivity : ComponentActivity() {
                     captureRequests = captureRequests,
                 ),
                 onNavigate = { input ->
-                    NavigationInput.resolve(input)?.let { uri ->
+                    val searchTemplate = TahoBrowserStateStore.searchEngines
+                        .firstOrNull { it.id == TahoBrowserStateStore.settings.defaultSearchEngineId }
+                        ?.queryUrl
+                        ?: "https://www.google.com/search?q=%s"
+                    NavigationInput.resolve(
+                        raw = input,
+                        searchUrlTemplate = searchTemplate,
+                    )?.let { uri ->
                         controller.load(uri = uri)
                     }
                 },
@@ -372,7 +387,19 @@ class MainActivity : ComponentActivity() {
                 onNewTab = { controller.newTab(privateMode = false) },
                 onNewPrivateTab = { controller.newTab(privateMode = true) },
                 onSelectTab = controller::selectTab,
-                onCloseTab = controller::closeTab,
+                onCloseTab = { tabId ->
+                    snapshot.tabs.firstOrNull { it.id == tabId }?.let { tab ->
+                        if (!tab.isPrivate) {
+                            TahoBrowserStateStore.recordClosedTab(
+                                title = tab.title,
+                                url = tab.location,
+                                isPrivate = false,
+                            )
+                        }
+                    }
+                    committedHistoryLocationByTab.remove(tabId)
+                    controller.closeTab(tabId)
+                },
                 onSitePermissionDecision = controller::resolveSitePermission,
                 onCopyCurl = ::copyMaskedCurl,
                 onShare = ::shareMaskedRequest,
@@ -494,6 +521,25 @@ class MainActivity : ComponentActivity() {
                 createdAtEpochMs = now,
             ),
         )
+    }
+
+    private fun syncBrowserHistory(snapshot: BrowserSnapshot) {
+        val liveTabIds = snapshot.tabs.mapTo(mutableSetOf()) { it.id }
+        committedHistoryLocationByTab.keys.retainAll(liveTabIds)
+
+        snapshot.tabs.forEach { tab ->
+            if (tab.isPrivate || tab.isLoading || tab.loadFailed || tab.crashed) return@forEach
+            val location = tab.location
+                ?.takeIf { it.startsWith("https://") || it.startsWith("http://") }
+                ?: return@forEach
+            if (committedHistoryLocationByTab[tab.id] == location) return@forEach
+
+            committedHistoryLocationByTab[tab.id] = location
+            TahoBrowserStateStore.recordHistory(
+                title = tab.title,
+                url = location,
+            )
+        }
     }
 
     private fun syncCaptureSessions(snapshot: BrowserSnapshot) {
