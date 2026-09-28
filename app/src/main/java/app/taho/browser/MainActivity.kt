@@ -125,6 +125,10 @@ class MainActivity : FragmentActivity() {
     private val passwordBreachChecker = PasswordBreachChecker()
     private lateinit var downloadManager: BrowserDownloadManager
     private lateinit var offlinePageManager: OfflinePageManager
+    private lateinit var extensionManager: BrowserExtensionManager
+    private var pendingExtensionPermissionRequest by
+        mutableStateOf<BrowserExtensionPermissionRequest?>(null)
+    private var pendingExtensionPermissionDecision: ((Boolean) -> Unit)? = null
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
@@ -293,6 +297,25 @@ class MainActivity : FragmentActivity() {
                 }
             },
         )
+        extensionManager = BrowserExtensionManager(
+            runtime = GeckoRuntimeHolder.get(this),
+            onInventory = { extensions ->
+                runOnUiThread {
+                    TahoBrowserStateStore.extensions = extensions
+                }
+            },
+            onPermissionRequest = { request, decision ->
+                runOnUiThread {
+                    if (pendingExtensionPermissionRequest != null) {
+                        decision(false)
+                    } else {
+                        pendingExtensionPermissionRequest = request
+                        pendingExtensionPermissionDecision = decision
+                    }
+                }
+            },
+        )
+        extensionManager.refresh()
         if (savedInstanceState == null && !isIncomingWebIntent(intent)) {
             applyStartupBehavior()
         }
@@ -454,6 +477,67 @@ class MainActivity : FragmentActivity() {
                             pendingExternalNavDialog = null
                         }) {
                             Text("Stay in Browser")
+                        }
+                    },
+                )
+            }
+
+            pendingExtensionPermissionRequest?.let { request ->
+                val details = buildList {
+                    if (request.permissions.isNotEmpty()) {
+                        add("Permissions: " + request.permissions.joinToString(", "))
+                    }
+                    if (request.origins.isNotEmpty()) {
+                        add("Sites: " + request.origins.joinToString(", "))
+                    }
+                    if (request.dataCollectionPermissions.isNotEmpty()) {
+                        add(
+                            "Data collection: " +
+                                request.dataCollectionPermissions.joinToString(", "),
+                        )
+                    }
+                    if (isEmpty()) add("This extension requests no additional permissions.")
+                }.joinToString("\n\n")
+
+                AlertDialog(
+                    onDismissRequest = {
+                        pendingExtensionPermissionDecision?.invoke(false)
+                        pendingExtensionPermissionDecision = null
+                        pendingExtensionPermissionRequest = null
+                    },
+                    title = {
+                        Text(
+                            when (request.kind) {
+                                BrowserExtensionPromptKind.INSTALL ->
+                                    "Install ${request.extensionName}?"
+                                BrowserExtensionPromptKind.UPDATE ->
+                                    "Allow extension update?"
+                                BrowserExtensionPromptKind.OPTIONAL_PERMISSION ->
+                                    "Allow extension permission?"
+                            },
+                        )
+                    },
+                    text = { Text(details) },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                pendingExtensionPermissionDecision?.invoke(true)
+                                pendingExtensionPermissionDecision = null
+                                pendingExtensionPermissionRequest = null
+                            },
+                        ) {
+                            Text("Allow")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = {
+                                pendingExtensionPermissionDecision?.invoke(false)
+                                pendingExtensionPermissionDecision = null
+                                pendingExtensionPermissionRequest = null
+                            },
+                        ) {
+                            Text("Deny")
                         }
                     },
                 )
@@ -742,6 +826,62 @@ class MainActivity : FragmentActivity() {
                 },
                 onAddToHomeScreen = ::pinPageShortcut,
                 onInstallWebApp = ::installWebApp,
+                onRefreshExtensions = {
+                    extensionManager.refresh { success ->
+                        if (!success) {
+                            runOnUiThread {
+                                transferNotice = "Gecko extension inventory could not be refreshed."
+                            }
+                        }
+                    }
+                },
+                onInstallExtension = { uri ->
+                    extensionManager.install(uri) { success, reason ->
+                        runOnUiThread {
+                            transferNotice = if (success) {
+                                "Extension installed by Gecko."
+                            } else {
+                                reason ?: "Extension installation failed."
+                            }
+                        }
+                    }
+                },
+                onSetExtensionEnabled = { id, enabled ->
+                    extensionManager.setEnabled(id, enabled) { success ->
+                        if (!success) runOnUiThread {
+                            transferNotice = "Extension state could not be changed."
+                        }
+                    }
+                },
+                onSetExtensionPrivate = { id, allowed ->
+                    extensionManager.setAllowedInPrivate(id, allowed) { success ->
+                        if (!success) runOnUiThread {
+                            transferNotice = "Private-browsing access could not be changed."
+                        }
+                    }
+                },
+                onUpdateExtension = { id ->
+                    extensionManager.update(id) { success, changed ->
+                        runOnUiThread {
+                            transferNotice = when {
+                                !success -> "Extension update check failed."
+                                changed -> "Extension updated by Gecko."
+                                else -> "No extension update is available."
+                            }
+                        }
+                    }
+                },
+                onUninstallExtension = { id ->
+                    extensionManager.uninstall(id) { success ->
+                        runOnUiThread {
+                            transferNotice = if (success) {
+                                "Extension uninstalled."
+                            } else {
+                                "Extension could not be uninstalled."
+                            }
+                        }
+                    }
+                },
                 browserContent = {
                     AndroidView(
                         factory = { context ->
@@ -902,6 +1042,12 @@ class MainActivity : FragmentActivity() {
         }
         if (::offlinePageManager.isInitialized) {
             offlinePageManager.close()
+        }
+        pendingExtensionPermissionDecision?.invoke(false)
+        pendingExtensionPermissionDecision = null
+        pendingExtensionPermissionRequest = null
+        if (::extensionManager.isInitialized) {
+            extensionManager.close()
         }
         super.onDestroy()
     }
