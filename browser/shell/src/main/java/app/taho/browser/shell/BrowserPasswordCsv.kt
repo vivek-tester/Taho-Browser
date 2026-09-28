@@ -12,6 +12,13 @@ data class BrowserPasswordCsvParseResult(
     val format: String,
 )
 
+data class BrowserPasswordCsvImportResult(
+    val format: String,
+    val imported: Int,
+    val skippedExisting: Int,
+    val rejectedRows: Int,
+)
+
 object BrowserPasswordCsv {
     fun parse(raw: String): BrowserPasswordCsvParseResult {
         val rows = parseRows(raw)
