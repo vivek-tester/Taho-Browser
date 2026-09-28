@@ -71,6 +71,8 @@ import app.taho.browser.shell.SitePermissionUiState
 import app.taho.browser.shell.SiteSecurityUiState
 import app.taho.browser.shell.TahoBrowserApp
 import app.taho.browser.shell.TahoBrowserStateStore
+import app.taho.browser.shell.TahoStartupBehavior
+import app.taho.browser.shell.TahoAutoCloseTabs
 import app.taho.browser.transfer.android.TahoDirectTransferIntentFactory
 import app.taho.browser.transfer.android.TahoDirectTransferTarget
 import app.taho.browser.transfer.android.TahoSecureTransferCoordinator
@@ -147,6 +149,13 @@ class MainActivity : ComponentActivity() {
 
         TahoBrowserStateStore.initialize(this)
         controller = BrowserRuntimeStore.get(this)
+        if (savedInstanceState == null && !isIncomingWebIntent(intent)) {
+            applyStartupBehavior()
+        }
+        applyInactiveTabPolicy()
+        TahoBrowserStateStore.prunePinnedTabs(
+            controller.snapshot().tabs.mapTo(mutableSetOf()) { it.id },
+        )
         handleIncomingBrowserIntent(intent)
         controller.snapshot().tabs.forEach { tab ->
             if (!tab.isPrivate) {
@@ -534,6 +543,44 @@ class MainActivity : ComponentActivity() {
         if (::controller.isInitialized) {
             handleIncomingBrowserIntent(intent)
         }
+    }
+
+    private fun isIncomingWebIntent(source: Intent?): Boolean {
+        if (source?.action != Intent.ACTION_VIEW) return false
+        val scheme = source.data?.scheme?.lowercase()
+        return scheme == "https" || scheme == "http"
+    }
+
+    private fun applyStartupBehavior() {
+        val settings = TahoBrowserStateStore.settings
+        when (settings.startupBehavior) {
+            TahoStartupBehavior.PREVIOUS_TABS -> Unit
+            TahoStartupBehavior.START_PAGE -> controller.resetToSingleTab()
+            TahoStartupBehavior.CUSTOM_PAGE -> {
+                val raw = settings.customStartupUrl.trim()
+                val searchTemplate = TahoBrowserStateStore.searchEngines
+                    .firstOrNull { it.id == settings.defaultSearchEngineId }
+                    ?.queryUrl
+                    ?: "https://www.google.com/search?q=%s"
+                val uri = raw
+                    .takeIf { it.isNotBlank() }
+                    ?.let { NavigationInput.resolve(it, searchTemplate) }
+                controller.resetToSingleTab(uri)
+            }
+        }
+    }
+
+    private fun applyInactiveTabPolicy() {
+        val ageMillis = when (TahoBrowserStateStore.settings.autoCloseTabs) {
+            TahoAutoCloseTabs.NEVER -> return
+            TahoAutoCloseTabs.AFTER_1_DAY -> 24L * 60L * 60L * 1000L
+            TahoAutoCloseTabs.AFTER_1_WEEK -> 7L * 24L * 60L * 60L * 1000L
+            TahoAutoCloseTabs.AFTER_1_MONTH -> 30L * 24L * 60L * 60L * 1000L
+        }
+        controller.closeInactiveTabs(
+            olderThanEpochMs = System.currentTimeMillis() - ageMillis,
+            pinnedTabIds = TahoBrowserStateStore.pinnedTabIds,
+        )
     }
 
     private fun handleIncomingBrowserIntent(source: Intent?) {
