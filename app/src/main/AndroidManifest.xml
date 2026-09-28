@@ -15,6 +15,15 @@
         android:usesCleartextTraffic="false"
         android:label="Taho Browser"
         android:theme="@style/Theme.TahoBrowser">
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.downloads"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/download_file_paths" />
+        </provider>
         <activity
             android:name=".MainActivity"
             android:exported="true"
