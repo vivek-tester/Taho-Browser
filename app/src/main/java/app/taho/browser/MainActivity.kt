@@ -1,10 +1,12 @@
 package app.taho.browser
 
 import android.Manifest
+import android.app.PictureInPictureParams
 import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.ComponentCallbacks2
+import android.content.res.Configuration
 import android.content.Intent
 import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
@@ -14,11 +16,13 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.PersistableBundle
 import android.os.Looper
 import android.os.ResultReceiver
+import android.util.Rational
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -131,6 +135,7 @@ class MainActivity : FragmentActivity() {
     private var pendingTransferId: String? = null
     private var transferPreparationInFlight: Boolean = false
     private var isOffline by mutableStateOf(false)
+    private var inPictureInPicture by mutableStateOf(false)
     private var originatingTabId: String? = null
     private var pendingExternalNavDialog by mutableStateOf<Triple<String, String, Intent>?>(null)
     private var captureRetentionMode by mutableStateOf("Session only")
@@ -612,6 +617,7 @@ class MainActivity : FragmentActivity() {
                     loadFailed = snapshot.loadFailed,
                     crashed = snapshot.crashed,
                     isPrivate = snapshot.isPrivate,
+                    isPictureInPicture = inPictureInPicture,
                     canGoBack = snapshot.canGoBack,
                     canGoForward = snapshot.canGoForward,
                     securityInfo = snapshot.security?.let { security ->
@@ -989,6 +995,31 @@ class MainActivity : FragmentActivity() {
                 },
             )
         }
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        enterPictureInPictureForActiveMedia()
+    }
+
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: Configuration,
+    ) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        inPictureInPicture = isInPictureInPictureMode
+    }
+
+    private fun enterPictureInPictureForActiveMedia() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        if (!TahoBrowserStateStore.settings.pictureInPictureEnabled) return
+        if (!::controller.isInitialized || !controller.snapshot().isFullScreen) return
+        if (isInPictureInPictureMode) return
+
+        val params = PictureInPictureParams.Builder()
+            .setAspectRatio(Rational(16, 9))
+            .build()
+        runCatching { enterPictureInPictureMode(params) }
     }
 
     override fun onResume() {
