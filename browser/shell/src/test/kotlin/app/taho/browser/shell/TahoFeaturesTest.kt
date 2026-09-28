@@ -27,8 +27,10 @@ class TahoFeaturesTest {
         assertTrue(store.searchEngines.isNotEmpty())
         assertTrue(store.topSites.isEmpty())
         assertTrue(store.savedPasswords.isEmpty())
-        assertEquals(1, store.profiles.size)
-        assertFalse(store.profiles.single().syncEnabled)
+        assertEquals(2, store.profiles.size)
+        assertTrue(store.profiles.any { it.id == "profile_personal" && it.isActive })
+        assertTrue(store.profiles.any { it.id == "profile_guest" && it.isGuest })
+        assertFalse(store.profiles.first { it.id == "profile_personal" }.syncEnabled)
     }
 
     @Test
@@ -407,6 +409,38 @@ class TahoFeaturesTest {
         assertTrue(store.settings.perSiteTrackingExceptions.contains(origin))
         store.toggleTrackingException(origin)
         assertFalse(store.settings.perSiteTrackingExceptions.contains(origin))
+    }
+
+    @Test
+    fun profileSwitchesIsolateHistoryPasswordsAndGuestData() {
+        val store = TahoBrowserStateStore
+        store.recordHistory("Personal", "https://personal.example")
+        store.addSavedPassword("personal.example", "alice", "PersonalSecret123!")
+
+        val work = store.addLocalProfile("Work")
+        store.switchProfile(work.id)
+        assertTrue(store.history.isEmpty())
+        assertTrue(store.savedPasswords.isEmpty())
+
+        store.recordHistory("Work", "https://work.example")
+        store.addSavedPassword("work.example", "bob", "WorkSecret123!")
+
+        store.switchProfile("profile_guest")
+        assertTrue(store.history.isEmpty())
+        assertTrue(store.savedPasswords.isEmpty())
+        store.recordHistory("Guest", "https://guest.example")
+        store.addSavedPassword("guest.example", "guest", "GuestSecret123!")
+
+        store.switchProfile("profile_personal")
+        assertTrue(store.history.any { it.url == "https://personal.example" })
+        assertTrue(store.savedPasswords.any { it.domain == "personal.example" })
+        assertFalse(store.history.any { it.url == "https://work.example" })
+        assertFalse(store.savedPasswords.any { it.domain == "guest.example" })
+
+        store.switchProfile(work.id)
+        assertTrue(store.history.any { it.url == "https://work.example" })
+        assertTrue(store.savedPasswords.any { it.domain == "work.example" })
+        assertFalse(store.history.any { it.url == "https://guest.example" })
     }
 
     @Test
