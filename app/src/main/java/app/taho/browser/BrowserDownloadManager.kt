@@ -122,6 +122,10 @@ class BrowserDownloadManager(
         }.getOrDefault(false)
     }
 
+    fun cancelAllActive() {
+        tasks.keys.toList().forEach(::cancel)
+    }
+
     fun close() {
         tasks.values.forEach { task ->
             synchronized(task.pauseLock) {
