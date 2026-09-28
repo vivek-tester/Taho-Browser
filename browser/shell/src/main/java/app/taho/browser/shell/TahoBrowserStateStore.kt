@@ -200,7 +200,7 @@ object TahoBrowserStateStore {
     }
 
     fun recordClosedTab(title: String?, url: String?, isPrivate: Boolean) {
-        if (url.isNullOrBlank() || url == "about:blank") return
+        if (isPrivate || url.isNullOrBlank() || url == "about:blank") return
         recentlyClosedTabs = listOf(
             RecentlyClosedTabItem(
                 id = UUID.randomUUID().toString(),
@@ -333,6 +333,11 @@ object TahoBrowserStateStore {
         extensions = extensions.map {
             if (it.id == id) it.copy(allowedInPrivate = !it.allowedInPrivate) else it
         }
+    }
+
+    fun upsertDownload(item: DownloadItemUi) {
+        downloads = listOf(item) + downloads.filterNot { it.id == item.id }
+        persistNow()
     }
 
     fun pauseResumeDownload(id: String) {
@@ -504,6 +509,18 @@ object TahoBrowserStateStore {
     }
 
     // --- Website Notifications ---
+    fun addWebsiteNotification(origin: String, title: String, message: String) {
+        websiteNotifications = listOf(
+            WebsiteNotificationItem(
+                id = UUID.randomUUID().toString(),
+                origin = origin,
+                title = title,
+                message = message,
+            ),
+        ) + websiteNotifications
+        persistNow()
+    }
+
     fun removeWebsiteNotification(id: String) {
         websiteNotifications = websiteNotifications.filterNot { it.id == id }
     }
