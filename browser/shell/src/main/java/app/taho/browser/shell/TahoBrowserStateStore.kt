@@ -809,6 +809,40 @@ object TahoBrowserStateStore {
         return count
     }
 
+    fun importPasswordsFromCsv(csv: String): BrowserPasswordCsvImportResult {
+        val parsed = BrowserPasswordCsv.parse(csv)
+        var imported = 0
+        var skipped = 0
+
+        parsed.records.forEach { record ->
+            val domain = runCatching {
+                java.net.URI(record.url).host
+            }.getOrNull()
+                ?.lowercase()
+                ?.takeIf(String::isNotBlank)
+                ?: return@forEach
+
+            val exists = savedPasswords.any {
+                it.domain.equals(domain, ignoreCase = true) &&
+                    it.username == record.username
+            }
+            if (exists) {
+                skipped++
+            } else {
+                addSavedPassword(domain, record.username, record.password)
+                imported++
+            }
+        }
+        if (imported > 0) persistNow()
+
+        return BrowserPasswordCsvImportResult(
+            format = parsed.format,
+            imported = imported,
+            skippedExisting = skipped,
+            rejectedRows = parsed.rejectedRows,
+        )
+    }
+
     fun importPasswordsFromJson(json: String): Int {
         val regex = Regex(""""domain":"([^"]+)","username":"([^"]+)","password":"([^"]+)"""")
         val matches = regex.findAll(json).toList()
