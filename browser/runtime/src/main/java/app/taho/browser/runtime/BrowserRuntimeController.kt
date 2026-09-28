@@ -7,7 +7,9 @@ import android.os.Looper
 import org.json.JSONObject
 import org.mozilla.geckoview.AllowOrDeny
 import org.mozilla.geckoview.Autocomplete
+import org.mozilla.geckoview.ContentBlocking
 import org.mozilla.geckoview.GeckoResult
+import org.mozilla.geckoview.GeckoRuntimeSettings
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSessionSettings
 import org.mozilla.geckoview.PageExtractionController
@@ -375,12 +377,12 @@ class BrowserRuntimeController(context: Context) {
         }
 
         content
-            .setAntiTracking(antiTracking)
+            .setAntiTracking(antiTracking.toInt())
             .setEnhancedTrackingProtectionLevel(etpLevel)
             .setCookieBehavior(cookieBehavior)
             .setCookieBehaviorPrivateMode(cookieBehavior)
             .setStrictSocialTrackingProtection(preferences.blockSocialTrackers)
-            .setSafeBrowsing(safeBrowsing)
+            .setSafeBrowsing(safeBrowsing.toInt())
 
         runtimeSettings
             .setAllowInsecureConnections(
