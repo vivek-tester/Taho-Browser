@@ -180,6 +180,10 @@ fun TahoBrowserApp(
         { _, _, callback -> callback(true) },
     onClearSiteDataForHost: (String, (Boolean) -> Unit) -> Unit =
         { _, callback -> callback(false) },
+    onAuthenticateSensitive: (String, (Boolean) -> Unit) -> Unit =
+        { _, callback -> callback(false) },
+    onCheckPasswordBreach: (String, (Int?) -> Unit) -> Unit =
+        { _, callback -> callback(null) },
     onExtractReaderContent: ((ReaderPageContentUi?) -> Unit) -> Unit = { callback -> callback(null) },
     onPrintPage: () -> Boolean = { false },
     onAddToHomeScreen: (String, String) -> Unit = { _, _ -> },
@@ -912,6 +916,8 @@ fun TahoBrowserApp(
                         settingsInitialSubPage = null
                     },
                     onClearEngineData = onClearBrowserStorage,
+                    onAuthenticateSensitive = onAuthenticateSensitive,
+                    onCheckPasswordBreach = onCheckPasswordBreach,
                     onDismiss = {
                         showSettings = false
                         settingsInitialSubPage = null
