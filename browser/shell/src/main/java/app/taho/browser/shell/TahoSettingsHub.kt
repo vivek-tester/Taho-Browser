@@ -55,6 +55,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -117,6 +118,10 @@ fun TahoSettingsHubSheet(
     onSetExtensionPrivate: (String, Boolean) -> Unit = { _, _ -> },
     onUpdateExtension: (String) -> Unit = {},
     onUninstallExtension: (String) -> Unit = {},
+    onExportFullBackup: (Uri, String, (Boolean, String) -> Unit) -> Unit =
+        { _, _, callback -> callback(false, "Full backup export is unavailable.") },
+    onRestoreFullBackup: (Uri, String, (Boolean, String) -> Unit) -> Unit =
+        { _, _, callback -> callback(false, "Full backup restore is unavailable.") },
     onCheckForUpdates: ((BrowserUpdateStatusUi) -> Unit) -> Unit =
         { callback ->
             callback(
@@ -273,6 +278,8 @@ fun TahoSettingsHubSheet(
                 SettingsSubPage.DIAGNOSTICS -> SettingsDiagnosticsPage()
                 SettingsSubPage.BACKUP_EXPORT -> SettingsBackupExportPage(
                     onAuthenticateSensitive = onAuthenticateSensitive,
+                    onExportFullBackup = onExportFullBackup,
+                    onRestoreFullBackup = onRestoreFullBackup,
                 )
                 SettingsSubPage.COLLECTIONS -> SettingsCollectionsPage()
                 SettingsSubPage.ONBOARDING -> SettingsOnboardingPage(onFinish = { currentSubPage = SettingsSubPage.MAIN })
@@ -2900,9 +2907,12 @@ private fun SettingsDiagnosticsPage() {
 @Composable
 private fun SettingsBackupExportPage(
     onAuthenticateSensitive: (String, (Boolean) -> Unit) -> Unit,
+    onExportFullBackup: (Uri, String, (Boolean, String) -> Unit) -> Unit,
+    onRestoreFullBackup: (Uri, String, (Boolean, String) -> Unit) -> Unit,
 ) {
     val context = LocalContext.current
     var statusMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    var fullBackupPassphrase by rememberSaveable { mutableStateOf("") }
 
     fun writeText(uri: Uri, text: String): Boolean =
         runCatching {
@@ -2917,6 +2927,30 @@ private fun SettingsBackupExportPage(
                 it.readText()
             }
         }.getOrNull()
+
+    val exportFullBackup = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/octet-stream"),
+    ) { uri ->
+        if (uri != null) {
+            val passphrase = fullBackupPassphrase
+            onExportFullBackup(uri, passphrase) { success, message ->
+                statusMessage = message
+                if (success) fullBackupPassphrase = ""
+            }
+        }
+    }
+
+    val restoreFullBackup = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            val passphrase = fullBackupPassphrase
+            onRestoreFullBackup(uri, passphrase) { success, message ->
+                statusMessage = message
+                if (success) fullBackupPassphrase = ""
+            }
+        }
+    }
 
     val exportBookmarks = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/html"),
@@ -3013,6 +3047,83 @@ private fun SettingsBackupExportPage(
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
+        SettingsSectionTitle("ENCRYPTED FULL TAHO BACKUP")
+        Text(
+            "Includes Taho-owned settings, bookmarks, history, passwords, addresses, payment cards, local profiles, downloads metadata/files, offline snapshots, collections, PWAs and browser UI records. Gecko-owned cookies, cache and IndexedDB are not copied.",
+            color = TahoMuted,
+            fontFamily = TahoMono,
+            fontSize = 9.5.sp,
+        )
+        Spacer(Modifier.height(9.dp))
+        BasicTextField(
+            value = fullBackupPassphrase,
+            onValueChange = { fullBackupPassphrase = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(TahoBlockShape)
+                .background(TahoSurfaceControl)
+                .border(1.dp, TahoHairline, TahoBlockShape)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp),
+            cursorBrush = SolidColor(TahoGold),
+            decorationBox = { inner ->
+                Box {
+                    if (fullBackupPassphrase.isEmpty()) {
+                        Text(
+                            "Backup passphrase (minimum 10 characters)",
+                            color = TahoFaint,
+                            fontFamily = TahoMono,
+                            fontSize = 10.5.sp,
+                        )
+                    }
+                    inner()
+                }
+            },
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            M7SecondaryButton("Create Encrypted Backup", Modifier.weight(1f)) {
+                if (fullBackupPassphrase.length < 10) {
+                    statusMessage = "Backup passphrase must be at least 10 characters."
+                } else {
+                    val launch = { exportFullBackup.launch("taho-browser-backup.taho") }
+                    if (TahoBrowserStateStore.settings.biometricLockForPasswords) {
+                        onAuthenticateSensitive("Export full browser backup") { success ->
+                            if (success) launch()
+                            else statusMessage = "Full backup export was not authorized."
+                        }
+                    } else {
+                        launch()
+                    }
+                }
+            }
+            M7SecondaryButton("Restore Backup", Modifier.weight(1f)) {
+                if (fullBackupPassphrase.length < 10) {
+                    statusMessage = "Enter the backup passphrase before restoring."
+                } else {
+                    val launch = {
+                        restoreFullBackup.launch(
+                            arrayOf("application/octet-stream", "application/*"),
+                        )
+                    }
+                    if (TahoBrowserStateStore.settings.biometricLockForPasswords) {
+                        onAuthenticateSensitive("Restore full browser backup") { success ->
+                            if (success) launch()
+                            else statusMessage = "Full backup restore was not authorized."
+                        }
+                    } else {
+                        launch()
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(22.dp))
         SettingsSectionTitle("DATA EXPORT & PORTABILITY")
         Text(
             "Choose the destination with Android's system document picker. Taho never fabricates an export success.",
