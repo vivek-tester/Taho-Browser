@@ -3,6 +3,7 @@ package app.taho.browser.transfer.core
 import app.taho.browser.capture.domain.NormalizableRequest
 import app.taho.browser.capture.domain.NormalizedHeader
 import app.taho.browser.capture.domain.NormalizedHeaderValue
+import app.taho.browser.capture.domain.Relevance
 import app.taho.browser.capture.domain.RequestNormalizer
 import app.taho.browser.capture.domain.SecretAssessment
 import app.taho.browser.capture.domain.SecretCategory
@@ -67,6 +68,7 @@ data class M4CapturedRequest(
     val bodyRepresentation: BodyRepresentation? = body?.representation,
     val bodyLimitation: String? = null,
     val observation: ObservationSource = ObservationSource.ENGINE,
+    val relevance: Relevance? = null,
 )
 
 data class M4DisplayHeader(
