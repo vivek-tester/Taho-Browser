@@ -144,6 +144,7 @@ class MainActivity : ComponentActivity() {
         }
 
         controller = BrowserRuntimeStore.get(this)
+        handleIncomingBrowserIntent(intent)
         controller.snapshot().tabs.forEach { tab ->
             if (!tab.isPrivate) {
                 committedHistoryLocationByTab[tab.id] = tab.location
@@ -486,6 +487,21 @@ class MainActivity : ComponentActivity() {
             controller.persistNow()
             transferNotice = "Device low on memory. Capture operating in degraded mode."
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (::controller.isInitialized) {
+            handleIncomingBrowserIntent(intent)
+        }
+    }
+
+    private fun handleIncomingBrowserIntent(source: Intent?) {
+        if (source?.action != Intent.ACTION_VIEW) return
+        val uri = source.data ?: return
+        if (uri.scheme != "https" && uri.scheme != "http") return
+        controller.load(uri = uri.toString())
     }
 
     override fun onStop() {
