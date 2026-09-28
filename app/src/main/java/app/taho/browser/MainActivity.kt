@@ -709,15 +709,21 @@ class MainActivity : ComponentActivity() {
             ?.let { runCatching { URI(it).host }.getOrNull() }
 
     private fun copyMaskedCurl(text: String) {
-        val clipboard = getSystemService(ClipboardManager::class.java)
-        val clip = ClipData.newPlainText("Taho Browser masked cURL", text)
-        if (android.os.Build.VERSION.SDK_INT >= 33) {
-            clip.description.extras = PersistableBundle().apply {
-                putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
+        val copied = runCatching {
+            val clipboard = getSystemService(ClipboardManager::class.java)
+            val clip = ClipData.newPlainText("Taho Browser masked cURL", text)
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                clip.description.extras = PersistableBundle().apply {
+                    putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
+                }
             }
+            clipboard.setPrimaryClip(clip)
+        }.isSuccess
+        transferNotice = if (copied) {
+            "Masked cURL copied."
+        } else {
+            "Unable to copy the masked cURL."
         }
-        clipboard.setPrimaryClip(clip)
-        transferNotice = "Masked cURL copied."
     }
 
     private fun shareMaskedRequest(text: String) {
