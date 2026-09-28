@@ -219,6 +219,8 @@ internal object M7SafeExport {
 internal fun M7CaptureSummarySheet(
     requests: List<M4CaptureRequestUiState>,
     filter: M7CaptureFilterUi,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
     listState: LazyListState,
     selectedId: String?,
     onFilterSelected: (M7CaptureFilterUi) -> Unit,
@@ -226,7 +228,7 @@ internal fun M7CaptureSummarySheet(
     onClose: () -> Unit,
 ) {
     val relevantCount = requests.count { it.relevantByDefault }
-    val visible = M7CaptureUx.filtered(requests, filter)
+    val visible = filterByQuery(M7CaptureUx.filtered(requests, filter), searchQuery)
 
     Column(
         modifier = Modifier
@@ -267,6 +269,11 @@ internal fun M7CaptureSummarySheet(
             }
         }
         Spacer(Modifier.height(12.dp))
+        M7CaptureSearchField(
+            query = searchQuery,
+            onQueryChange = onSearchQueryChange,
+        )
+        Spacer(Modifier.height(12.dp))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -281,16 +288,19 @@ internal fun M7CaptureSummarySheet(
         Spacer(Modifier.height(12.dp))
 
         if (visible.isEmpty()) {
-            val emptyTitle = when (filter) {
-                M7CaptureFilterUi.RELEVANT -> "No relevant requests yet."
-                M7CaptureFilterUi.ALL -> "No captured requests yet."
-                M7CaptureFilterUi.AUTH -> "No authentication requests in this capture."
-                M7CaptureFilterUi.API -> "No API requests in this capture."
+            val searching = searchQuery.isNotBlank()
+            val emptyTitle = when {
+                searching -> "No requests match \"" + searchQuery.trim() + "\""
+                filter == M7CaptureFilterUi.RELEVANT -> "No relevant requests yet."
+                filter == M7CaptureFilterUi.ALL -> "No captured requests yet."
+                filter == M7CaptureFilterUi.AUTH -> "No authentication requests in this capture."
+                else -> "No API requests in this capture."
             }
-            val emptyDetail = if (filter == M7CaptureFilterUi.RELEVANT) {
-                "Continue browsing and Taho will surface API activity here."
-            } else {
-                "Change the filter or continue browsing."
+            val emptyDetail = when {
+                searching -> "Search runs on host, path, method and status only."
+                filter == M7CaptureFilterUi.RELEVANT ->
+                    "Continue browsing and Taho will surface API activity here."
+                else -> "Change the filter or continue browsing."
             }
             Column(
                 modifier = Modifier

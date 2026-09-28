@@ -55,6 +55,7 @@ import app.taho.browser.shell.M4CaptureHeaderUiState
 import app.taho.browser.shell.M4CaptureRequestUiState
 import app.taho.browser.shell.M4CompletenessUi
 import app.taho.browser.shell.M4SecretPolicyUi
+import app.taho.browser.shell.M7TransferPhaseUi
 import app.taho.browser.shell.SitePermissionUiState
 import app.taho.browser.shell.TahoBrowserApp
 import app.taho.browser.transfer.android.TahoDirectTransferIntentFactory
@@ -81,6 +82,7 @@ class MainActivity : ComponentActivity() {
     private var activeAndroidPermissionRequestId: String? = null
     private var activeAndroidPermissions: List<String> = emptyList()
     private var transferNotice by mutableStateOf<String?>(null)
+    private var transferPhase by mutableStateOf(M7TransferPhaseUi.NOT_STARTED)
     private var pendingTransferId: String? = null
     private var transferPreparationInFlight: Boolean = false
 
@@ -238,6 +240,7 @@ class MainActivity : ComponentActivity() {
                     notice = transferNotice
                         ?: captureSnapshot.storageDegradedReason?.let(::storageNotice)
                         ?: snapshot.notice,
+                    transferPhase = transferPhase,
                     captureCapabilityNote = when {
                         !BuildConfig.M1_ATTRIBUTION_VERIFIED ->
                             "Production capture remains off until on-device tab attribution is verified."
@@ -294,6 +297,7 @@ class MainActivity : ComponentActivity() {
                 onDismissNotice = {
                     if (transferNotice != null) {
                         transferNotice = null
+                        transferPhase = M7TransferPhaseUi.NOT_STARTED
                     } else {
                         controller.dismissNotice()
                     }
@@ -561,8 +565,11 @@ class MainActivity : ComponentActivity() {
         )
         if (!transferCoordinator.isTargetAvailable(target)) {
             transferNotice = "Taho API Testing isn't installed."
+            transferPhase = M7TransferPhaseUi.FAILED
             return
         }
+
+        transferPhase = M7TransferPhaseUi.PREPARING
 
         val domainPolicy = SecretPolicy.valueOf(policy.name)
         val expectedTransferId = captured.transferId
@@ -570,6 +577,7 @@ class MainActivity : ComponentActivity() {
             override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
                 if (pendingTransferId != expectedTransferId) return
                 pendingTransferId = null
+                transferPhase = M7TransferPhaseUi.RECEIVED
                 val receipt = TahoDirectTransferIntentFactory.parseReceipt(resultData)
                 if (receipt?.transferId == expectedTransferId) {
                     transferCoordinator.settle(expectedTransferId)
@@ -579,17 +587,22 @@ class MainActivity : ComponentActivity() {
                     )
                 }
                 transferNotice = when {
-                    receipt == null ->
+                    receipt == null -> {
+                        transferPhase = M7TransferPhaseUi.FAILED
                         "Taho returned no valid transfer receipt."
-                    receipt.transferId != expectedTransferId ->
+                    }
+                    receipt.transferId != expectedTransferId -> {
+                        transferPhase = M7TransferPhaseUi.FAILED
                         "Taho returned a receipt for a different transfer."
+                    }
                     else -> receiptNotice(receipt)
                 }
             }
         }
 
         transferPreparationInFlight = true
-        transferNotice = "Preparing request for Taho…"
+        transferPhase = M7TransferPhaseUi.PREPARING
+        transferNotice = null
 
         Thread({
             val preparation = runCatching {
@@ -600,6 +613,7 @@ class MainActivity : ComponentActivity() {
             }.getOrElse {
                 runOnUiThread {
                     transferPreparationInFlight = false
+                    transferPhase = M7TransferPhaseUi.FAILED
                     transferNotice =
                         "Taho could not receive this request. Your captured request remains in Taho Browser."
                 }
@@ -610,6 +624,7 @@ class MainActivity : ComponentActivity() {
                 is M4PreparationResult.Blocked -> {
                     runOnUiThread {
                         transferPreparationInFlight = false
+                        transferPhase = M7TransferPhaseUi.FAILED
                         transferNotice = when (preparation.reason) {
                             M4PreparationBlock.REVIEW_REQUIRED ->
                                 "Transfer blocked: sensitive data still requires review."
@@ -631,6 +646,7 @@ class MainActivity : ComponentActivity() {
                     }.getOrElse {
                         runOnUiThread {
                             transferPreparationInFlight = false
+                            transferPhase = M7TransferPhaseUi.FAILED
                             transferNotice =
                                 "Taho could not receive this request. Your captured request remains in Taho Browser."
                         }
@@ -644,12 +660,13 @@ class MainActivity : ComponentActivity() {
                             return@runOnUiThread
                         }
                         pendingTransferId = expectedTransferId
+                        transferPhase = M7TransferPhaseUi.TRANSFERRING
                         transferNotice = if (
                             dispatch.transport == TahoTransferTransport.ARTIFACT_URI
                         ) {
                             "This request is large. Using secure file transfer…"
                         } else {
-                            "Sending to Taho…"
+                            null
                         }
 
                         runCatching {
@@ -661,6 +678,7 @@ class MainActivity : ComponentActivity() {
                         }.onFailure {
                             pendingTransferId = null
                             transferCoordinator.cancel(expectedTransferId)
+                            transferPhase = M7TransferPhaseUi.FAILED
                             transferNotice =
                                 "Taho could not receive this request. Your captured request remains in Taho Browser."
                         }
@@ -675,7 +693,7 @@ class MainActivity : ComponentActivity() {
     ): String =
         when {
             receipt.result.name == "IMPORTED" ->
-                "Taho received the request. Import does not execute it."
+                "Request received by Taho. Import does not execute it."
             receipt.result.name == "DUPLICATE" ->
                 "Taho already imported this request. Nothing was executed."
             receipt.errorCode?.name == "TAHO_TRANSFER_UNSUPPORTED_VERSION" ->

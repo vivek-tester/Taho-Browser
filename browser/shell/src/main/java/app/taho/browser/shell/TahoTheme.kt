@@ -17,7 +17,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
@@ -25,7 +24,9 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -101,9 +102,6 @@ internal val TahoSpringEasing = CubicBezierEasing(0.34f, 1.4f, 0.44f, 1f)
 
 internal const val TahoDurationScreen = 600
 internal const val TahoDurationSheet = 750
-internal const val TahoDurationVeil = 550
-internal const val TahoDurationControl = 450
-internal const val TahoDurationPress = 400
 
 /** True when the user has disabled system animations (animator scale 0). */
 @Composable
@@ -120,14 +118,22 @@ internal fun TahoReducedMotion(): Boolean {
 
 /**
  * Spec §15/A1 — capture-pill content pulse: scale 1 → 1.07 @35% → 1 over 800ms.
- * Replays whenever [trigger] changes. Disabled under reduced motion.
+ * Plays only when [trigger] *changes* after initial composition — never on first
+ * entry, matching the prototype (the pill is quiet until an event lands).
+ * Disabled under reduced motion.
  */
 @Composable
 internal fun Modifier.tahoPulse(trigger: Any?): Modifier {
     val reduced = TahoReducedMotion()
     val scale = remember { Animatable(1f) }
+    var seenFirst by remember { mutableStateOf(false) }
     LaunchedEffect(trigger, reduced) {
-        if (trigger == null || reduced) {
+        if (!seenFirst) {
+            seenFirst = true
+            scale.snapTo(1f)
+            return@LaunchedEffect
+        }
+        if (reduced) {
             scale.snapTo(1f)
             return@LaunchedEffect
         }
@@ -166,28 +172,6 @@ internal fun Modifier.tahoPressScale(
     }
 }
 
-/** Spec §4.2 — status dot with the 10px radial glow from the prototype. */
-@Composable
-internal fun TahoStatusDot(color: Color, modifier: Modifier = Modifier, glow: Boolean = true) {
-    Box(
-        modifier = modifier
-            .size(6.dp)
-            .drawBehind {
-                if (glow) {
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = listOf(color.copy(alpha = .55f), Color.Transparent),
-                            center = Offset(size.width / 2f, size.height / 2f),
-                            radius = size.width * 2.6f,
-                        ),
-                        radius = size.width * 2.6f,
-                    )
-                }
-                drawCircle(color = color, radius = size.minDimension / 2f)
-            },
-    )
-}
-
 /** Spec §15/F1 — handoff ring pulse: expanding, fading outline over 1.6s. */
 @Composable
 internal fun TahoRingPulse(color: Color, modifier: Modifier = Modifier) {
@@ -216,6 +200,28 @@ internal fun TahoRingPulse(color: Color, modifier: Modifier = Modifier) {
             )
         }
     }
+}
+
+/** Spec §4.2 — status dot with the 10px radial glow from the prototype. */
+@Composable
+internal fun TahoStatusDot(color: Color, modifier: Modifier = Modifier, glow: Boolean = true) {
+    Box(
+        modifier = modifier
+            .size(6.dp)
+            .drawBehind {
+                if (glow) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(color.copy(alpha = .55f), Color.Transparent),
+                            center = Offset(size.width / 2f, size.height / 2f),
+                            radius = size.width * 2.6f,
+                        ),
+                        radius = size.width * 2.6f,
+                    )
+                }
+                drawCircle(color = color, radius = size.minDimension / 2f)
+            },
+    )
 }
 
 // ---------- theme ----------
@@ -263,6 +269,3 @@ internal fun TahoTheme(content: @Composable () -> Unit) {
         content = content,
     )
 }
-
-@Suppress("unused")
-private val circleShapeRef = CircleShape // reserved for dot/ring call sites

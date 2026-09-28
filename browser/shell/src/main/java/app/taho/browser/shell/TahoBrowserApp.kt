@@ -107,6 +107,7 @@ data class BrowserUiState(
     val captureCapabilityNote: String? = null,
     val tabs: List<BrowserTabUiState> = emptyList(),
     val captureRequests: List<M4CaptureRequestUiState> = emptyList(),
+    val transferPhase: M7TransferPhaseUi = M7TransferPhaseUi.NOT_STARTED,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -143,6 +144,7 @@ fun TahoBrowserApp(
     var selectedSecretPolicy by rememberSaveable {
         mutableStateOf(M4SecretPolicyUi.PARAMETERIZE)
     }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
 
     val selectedCapture = state.captureRequests.firstOrNull { it.id == selectedCaptureId }
     val darkSystemChromeVisible =
@@ -254,7 +256,6 @@ fun TahoBrowserApp(
 
                 if (state.captureState != CaptureState.OFF) {
                     CaptureIndicator(
-
                         state = state.captureState,
                         relevantCount = state.relevantCount,
                         onClick = {
@@ -305,6 +306,11 @@ fun TahoBrowserApp(
                     onTabsClick = { showTabs = true },
                 )
             }
+
+            M7TransferProgressOverlay(
+                phase = state.transferPhase,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
 
         if (showCaptureSummary && selectedCaptureId == null && state.sitePermission == null) {
@@ -321,6 +327,8 @@ fun TahoBrowserApp(
                 M7CaptureSummarySheet(
                     requests = state.captureRequests,
                     filter = captureFilter,
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { searchQuery = it },
                     listState = captureListState,
                     selectedId = lastSelectedCaptureId,
                     onFilterSelected = { captureFilter = it },
@@ -329,7 +337,10 @@ fun TahoBrowserApp(
                         selectedCaptureId = requestId
                         selectedSecretPolicy = M4SecretPolicyUi.PARAMETERIZE
                     },
-                    onClose = { showCaptureSummary = false },
+                    onClose = {
+                        showCaptureSummary = false
+                        searchQuery = ""
+                    },
                 )
             }
         }
@@ -518,13 +529,13 @@ private fun PageCrashBanner(
             Text(
                 text = "This page stopped responding.",
                 color = TahoText,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = TahoMono,
                 fontSize = 11.sp,
             )
             Text(
                 text = "The tab is still open.",
                 color = TahoFaint,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = TahoMono,
                 fontSize = 9.sp,
             )
         }
@@ -538,7 +549,7 @@ private fun PageCrashBanner(
                     .clickable(onClick = onReload)
                     .padding(horizontal = 10.dp, vertical = 7.dp),
                 color = TahoGoldHi,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = TahoMono,
                 fontSize = 10.sp,
             )
             Text(
@@ -550,7 +561,7 @@ private fun PageCrashBanner(
                     .clickable(onClick = onViewCaptured)
                     .padding(horizontal = 10.dp, vertical = 7.dp),
                 color = TahoMuted,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = TahoMono,
                 fontSize = 9.sp,
             )
         }
@@ -572,7 +583,7 @@ private fun LoadFailureBanner(onReload: () -> Unit) {
             text = "Page failed to load",
             modifier = Modifier.weight(1f),
             color = TahoText,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = TahoMono,
             fontSize = 11.sp,
         )
         Text(
@@ -584,7 +595,7 @@ private fun LoadFailureBanner(onReload: () -> Unit) {
                 .clickable(onClick = onReload)
                 .padding(horizontal = 10.dp, vertical = 7.dp),
             color = TahoGoldHi,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = TahoMono,
             fontSize = 10.sp,
         )
     }
@@ -638,7 +649,7 @@ private fun ChromeAction(
         Text(
             text = label,
             color = if (enabled) TahoMuted else TahoFaint,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = TahoMono,
             fontSize = 9.sp,
             maxLines = 1,
         )
@@ -776,7 +787,7 @@ private fun Omnibox(
                         Text(
                             text = "Search or enter address",
                             color = TahoFaint,
-                            fontFamily = FontFamily.Monospace,
+                            fontFamily = TahoMono,
                             fontSize = 12.sp,
                         )
                     }
@@ -789,7 +800,7 @@ private fun Omnibox(
                         singleLine = true,
                         textStyle = TextStyle(
                             color = TahoText,
-                            fontFamily = FontFamily.Monospace,
+                            fontFamily = TahoMono,
                             fontSize = 12.sp,
                         ),
                         cursorBrush = SolidColor(TahoGold),
@@ -806,7 +817,7 @@ private fun Omnibox(
                 Text(
                     text = tokenizedUrl(value),
                     modifier = Modifier.weight(1f),
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = TahoMono,
                     fontSize = 12.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -902,7 +913,7 @@ private fun TabCountButton(
             Text(
                 text = count.toString(),
                 color = TahoText,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = TahoMono,
                 fontSize = 10.sp,
             )
         }
@@ -932,7 +943,7 @@ private fun SitePermissionSheet(
         Text(
             text = prompt.origin,
             color = TahoGoldHi,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = TahoMono,
             fontSize = 10.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -955,7 +966,7 @@ private fun SitePermissionSheet(
             Text(
                 text = "Private tab · this prompt is not saved by Taho Browser.",
                 color = TahoFaint,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = TahoMono,
                 fontSize = 9.sp,
             )
         }
@@ -1004,7 +1015,7 @@ private fun PermissionAction(
         Text(
             text = text,
             color = if (primary) TahoBg else TahoText,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = TahoMono,
             fontSize = 11.sp,
         )
     }
@@ -1086,7 +1097,7 @@ private fun MiniAction(
         Text(
             text = text,
             color = TahoGoldHi,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = TahoMono,
             fontSize = 10.sp,
         )
     }
@@ -1121,7 +1132,7 @@ private fun TabRow(
                     Text(
                         text = "PRIVATE",
                         color = TahoGoldHi,
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = TahoMono,
                         fontSize = 8.sp,
                     )
                     Spacer(Modifier.width(7.dp))
@@ -1129,7 +1140,7 @@ private fun TabRow(
                 Text(
                     text = tab.title?.takeIf { it.isNotBlank() } ?: tabTitle(tab.location),
                     color = TahoText,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = TahoMono,
                     fontSize = 11.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -1158,7 +1169,7 @@ private fun TabRow(
                     tab.loadFailed -> TahoError
                     else -> TahoFaint
                 },
-                fontFamily = FontFamily.Monospace,
+                fontFamily = TahoMono,
                 fontSize = 9.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
