@@ -918,9 +918,11 @@ fun TahoReaderModeView(
 // --- 5. Inline Page Translation Bar ---
 @Composable
 fun TahoTranslationBar(
-    sourceLang: String = "Detected (Spanish)",
+    sourceLang: String = "Detect page language",
     targetLang: String = "English",
     isTranslating: Boolean = false,
+    translated: Boolean = false,
+    statusMessage: String? = null,
     onTranslate: () -> Unit,
     onRevert: () -> Unit,
     onClose: () -> Unit,
@@ -954,7 +956,13 @@ fun TahoTranslationBar(
                         .clickable(onClick = onTranslate)
                         .padding(horizontal = 10.dp, vertical = 5.dp),
                 ) {
-                    Text(if (isTranslating) "Translating…" else "Translate", color = TahoBg, fontFamily = TahoMono, fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        if (isTranslating) "Working…" else if (translated) "Translated" else "Translate",
+                        color = TahoBg,
+                        fontFamily = TahoMono,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 }
 
                 Box(
@@ -970,5 +978,16 @@ fun TahoTranslationBar(
                 Text("✕", color = TahoFaint, fontSize = 12.sp, modifier = Modifier.clickable(onClick = onClose).padding(4.dp))
             }
         }
+        statusMessage?.takeIf(String::isNotBlank)?.let { message ->
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = message,
+                color = TahoFaint,
+                fontFamily = TahoMono,
+                fontSize = 8.5.sp,
+                maxLines = 2,
+            )
+        }
+
     }
 }
