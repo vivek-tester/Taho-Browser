@@ -186,7 +186,9 @@ data class OfflinePageUi(
     val title: String,
     val url: String,
     val savedAt: Long = System.currentTimeMillis(),
-    val sizeBytes: Long = 1024 * 1024,
+    val sizeBytes: Long = 0L,
+    val localPath: String? = null,
+    val mimeType: String = "application/pdf",
 ) : Serializable
 
 data class ReaderSettingsUi(
