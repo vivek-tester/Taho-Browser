@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -121,6 +122,9 @@ fun TahoBrowserApp(
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var showCaptureSummary by rememberSaveable { mutableStateOf(false) }
     var selectedCaptureId by rememberSaveable { mutableStateOf<String?>(null) }
+    var lastSelectedCaptureId by rememberSaveable { mutableStateOf<String?>(null) }
+    var captureFilter by rememberSaveable { mutableStateOf(M7CaptureFilterUi.RELEVANT) }
+    val captureListState = rememberLazyListState()
     var showTransferConfirmation by rememberSaveable { mutableStateOf(false) }
     var selectedSecretPolicy by rememberSaveable {
         mutableStateOf(M4SecretPolicyUi.PARAMETERIZE)
@@ -132,6 +136,12 @@ fun TahoBrowserApp(
         if (selectedCaptureId != null && selectedCapture == null) {
             selectedCaptureId = null
             showTransferConfirmation = false
+        }
+        if (
+            lastSelectedCaptureId != null &&
+            state.captureRequests.none { it.id == lastSelectedCaptureId }
+        ) {
+            lastSelectedCaptureId = null
         }
     }
 
@@ -278,7 +288,12 @@ fun TahoBrowserApp(
             ) {
                 M7CaptureSummarySheet(
                     requests = state.captureRequests,
+                    filter = captureFilter,
+                    listState = captureListState,
+                    selectedId = lastSelectedCaptureId,
+                    onFilterSelected = { captureFilter = it },
                     onSelect = { requestId ->
+                        lastSelectedCaptureId = requestId
                         selectedCaptureId = requestId
                         selectedSecretPolicy = M4SecretPolicyUi.PARAMETERIZE
                     },
