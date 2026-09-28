@@ -640,6 +640,32 @@ class BrowserRuntimeController(context: Context) {
         }.getOrDefault(false)
     }
 
+    fun saveCurrentPageAsPdf(
+        onResult: (java.io.InputStream?, String?) -> Unit,
+    ) {
+        val tab = requireSelected()
+        if (tab.crashed || tab.location.isNullOrBlank()) {
+            onResult(null, "No loaded page is available to save.")
+            return
+        }
+
+        tab.session.saveAsPdf().accept(
+            { stream ->
+                if (stream == null) {
+                    onResult(null, "Gecko returned no offline snapshot.")
+                } else {
+                    onResult(stream, null)
+                }
+            },
+            { error ->
+                onResult(
+                    null,
+                    error?.javaClass?.simpleName ?: "Page snapshot failed",
+                )
+            },
+        )
+    }
+
     fun clearBrowsingStorage(
         clearCache: Boolean,
         clearCookiesAndSiteData: Boolean,
