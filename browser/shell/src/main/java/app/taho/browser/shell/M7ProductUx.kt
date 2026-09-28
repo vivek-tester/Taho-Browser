@@ -205,20 +205,31 @@ internal fun M7CaptureSummarySheet(
         Spacer(Modifier.height(12.dp))
 
         if (visible.isEmpty()) {
+            val emptyTitle = when (filter) {
+                M7CaptureFilterUi.RELEVANT -> "No relevant requests yet."
+                M7CaptureFilterUi.ALL -> "No captured requests yet."
+                M7CaptureFilterUi.AUTH -> "No authentication requests in this capture."
+                M7CaptureFilterUi.API -> "No API requests in this capture."
+            }
+            val emptyDetail = if (filter == M7CaptureFilterUi.RELEVANT) {
+                "Continue browsing and Taho will surface API activity here."
+            } else {
+                "Change the filter or continue browsing."
+            }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 26.dp),
             ) {
                 Text(
-                    text = "No relevant requests yet.",
+                    text = emptyTitle,
                     color = TahoText,
                     fontFamily = FontFamily.Monospace,
                     fontSize = 11.sp,
                 )
                 Spacer(Modifier.height(5.dp))
                 Text(
-                    text = "Continue browsing and Taho will surface API activity here.",
+                    text = emptyDetail,
                     color = TahoFaint,
                     fontFamily = FontFamily.Monospace,
                     fontSize = 10.sp,
@@ -535,15 +546,13 @@ private fun M7Overview(request: M4CaptureRequestUiState, host: String) {
                 (request.durationMs?.let { it.toString() + " ms" } ?: "— unavailable"),
         )
         M7KeyValue("Category", request.relevanceCategory.replace('_', ' ').lowercase())
-        M7Evidence("Request URL", M4CompletenessUi.COMPLETE)
-        M7Evidence(
-            "Request headers",
-            if (request.headers.isEmpty()) M4CompletenessUi.UNAVAILABLE else M4CompletenessUi.COMPLETE,
-        )
+        M7Evidence("Request URL", request.requestUrlCompleteness)
+        M7Evidence("Request headers", request.requestHeadersCompleteness)
         M7Evidence("Request body", request.requestBodyCompleteness)
+        M7Evidence("Response headers", request.responseHeadersCompleteness)
         M7Evidence("Response body", request.responseBodyCompleteness)
-        M7Evidence("Timing", if (request.durationMs == null) M4CompletenessUi.UNAVAILABLE else M4CompletenessUi.PARTIAL)
-        M7Evidence("TLS", M4CompletenessUi.UNAVAILABLE)
+        M7Evidence("Timing", request.timingCompleteness)
+        M7Evidence("TLS", request.tlsCompleteness)
 
         Spacer(Modifier.height(8.dp))
         if (request.responseBodyCompleteness == M4CompletenessUi.UNAVAILABLE) {
@@ -574,7 +583,9 @@ private fun M7Headers(request: M4CaptureRequestUiState) {
                     .fillMaxWidth()
                     .semantics {
                         if (header.sensitive) {
-                            contentDescription = header.name + " header, sensitive value hidden"
+                            contentDescription =
+                                header.name.replaceFirstChar(Char::uppercase) +
+                                    " header, sensitive value hidden"
                         }
                     }
                     .padding(vertical = 8.dp),
@@ -658,6 +669,7 @@ private fun M7Body(request: M4CaptureRequestUiState) {
 private fun M7Response(request: M4CaptureRequestUiState) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         M7KeyValue("Status", request.status?.toString() ?: "— unavailable")
+        M7Evidence("Response headers", request.responseHeadersCompleteness)
         M7Evidence("Response body", request.responseBodyCompleteness)
         M7HonestyNote(
             "Response metadata may be available; response evidence is optional for Browser → Taho handoff.",
@@ -674,6 +686,7 @@ private fun M7Timing(request: M4CaptureRequestUiState) {
         M7KeyValue("Waiting (TTFB)", "— unavailable")
         M7KeyValue("Content download", "— unavailable")
         M7KeyValue("Total", request.durationMs?.let { it.toString() + " ms" } ?: "— unavailable")
+        M7Evidence("Timing completeness", request.timingCompleteness)
         M7HonestyNote("Only measured timing fields are shown; missing phases are never inferred.")
     }
 }
@@ -710,8 +723,11 @@ private fun M7Provenance(request: M4CaptureRequestUiState) {
         )
         M7KeyValue(
             "completeness",
-            "request body " + request.requestBodyCompleteness.name.lowercase() +
-                " · response body " + request.responseBodyCompleteness.name.lowercase(),
+            "url " + request.requestUrlCompleteness.name.lowercase() +
+                " · req headers " + request.requestHeadersCompleteness.name.lowercase() +
+                " · req body " + request.requestBodyCompleteness.name.lowercase() +
+                " · resp headers " + request.responseHeadersCompleteness.name.lowercase() +
+                " · resp body " + request.responseBodyCompleteness.name.lowercase(),
         )
         request.captureEngineVersion?.let { M7KeyValue("engine", it) }
         request.normalizerVersion?.let { M7KeyValue("normalizer", it) }
@@ -824,7 +840,7 @@ internal fun M7SendConfirmationSheet(
         Text(
             text = when (selectedPolicy) {
                 M4SecretPolicyUi.PARAMETERIZE ->
-                    "Taho will receive placeholders for protected fields."
+                    "Protected fields use placeholders; cookie values remain masked by the Browser policy default."
                 M4SecretPolicyUi.MASK ->
                     "Masked — the imported request is not executable as-is."
                 M4SecretPolicyUi.EXPLICIT ->
@@ -1072,7 +1088,10 @@ private fun M7PrimaryButton(
             .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(999.dp))
             .background(if (enabled) TahoGold else Color.White.copy(alpha = .04f))
-            .semantics { role = Role.Button; contentDescription = label }
+            .semantics {
+                role = Role.Button
+                contentDescription = label.replace(" ↗", "")
+            }
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
