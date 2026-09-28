@@ -8,6 +8,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,6 +56,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -252,6 +254,7 @@ fun TahoBrowserApp(
 
                 if (state.captureState != CaptureState.OFF) {
                     CaptureIndicator(
+
                         state = state.captureState,
                         relevantCount = state.relevantCount,
                         onClick = {
@@ -472,9 +475,9 @@ private fun BrowserNoticeBanner(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(TahoBlockShape)
             .background(TahoSheet)
-            .border(1.dp, Color.White.copy(alpha = .10f), RoundedCornerShape(14.dp))
+            .border(1.dp, TahoHairlineStrong, TahoBlockShape)
             .padding(start = 14.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -482,7 +485,7 @@ private fun BrowserNoticeBanner(
             text = message,
             modifier = Modifier.weight(1f),
             color = TahoMuted,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = TahoMono,
             fontSize = 10.sp,
         )
         Box(
@@ -668,11 +671,14 @@ private fun CaptureIndicator(
     }
     val showDot = state != CaptureState.PAUSED && state != CaptureState.OFF
 
+    val pillInteraction = remember { MutableInteractionSource() }
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(999.dp))
+            .tahoPressScale(pillInteraction, target = .96f)
+            .tahoPulse(trigger = label)
+            .clip(TahoPillShape)
             .background(Color(0xD1161619))
-            .border(1.dp, Color.White.copy(alpha = .14f), RoundedCornerShape(999.dp))
+            .border(1.dp, TahoHairlineStrong, TahoPillShape)
             .semantics {
                 role = Role.Button
                 contentDescription = when (state) {
@@ -684,25 +690,24 @@ private fun CaptureIndicator(
                     CaptureState.OFF -> ""
                 }
             }
-            .clickable(onClick = onClick)
+            .clickable(
+                interactionSource = pillInteraction,
+                indication = null,
+                onClick = onClick,
+            )
             .heightIn(min = 44.dp)
             .padding(horizontal = 15.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (showDot) {
-            Box(
-                Modifier
-                    .size(7.dp)
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(dotColor),
-            )
+            TahoStatusDot(color = dotColor)
             Spacer(Modifier.width(8.dp))
         }
         Text(
             text = label,
             color = TahoText,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 11.sp,
+            fontFamily = TahoMono,
+            fontSize = 10.5.sp,
         )
     }
 }
@@ -919,7 +924,9 @@ private fun SitePermissionSheet(
         Text(
             text = "Site permission",
             color = TahoText,
-            fontSize = 19.sp,
+            fontFamily = TahoDisplay,
+            fontWeight = FontWeight.Medium,
+            fontSize = 17.sp,
         )
         Spacer(Modifier.height(7.dp))
         Text(
@@ -1026,12 +1033,14 @@ private fun TabSwitcher(
                 Text(
                     text = "Tabs",
                     color = TahoText,
-                    fontSize = 19.sp,
+                    fontFamily = TahoDisplay,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 17.sp,
                 )
                 Text(
                     text = tabs.size.toString() + if (tabs.size == 1) " open tab" else " open tabs",
                     color = TahoMuted,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = TahoMono,
                     fontSize = 10.sp,
                 )
             }

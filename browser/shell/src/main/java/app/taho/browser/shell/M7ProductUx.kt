@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -38,6 +40,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -235,12 +240,18 @@ internal fun M7CaptureSummarySheet(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Captured", color = TahoText, fontSize = 19.sp)
+                Text(
+                    text = "Captured",
+                    color = TahoText,
+                    fontFamily = TahoDisplay,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 17.sp,
+                )
                 Text(
                     text = relevantCount.toString() +
                         if (relevantCount == 1) " relevant request · filtered" else " relevant requests · filtered",
                     color = TahoMuted,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = TahoMono,
                     fontSize = 10.sp,
                 )
             }
@@ -289,14 +300,14 @@ internal fun M7CaptureSummarySheet(
                 Text(
                     text = emptyTitle,
                     color = TahoText,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = TahoMono,
                     fontSize = 11.sp,
                 )
                 Spacer(Modifier.height(5.dp))
                 Text(
                     text = emptyDetail,
                     color = TahoFaint,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = TahoMono,
                     fontSize = 10.sp,
                 )
             }
@@ -323,7 +334,7 @@ internal fun M7CaptureSummarySheet(
             Text(
                 text = "view all — includes noise · read-only",
                 color = TahoFaint,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = TahoMono,
                 fontSize = 9.sp,
             )
         }
@@ -341,12 +352,12 @@ private fun M7FilterChip(
     Box(
         modifier = Modifier
             .heightIn(min = 44.dp)
-            .clip(RoundedCornerShape(999.dp))
-            .background(if (active) TahoGold.copy(alpha = .14f) else Color.White.copy(alpha = .025f))
+            .clip(TahoPillShape)
+            .background(if (active) TahoGold.copy(alpha = .13f) else Color.White.copy(alpha = .025f))
             .border(
                 1.dp,
-                if (active) TahoGold.copy(alpha = .5f) else Color.White.copy(alpha = .09f),
-                RoundedCornerShape(999.dp),
+                if (active) TahoGold.copy(alpha = .45f) else Color.White.copy(alpha = .08f),
+                TahoPillShape,
             )
             .semantics {
                 selected = active
@@ -360,7 +371,7 @@ private fun M7FilterChip(
         Text(
             text = label,
             color = if (active) TahoGoldHi else TahoMuted,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = TahoMono,
             fontSize = 10.sp,
         )
     }
@@ -375,7 +386,6 @@ private fun M7SummaryRow(
 ) {
     val parsed = runCatching { URI(request.url) }.getOrNull()
     val path = parsed?.rawPath?.takeIf { it.isNotBlank() } ?: "/"
-    val host = parsed?.host ?: "unknown host"
     val bodyFlag = when (request.requestBodyCompleteness) {
         M4CompletenessUi.PARTIAL -> "△ body partial"
         M4CompletenessUi.TRUNCATED -> "△ body truncated"
@@ -417,7 +427,7 @@ private fun M7SummaryRow(
                 text = path,
                 modifier = Modifier.weight(1f),
                 color = TahoText,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = TahoMono,
                 fontSize = 11.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -426,7 +436,7 @@ private fun M7SummaryRow(
                 Text(
                     text = it.toString(),
                     color = if (it in 200..399) TahoOk else TahoWarn,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = TahoMono,
                     fontSize = 10.sp,
                 )
             }
@@ -435,7 +445,7 @@ private fun M7SummaryRow(
                 Text(
                     text = it.toString() + " ms",
                     color = TahoFaint,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = TahoMono,
                     fontSize = 9.sp,
                 )
             }
@@ -443,53 +453,36 @@ private fun M7SummaryRow(
         Spacer(Modifier.height(5.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = host,
-                modifier = Modifier.weight(1f),
-                color = TahoFaint,
-                fontFamily = FontFamily.Monospace,
-                fontSize = 9.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.width(8.dp))
             M7CategoryChip(request.relevanceCategory)
-        }
-        if (request.sensitiveCount > 0 || bodyFlag != null || request.transactionState in setOf("FAILED", "CANCELLED", "PARTIAL")) {
-            Spacer(Modifier.height(6.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(9.dp),
-            ) {
-                if (request.sensitiveCount > 0) {
-                    Text(
-                        text = "⚑ credential detected",
-                        color = TahoWarn,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 9.sp,
-                    )
-                }
-                if (bodyFlag != null) {
-                    Text(
-                        text = bodyFlag,
-                        color = TahoInfo,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 9.sp,
-                    )
-                }
-                request.transactionState
-                    ?.takeIf { it in setOf("FAILED", "CANCELLED", "PARTIAL") }
-                    ?.let {
-                        Text(
-                            text = "△ " + it.lowercase(),
-                            color = TahoWarn,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 9.sp,
-                        )
-                    }
+            if (request.sensitiveCount > 0) {
+                Text(
+                    text = "⚑ credential detected",
+                    color = TahoWarn,
+                    fontFamily = TahoMono,
+                    fontSize = 9.sp,
+                )
             }
+            if (bodyFlag != null) {
+                Text(
+                    text = bodyFlag,
+                    color = TahoInfo,
+                    fontFamily = TahoMono,
+                    fontSize = 9.sp,
+                )
+            }
+            request.transactionState
+                ?.takeIf { it in setOf("FAILED", "CANCELLED", "PARTIAL") }
+                ?.let {
+                    Text(
+                        text = "△ " + it.lowercase(),
+                        color = TahoWarn,
+                        fontFamily = TahoMono,
+                        fontSize = 9.sp,
+                    )
+                }
         }
     }
 }
@@ -524,7 +517,7 @@ internal fun M7RequestInspectorSheet(
                 Text(
                     text = path,
                     color = TahoText,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = TahoMono,
                     fontSize = 13.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -536,7 +529,7 @@ internal fun M7RequestInspectorSheet(
                         request.durationMs?.let { append(" · ").append(it).append(" ms") }
                     },
                     color = TahoFaint,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = TahoMono,
                     fontSize = 9.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -599,18 +592,18 @@ internal fun M7RequestInspectorSheet(
         ) {
             M7MiniButton(
                 label = "Copy cURL",
-                modifier = Modifier.weight(.80f),
+                modifier = Modifier.weight(.78f),
                 onClick = onCopyCurl,
             )
             M7MiniButton(
                 label = "Share",
-                modifier = Modifier.weight(.62f),
+                modifier = Modifier.weight(.60f),
                 onClick = onShare,
             )
             M7PrimaryButton(
-                label = "Send to Taho ↗",
+                label = "Send to Taho",
                 enabled = request.transferBlockedReason == null,
-                modifier = Modifier.weight(1.35f),
+                modifier = Modifier.weight(1.38f),
                 onClick = onSendToTaho,
             )
         }
@@ -628,18 +621,57 @@ private fun M7InspectorTabChip(
         modifier = Modifier
             .heightIn(min = 44.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(if (active) TahoGold.copy(alpha = .13f) else Color.Transparent)
+            .background(if (active) TahoGold.copy(alpha = .10f) else Color.Transparent)
             .semantics { selected = active; role = Role.Button }
             .clickable { onSelect(tab) }
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = 10.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = tab.name.lowercase().replaceFirstChar(Char::uppercase),
+            text = tab.name.uppercase(),
             color = if (active) TahoGoldHi else TahoMuted,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 9.sp,
+            fontFamily = TahoMono,
+            fontSize = 10.sp,
         )
+    }
+}
+
+/**
+ * Prototype §2.1 JSON palette: keys emerald, strings gold-hi, numbers lilac —
+ * applied over the warm-white default. Safe on non-JSON text (returns as-is).
+ */
+private fun highlightJson(source: String): AnnotatedString = buildAnnotatedString {
+    var i = 0
+    val n = source.length
+    append(source) // base text; spans below recolor the slices
+    while (i < n) {
+        val c = source[i]
+        when {
+            c == '"' -> {
+                val close = source.indexOf('"', i + 1)
+                if (close < 0) break
+                // a key is a string followed (after whitespace) by ':'
+                var j = close + 1
+                while (j < n && source[j].isWhitespace()) j++
+                val isKey = j < n && source[j] == ':'
+                addStyle(
+                    SpanStyle(color = if (isKey) TahoInfo else TahoGoldHi),
+                    i,
+                    close + 1,
+                )
+                i = close + 1
+            }
+            c.isDigit() || ((c == '-' || c == '+') && i + 1 < n && source[i + 1].isDigit()) -> {
+                var j = i
+                while (j < n && (source[j].isDigit() || source[j] in ".eE+-")) {
+                    if (source[j] in "+-" && j > i && source[j - 1] !in "eE") break
+                    j++
+                }
+                addStyle(SpanStyle(color = TahoJsonNum), i, j)
+                i = j
+            }
+            else -> i++
+        }
     }
 }
 
@@ -701,7 +733,7 @@ private fun M7Headers(request: M4CaptureRequestUiState) {
                     text = header.name,
                     modifier = Modifier.weight(.42f),
                     color = TahoFaint,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = TahoMono,
                     fontSize = 9.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -710,7 +742,7 @@ private fun M7Headers(request: M4CaptureRequestUiState) {
                     text = header.displayValue + if (header.sensitive) "  sensitive" else "",
                     modifier = Modifier.weight(.58f),
                     color = if (header.sensitive) TahoWarn else TahoText,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = TahoMono,
                     fontSize = 9.sp,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
@@ -744,16 +776,17 @@ private fun M7Body(request: M4CaptureRequestUiState) {
         val preview = request.safeBodyPreview
         if (preview != null) {
             Text(
-                text = preview,
+                text = highlightJson(preview),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color.White.copy(alpha = .025f))
-                    .border(1.dp, Color.White.copy(alpha = .08f), RoundedCornerShape(14.dp))
-                    .padding(12.dp),
+                    .clip(TahoBlockShape)
+                    .background(Color.White.copy(alpha = .03f))
+                    .border(1.dp, TahoHairline, TahoBlockShape)
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
                 color = TahoText,
-                fontFamily = FontFamily.Monospace,
-                fontSize = 9.sp,
+                fontFamily = TahoMono,
+                fontSize = 10.sp,
+                lineHeight = 17.sp,
             )
             if (request.safeBodyPreviewTruncated) {
                 M7HonestyNote(
@@ -813,7 +846,7 @@ private fun M7Provenance(request: M4CaptureRequestUiState) {
         Text(
             text = "provenance",
             color = TahoFaint,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = TahoMono,
             fontSize = 9.sp,
         )
         M7KeyValue(
@@ -865,11 +898,17 @@ internal fun M7SendConfirmationSheet(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Send to Taho?", color = TahoText, fontSize = 19.sp)
+                Text(
+                    text = "Send to Taho?",
+                    color = TahoText,
+                    fontFamily = TahoDisplay,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 17.sp,
+                )
                 Text(
                     text = request.method + " " + host + path,
                     color = TahoMuted,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = TahoMono,
                     fontSize = 10.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -921,7 +960,7 @@ internal fun M7SendConfirmationSheet(
         Text(
             text = "Credential policy",
             color = TahoMuted,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = TahoMono,
             fontSize = 10.sp,
         )
         Spacer(Modifier.height(8.dp))
@@ -957,7 +996,7 @@ internal fun M7SendConfirmationSheet(
                 )
                 .padding(12.dp),
             color = if (selectedPolicy == M4SecretPolicyUi.EXPLICIT) TahoWarn else TahoGoldHi,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = TahoMono,
             fontSize = 9.sp,
         )
         Spacer(Modifier.height(5.dp))
@@ -975,7 +1014,7 @@ internal fun M7SendConfirmationSheet(
                     }
             },
             color = TahoFaint,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = TahoMono,
             fontSize = 9.sp,
         )
 
@@ -986,6 +1025,7 @@ internal fun M7SendConfirmationSheet(
         ) {
             M7PrimaryButton(
                 label = "Send to Taho",
+                showArrow = false,
                 enabled = request.transferBlockedReason == null &&
                     (selectedPolicy != M4SecretPolicyUi.EXPLICIT || request.explicitPolicyAllowed),
                 modifier = Modifier.weight(1f),
@@ -997,7 +1037,7 @@ internal fun M7SendConfirmationSheet(
         Text(
             text = "Import ≠ execute. Taho opens an unsaved request; no network request runs during import.",
             color = TahoFaint,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = TahoMono,
             fontSize = 9.sp,
         )
     }
@@ -1016,11 +1056,17 @@ internal fun M7SettingsSheet(
             .navigationBarsPadding()
             .padding(start = 18.dp, end = 18.dp, bottom = 20.dp),
     ) {
-        Text("Settings", color = TahoText, fontSize = 19.sp)
+        Text(
+            text = "Settings",
+            color = TahoText,
+            fontFamily = TahoDisplay,
+            fontWeight = FontWeight.Medium,
+            fontSize = 17.sp,
+        )
         Text(
             text = "Browser and capture",
             color = TahoMuted,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = TahoMono,
             fontSize = 10.sp,
         )
         Spacer(Modifier.height(16.dp))
@@ -1046,14 +1092,14 @@ internal fun M7SettingsSheet(
             Text(
                 text = "Delete captured requests?",
                 color = TahoText,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = TahoMono,
                 fontSize = 11.sp,
             )
             Spacer(Modifier.height(5.dp))
             Text(
                 text = "Your websites and login sessions will remain.",
                 color = TahoFaint,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = TahoMono,
                 fontSize = 9.sp,
             )
             Spacer(Modifier.height(10.dp))
@@ -1107,7 +1153,7 @@ private fun M7PolicyButton(
                 active -> TahoGoldHi
                 else -> TahoMuted
             },
-            fontFamily = FontFamily.Monospace,
+            fontFamily = TahoMono,
             fontSize = 9.sp,
         )
     }
@@ -1136,13 +1182,13 @@ private fun M7Evidence(label: String, completeness: M4CompletenessUi) {
             text = label,
             modifier = Modifier.weight(1f),
             color = TahoMuted,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = TahoMono,
             fontSize = 10.sp,
         )
         Text(
             text = value,
             color = color,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = TahoMono,
             fontSize = 9.sp,
         )
     }
@@ -1159,14 +1205,14 @@ private fun M7KeyValue(label: String, value: String) {
             text = label,
             modifier = Modifier.weight(.42f),
             color = TahoFaint,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = TahoMono,
             fontSize = 9.sp,
         )
         Text(
             text = value,
             modifier = Modifier.weight(.58f),
             color = TahoText,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = TahoMono,
             fontSize = 9.sp,
         )
     }
@@ -1178,12 +1224,14 @@ private fun M7HonestyNote(text: String, warning: Boolean = false) {
         text = "ⓘ " + text,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = .025f))
-            .padding(10.dp),
+            .clip(TahoNoteShape)
+            .background(Color.White.copy(alpha = .03f))
+            .border(1.dp, TahoHairline, TahoNoteShape)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         color = if (warning) TahoWarn else TahoMuted,
-        fontFamily = FontFamily.Monospace,
-        fontSize = 9.sp,
+        fontFamily = TahoMono,
+        fontSize = 9.5.sp,
+        lineHeight = 15.sp,
     )
 }
 
@@ -1194,9 +1242,9 @@ private fun M7TransferLine(glyph: String, copy: String, color: Color) {
             .fillMaxWidth()
             .padding(vertical = 4.dp),
     ) {
-        Text(glyph, color = color, fontFamily = FontFamily.Monospace, fontSize = 10.sp)
+        Text(glyph, color = color, fontFamily = TahoMono, fontSize = 10.sp)
         Spacer(Modifier.width(7.dp))
-        Text(copy, color = color, fontFamily = FontFamily.Monospace, fontSize = 10.sp)
+        Text(copy, color = color, fontFamily = TahoMono, fontSize = 10.sp)
     }
 }
 
@@ -1204,29 +1252,30 @@ private fun M7TransferLine(glyph: String, copy: String, color: Color) {
 private fun M7MethodBadge(method: String) {
     val upper = method.uppercase()
     val background = when (upper) {
-        "POST" -> TahoGold.copy(alpha = .14f)
+        "POST" -> TahoGold.copy(alpha = .15f)
         "DELETE" -> TahoError.copy(alpha = .14f)
         else -> Color.White.copy(alpha = .07f)
     }
     val foreground = when (upper) {
         "POST" -> TahoGoldHi
         "DELETE" -> TahoError
-        else -> Color(0xFFC9C5BB)
+        else -> TahoNeutral
     }
 
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(TahoBadgeShape)
             .background(background)
-            .padding(horizontal = 7.dp, vertical = 4.dp),
+            .padding(horizontal = 6.dp, vertical = 2.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = upper,
             color = foreground,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = TahoMono,
             fontWeight = FontWeight.SemiBold,
-            fontSize = 9.sp,
+            fontSize = 9.5.sp,
+            letterSpacing = .4.sp,
         )
     }
 }
@@ -1236,9 +1285,15 @@ private fun M7CategoryChip(category: String) {
     val upper = category.uppercase()
     val accent = when (upper) {
         "AUTHENTICATION" -> TahoWarn
-        "PRIMARY_API" -> TahoGold
+        "PRIMARY_API" -> TahoGoldHi
         "STATIC_RESOURCE", "ANALYTICS", "TELEMETRY" -> TahoFaint
-        else -> Color(0xFFC9C5BB)
+        else -> TahoNeutral
+    }
+    val borderAccent = when (upper) {
+        "AUTHENTICATION" -> TahoWarn.copy(alpha = .4f)
+        "PRIMARY_API" -> TahoGold.copy(alpha = .4f)
+        "STATIC_RESOURCE", "ANALYTICS", "TELEMETRY" -> TahoHairline
+        else -> TahoHairline
     }
     val label = upper
         .lowercase()
@@ -1248,16 +1303,16 @@ private fun M7CategoryChip(category: String) {
 
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(999.dp))
-            .border(1.dp, accent.copy(alpha = .38f), RoundedCornerShape(999.dp))
-            .padding(horizontal = 8.dp, vertical = 3.dp),
+            .clip(TahoPillShape)
+            .border(1.dp, borderAccent, TahoPillShape)
+            .padding(horizontal = 8.dp, vertical = 1.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
             color = accent,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 8.sp,
+            fontFamily = TahoMono,
+            fontSize = 9.5.sp,
         )
     }
 }
@@ -1268,51 +1323,87 @@ private fun M7MiniButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
+    val interaction = remember { MutableInteractionSource() }
     Box(
         modifier = modifier
             .heightIn(min = 44.dp)
-            .clip(RoundedCornerShape(999.dp))
-            .background(Color.White.copy(alpha = .035f))
-            .border(1.dp, Color.White.copy(alpha = .10f), RoundedCornerShape(999.dp))
+            .tahoPressScale(interaction, target = .97f)
+            .clip(TahoPillShape)
+            .background(TahoSurfaceControl)
+            .border(1.dp, TahoHairline, TahoPillShape)
             .semantics { role = Role.Button; contentDescription = label }
-            .clickable(onClick = onClick),
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
             color = TahoMuted,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 9.sp,
+            fontFamily = TahoMono,
+            fontSize = 9.5.sp,
             maxLines = 1,
         )
     }
 }
 
+/**
+ * Prototype "button-in-button" primary: gold pill, body-text label, and the
+ * trailing arrow nested inside its own dark circular wrapper (spec §6).
+ */
 @Composable
 private fun M7PrimaryButton(
     label: String,
     enabled: Boolean,
     modifier: Modifier = Modifier,
+    showArrow: Boolean = true,
     onClick: () -> Unit,
 ) {
+    val interaction = remember { MutableInteractionSource() }
     Box(
         modifier = modifier
             .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(999.dp))
+            .tahoPressScale(interaction, target = .96f)
+            .clip(TahoPillShape)
             .background(if (enabled) TahoGold else Color.White.copy(alpha = .04f))
             .semantics {
                 role = Role.Button
-                contentDescription = label.replace(" ↗", "")
+                contentDescription = label
             }
-            .clickable(enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center,
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                enabled = enabled,
+                onClick = onClick,
+            )
+            .padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+        contentAlignment = Alignment.CenterEnd,
     ) {
-        Text(
-            text = label,
-            color = if (enabled) TahoBg else TahoFaint,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 10.sp,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = label,
+                modifier = Modifier.weight(1f, fill = false),
+                color = if (enabled) TahoBg else TahoFaint,
+                fontFamily = TahoBody,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 13.sp,
+                maxLines = 1,
+            )
+            if (showArrow) {
+                Spacer(Modifier.width(8.dp))
+                Box(
+                    modifier = Modifier
+                        .size(30.dp)
+                        .clip(TahoPillShape)
+                        .background(Color.Black.copy(alpha = .15f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "↗",
+                        color = if (enabled) TahoBg else TahoFaint,
+                        fontSize = 12.sp,
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -1322,21 +1413,28 @@ private fun M7SecondaryButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
+    val interaction = remember { MutableInteractionSource() }
     Box(
         modifier = modifier
             .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(999.dp))
-            .background(Color.White.copy(alpha = .035f))
-            .border(1.dp, Color.White.copy(alpha = .10f), RoundedCornerShape(999.dp))
+            .tahoPressScale(interaction, target = .97f)
+            .clip(TahoPillShape)
+            .background(TahoSurfaceControl)
+            .border(1.dp, TahoHairline, TahoPillShape)
             .semantics { role = Role.Button; contentDescription = label }
-            .clickable(onClick = onClick),
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                onClick = onClick,
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
             color = TahoText,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 10.sp,
+            fontFamily = TahoBody,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 13.sp,
         )
     }
 }
