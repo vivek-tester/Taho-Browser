@@ -89,6 +89,8 @@ enum class SettingsSubPage {
 fun TahoSettingsHubSheet(
     initialSubPage: SettingsSubPage = SettingsSubPage.MAIN,
     onNavigateUrl: (String) -> Unit = {},
+    onClearEngineData: (Boolean, Boolean, (Boolean) -> Unit) -> Unit =
+        { _, _, callback -> callback(true) },
     onDismiss: () -> Unit,
 ) {
     var currentSubPage by rememberSaveable { mutableStateOf(initialSubPage) }
@@ -191,7 +193,10 @@ fun TahoSettingsHubSheet(
                 SettingsSubPage.APPEARANCE -> SettingsAppearancePage()
                 SettingsSubPage.SEARCH_ENGINE -> SettingsSearchEnginePage()
                 SettingsSubPage.PRIVACY_SECURITY -> SettingsPrivacySecurityPage()
-                SettingsSubPage.CLEAR_DATA -> SettingsClearDataPage(onDone = { currentSubPage = SettingsSubPage.MAIN })
+                SettingsSubPage.CLEAR_DATA -> SettingsClearDataPage(
+                    onClearEngineData = onClearEngineData,
+                    onDone = { currentSubPage = SettingsSubPage.MAIN },
+                )
                 SettingsSubPage.BOOKMARKS -> SettingsBookmarksPage(onNavigate = { onDismiss(); onNavigateUrl(it) })
                 SettingsSubPage.HISTORY -> SettingsHistoryPage(onNavigate = { onDismiss(); onNavigateUrl(it) })
                 SettingsSubPage.DOWNLOADS -> SettingsDownloadsPage()
@@ -714,7 +719,10 @@ private fun SettingsPrivacySecurityPage() {
 // 4. CLEAR BROWSING DATA
 // -------------------------------------------------------------
 @Composable
-private fun SettingsClearDataPage(onDone: () -> Unit) {
+private fun SettingsClearDataPage(
+    onClearEngineData: (Boolean, Boolean, (Boolean) -> Unit) -> Unit,
+    onDone: () -> Unit,
+) {
     var clearCache by rememberSaveable { mutableStateOf(true) }
     var clearCookies by rememberSaveable { mutableStateOf(true) }
     var clearHistory by rememberSaveable { mutableStateOf(true) }
@@ -723,6 +731,7 @@ private fun SettingsClearDataPage(onDone: () -> Unit) {
     var clearDownloads by rememberSaveable { mutableStateOf(false) }
     var selectedTimeRange by rememberSaveable { mutableStateOf("ALL_TIME") }
     var clearedNotice by rememberSaveable { mutableStateOf(false) }
+    var clearFailed by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -772,6 +781,24 @@ private fun SettingsClearDataPage(onDone: () -> Unit) {
             }
             Spacer(Modifier.height(10.dp))
         }
+        if (clearFailed) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(TahoBlockShape)
+                    .background(TahoError.copy(alpha = 0.15f))
+                    .padding(12.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    "Browser engine data could not be fully cleared.",
+                    color = TahoError,
+                    fontFamily = TahoMono,
+                    fontSize = 11.sp,
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+        }
 
         M7PrimaryButton(
             label = "Clear Browsing Data Now",
@@ -787,7 +814,13 @@ private fun SettingsClearDataPage(onDone: () -> Unit) {
                     clearDownloads = clearDownloads,
                     timeRange = selectedTimeRange,
                 )
-                clearedNotice = true
+                TahoBrowserStateStore.persistNow()
+                clearedNotice = false
+                clearFailed = false
+                onClearEngineData(clearCache, clearCookies) { success ->
+                    clearedNotice = success
+                    clearFailed = !success
+                }
             },
         )
     }
