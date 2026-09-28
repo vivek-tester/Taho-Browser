@@ -55,6 +55,16 @@ data class BrowserReaderContent(
     val isGated: Boolean,
 )
 
+data class BrowserSecuritySnapshot(
+    val isSecure: Boolean,
+    val isException: Boolean,
+    val host: String,
+    val certificateSubject: String?,
+    val certificateIssuer: String?,
+    val activeMixedContentLoaded: Boolean,
+    val passiveMixedContentLoaded: Boolean,
+)
+
 data class BrowserTabSnapshot(
     val id: String,
     val title: String?,
@@ -77,6 +87,7 @@ data class BrowserSnapshot(
     val isPrivate: Boolean,
     val canGoBack: Boolean,
     val canGoForward: Boolean,
+    val security: BrowserSecuritySnapshot?,
     val sitePermission: BrowserSitePermissionPrompt?,
     val androidPermissionRequest: BrowserAndroidPermissionRequest?,
     val externalNavigationRequest: BrowserExternalNavigationRequest?,
@@ -96,6 +107,7 @@ class BrowserRuntimeController(context: Context) {
         var crashed: Boolean = false,
         var canGoBack: Boolean = false,
         var canGoForward: Boolean = false,
+        var security: BrowserSecuritySnapshot? = null,
         var sessionState: GeckoSession.SessionState? = null,
     )
 
@@ -180,6 +192,7 @@ class BrowserRuntimeController(context: Context) {
             isPrivate = selected.isPrivate,
             canGoBack = selected.canGoBack,
             canGoForward = selected.canGoForward,
+            security = selected.security,
             sitePermission = pendingSitePermission?.prompt,
             androidPermissionRequest = pendingAndroidPermission?.request,
             externalNavigationRequest = pendingExternalNavigation?.request,
@@ -617,6 +630,7 @@ class BrowserRuntimeController(context: Context) {
                 tab.isLoading = true
                 tab.loadFailed = false
                 tab.crashed = false
+                tab.security = null
                 persistSoon()
                 notifyChangedIfReady()
             }
@@ -625,6 +639,27 @@ class BrowserRuntimeController(context: Context) {
                 tab.isLoading = false
                 tab.loadFailed = !success
                 persistSoon()
+                notifyChangedIfReady()
+            }
+
+            override fun onSecurityChange(
+                session: GeckoSession,
+                securityInfo: GeckoSession.ProgressDelegate.SecurityInformation,
+            ) {
+                val cert = securityInfo.certificate
+                tab.security = BrowserSecuritySnapshot(
+                    isSecure = securityInfo.isSecure,
+                    isException = securityInfo.isException,
+                    host = securityInfo.host,
+                    certificateSubject = cert?.subjectX500Principal?.name,
+                    certificateIssuer = cert?.issuerX500Principal?.name,
+                    activeMixedContentLoaded =
+                        securityInfo.mixedModeActive ==
+                            GeckoSession.ProgressDelegate.SecurityInformation.CONTENT_LOADED,
+                    passiveMixedContentLoaded =
+                        securityInfo.mixedModePassive ==
+                            GeckoSession.ProgressDelegate.SecurityInformation.CONTENT_LOADED,
+                )
                 notifyChangedIfReady()
             }
 
