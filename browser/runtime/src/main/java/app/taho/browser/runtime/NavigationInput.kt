@@ -4,9 +4,12 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 object NavigationInput {
-    private const val DEFAULT_SEARCH_PREFIX = "https://www.google.com/search?q="
+    private const val DEFAULT_SEARCH_TEMPLATE = "https://www.google.com/search?q=%s"
 
-    fun resolve(raw: String): String? {
+    fun resolve(
+        raw: String,
+        searchUrlTemplate: String = DEFAULT_SEARCH_TEMPLATE,
+    ): String? {
         val input = raw.trim()
         if (input.isEmpty()) return null
 
@@ -20,7 +23,7 @@ object NavigationInput {
                 explicitScheme == "http" || explicitScheme == "https" -> input
                 explicitScheme == "localhost" && LOCALHOST_WITH_PORT.matches(input) ->
                     "https://$input"
-                else -> search(input)
+                else -> search(input, searchUrlTemplate)
             }
         }
 
@@ -28,7 +31,7 @@ object NavigationInput {
             return "https://$input"
         }
 
-        return search(input)
+        return search(input, searchUrlTemplate)
     }
 
     private fun looksLikeHost(input: String): Boolean {
@@ -44,11 +47,14 @@ object NavigationInput {
             !hostCandidate.endsWith('.')
     }
 
-    private fun search(query: String): String {
+    private fun search(query: String, template: String): String {
         val encoded = URLEncoder
             .encode(query, StandardCharsets.UTF_8.name())
             .replace("+", "%20")
-        return DEFAULT_SEARCH_PREFIX + encoded
+        val safeTemplate = template
+            .takeIf { it.startsWith("https://") && it.contains("%s") }
+            ?: DEFAULT_SEARCH_TEMPLATE
+        return safeTemplate.replace("%s", encoded)
     }
 
     private val SCHEME = Regex("^([a-zA-Z][a-zA-Z0-9+.-]*):")
