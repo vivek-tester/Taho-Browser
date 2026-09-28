@@ -525,6 +525,13 @@ object TahoBrowserStateStore {
         persistNow()
     }
 
+    fun setSavedPasswordCompromised(id: String, compromised: Boolean) {
+        savedPasswords = savedPasswords.map { item ->
+            if (item.id == id) item.copy(isCompromised = compromised) else item
+        }
+        persistNow()
+    }
+
     fun updateSavedPassword(id: String, domain: String, username: String, pass: String) {
         val weak = pass.length < 8 || pass.all { it.isLetter() } || pass.all { it.isDigit() }
         val reused = savedPasswords.any { it.id != id && it.password == pass }
