@@ -116,6 +116,16 @@ data class BrowserAutofillPromptUiState(
     val options: List<BrowserAutofillPromptOptionUi>,
 )
 
+data class WebAppManifestUi(
+    val name: String,
+    val shortName: String?,
+    val startUrl: String,
+    val scope: String?,
+    val display: String?,
+    val themeColor: String?,
+    val backgroundColor: String?,
+)
+
 data class SiteSecurityUiState(
     val isSecure: Boolean,
     val isException: Boolean,
@@ -138,6 +148,7 @@ data class BrowserUiState(
     val canGoBack: Boolean = false,
     val canGoForward: Boolean = false,
     val securityInfo: SiteSecurityUiState? = null,
+    val webAppManifest: WebAppManifestUi? = null,
     val sitePermission: SitePermissionUiState? = null,
     val autofillPrompt: BrowserAutofillPromptUiState? = null,
     val notice: String? = null,
@@ -195,6 +206,7 @@ fun TahoBrowserApp(
     onExtractReaderContent: ((ReaderPageContentUi?) -> Unit) -> Unit = { callback -> callback(null) },
     onPrintPage: () -> Boolean = { false },
     onAddToHomeScreen: (String, String) -> Unit = { _, _ -> },
+    onInstallWebApp: (WebAppManifestUi) -> Unit = {},
     browserContent: @Composable () -> Unit = {},
 ) {
     var editing by rememberSaveable { mutableStateOf(false) }
@@ -1006,10 +1018,14 @@ fun TahoBrowserApp(
                         }
                     },
                     onTranslate = { showTranslationBar = true },
+                    installableWebAppName = state.webAppManifest?.name,
                     onAddToHomeScreen = {
                         currentTab?.location?.let { loc ->
                             onAddToHomeScreen(currentTab.title ?: loc, loc)
                         }
+                    },
+                    onInstallWebApp = {
+                        state.webAppManifest?.let(onInstallWebApp)
                     },
                     onPrintPage = {
                         showBrowserMenu = false
