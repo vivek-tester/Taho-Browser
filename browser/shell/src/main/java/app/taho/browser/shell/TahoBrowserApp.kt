@@ -154,6 +154,8 @@ fun TahoBrowserApp(
     onSetDesktopMode: (Boolean) -> Unit = {},
     onClearBrowserStorage: (Boolean, Boolean, (Boolean) -> Unit) -> Unit =
         { _, _, callback -> callback(true) },
+    onClearSiteDataForHost: (String, (Boolean) -> Unit) -> Unit =
+        { _, callback -> callback(false) },
     onExtractReaderContent: ((ReaderPageContentUi?) -> Unit) -> Unit = { callback -> callback(null) },
     onPrintPage: () -> Boolean = { false },
     browserContent: @Composable () -> Unit = {},
@@ -966,9 +968,7 @@ fun TahoBrowserApp(
                 url = currentTab?.location ?: "about:blank",
                 securityInfo = state.securityInfo,
                 onDismiss = { showSiteInfo = false },
-                onClearSiteData = { origin ->
-                    TahoBrowserStateStore.clearSiteDataForOrigin(origin)
-                },
+                onClearSiteData = onClearSiteDataForHost,
             )
         }
 
