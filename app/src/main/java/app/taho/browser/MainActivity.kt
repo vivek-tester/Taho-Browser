@@ -1,15 +1,21 @@
 package app.taho.browser
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipDescription
+import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
+import android.os.PersistableBundle
 import android.os.Looper
 import android.os.ResultReceiver
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -96,6 +102,19 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Edge-to-edge is deliberate: GeckoView paints behind the system bars while
+        // Compose chrome owns the navigation-bar safe area. This removes the opaque
+        // top/bottom bands without allowing Browser controls under system gestures.
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        @Suppress("DEPRECATION")
+        window.statusBarColor = android.graphics.Color.TRANSPARENT
+        @Suppress("DEPRECATION")
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            isAppearanceLightStatusBars = true
+            isAppearanceLightNavigationBars = true
+        }
 
         controller = BrowserRuntimeStore.get(this)
         captureRepository = CapturePersistenceStore.repository(this)
@@ -270,6 +289,8 @@ class MainActivity : ComponentActivity() {
                 onSelectTab = controller::selectTab,
                 onCloseTab = controller::closeTab,
                 onSitePermissionDecision = controller::resolveSitePermission,
+                onCopyCurl = ::copyMaskedCurl,
+                onShare = ::shareMaskedRequest,
                 onDismissNotice = {
                     if (transferNotice != null) {
                         transferNotice = null
@@ -686,6 +707,35 @@ class MainActivity : ComponentActivity() {
         location
             ?.takeIf { it.startsWith("http://") || it.startsWith("https://") }
             ?.let { runCatching { URI(it).host }.getOrNull() }
+
+    private fun copyMaskedCurl(text: String) {
+        val copied = runCatching {
+            val clipboard = getSystemService(ClipboardManager::class.java)
+            val clip = ClipData.newPlainText("Taho Browser masked cURL", text)
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                clip.description.extras = PersistableBundle().apply {
+                    putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
+                }
+            }
+            clipboard.setPrimaryClip(clip)
+        }.isSuccess
+        transferNotice = if (copied) {
+            "Masked cURL copied."
+        } else {
+            "Unable to copy the masked cURL."
+        }
+    }
+
+    private fun shareMaskedRequest(text: String) {
+        val shareIntent = Intent(Intent.ACTION_SEND)
+            .setType("text/plain")
+            .putExtra(Intent.EXTRA_TEXT, text)
+        runCatching {
+            startActivity(Intent.createChooser(shareIntent, "Share masked request"))
+        }.onFailure {
+            transferNotice = "Unable to open the Android share sheet."
+        }
+    }
 
     private fun storageNotice(reason: StorageDegradationReason): String =
         when (reason) {

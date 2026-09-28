@@ -14,6 +14,7 @@ internal val TahoMuted = Color(0xFF98948A)
 internal val TahoFaint = Color(0xFF6B675F)
 internal val TahoOk = Color(0xFF5FBF8A)
 internal val TahoWarn = Color(0xFFE0A64A)
+internal val TahoInfo = Color(0xFF4FBFA3)
 internal val TahoError = Color(0xFFE06A5A)
 
 private val Colors = darkColorScheme(
