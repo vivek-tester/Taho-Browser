@@ -1,5 +1,6 @@
 package app.taho.browser.shell
 
+import android.net.Uri
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -220,6 +221,10 @@ fun TahoBrowserApp(
     ) -> Unit = { _, callback -> callback(false, null, "Translation is unavailable.") },
     onRestorePageTranslation: ((Boolean, String?) -> Unit) -> Unit =
         { callback -> callback(false, "Translation is unavailable.") },
+    onExportFullBackup: (Uri, String, (Boolean, String) -> Unit) -> Unit =
+        { _, _, callback -> callback(false, "Full backup export is unavailable.") },
+    onRestoreFullBackup: (Uri, String, (Boolean, String) -> Unit) -> Unit =
+        { _, _, callback -> callback(false, "Full backup restore is unavailable.") },
     onCheckForUpdates: ((BrowserUpdateStatusUi) -> Unit) -> Unit =
         { callback ->
             callback(
@@ -1013,6 +1018,8 @@ fun TahoBrowserApp(
                     onSetExtensionPrivate = onSetExtensionPrivate,
                     onUpdateExtension = onUpdateExtension,
                     onUninstallExtension = onUninstallExtension,
+                    onExportFullBackup = onExportFullBackup,
+                    onRestoreFullBackup = onRestoreFullBackup,
                     onCheckForUpdates = onCheckForUpdates,
                     onDismiss = {
                         showSettings = false
