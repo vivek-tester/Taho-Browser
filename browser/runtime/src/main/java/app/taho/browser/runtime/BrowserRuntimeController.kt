@@ -11,6 +11,7 @@ import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSessionSettings
 import org.mozilla.geckoview.PageExtractionController
 import org.mozilla.geckoview.StorageController
+import org.mozilla.geckoview.WebResponse
 import java.util.UUID
 
 enum class BrowserSitePermissionKind {
@@ -219,6 +220,7 @@ class BrowserRuntimeController(context: Context) {
     private var pendingExternalNavigation: PendingExternalNavigation? = null
     private var pendingAutofillPrompt: PendingAutofillPrompt? = null
     private var autofillStore: BrowserAutofillStore? = null
+    private var externalResponseConsumer: ((BrowserDownloadResponse) -> Unit)? = null
     private var notice: String? = null
 
     private val persistRunnable = Runnable { persistNow() }
@@ -289,6 +291,12 @@ class BrowserRuntimeController(context: Context) {
     fun setListener(listener: ((BrowserSnapshot) -> Unit)?) {
         this.listener = listener
         listener?.invoke(snapshot())
+    }
+
+    fun setExternalResponseConsumer(
+        consumer: ((BrowserDownloadResponse) -> Unit)?,
+    ) {
+        externalResponseConsumer = consumer
     }
 
     fun setAutofillStore(store: BrowserAutofillStore?) {
@@ -1076,6 +1084,33 @@ class BrowserRuntimeController(context: Context) {
         })
 
         session.setContentDelegate(object : GeckoSession.ContentDelegate {
+            override fun onExternalResponse(
+                session: GeckoSession,
+                response: WebResponse,
+            ) {
+                val body = response.body ?: return
+                val consumer = externalResponseConsumer
+                if (consumer == null) {
+                    runCatching { body.close() }
+                    notice = "Download was not handled because the download service is unavailable."
+                    notifyChangedIfReady()
+                    return
+                }
+
+                // A paused in-process download must not fail merely because the
+                // user paused longer than GeckoView's default stream timeout.
+                response.setReadTimeoutMillis(0)
+                consumer(
+                    BrowserDownloadResponse(
+                        tabId = tab.id,
+                        uri = response.uri,
+                        headers = response.headers.toMap(),
+                        statusCode = response.statusCode,
+                        body = body,
+                    ),
+                )
+            }
+
             override fun onTitleChange(session: GeckoSession, title: String?) {
                 tab.title = title
                 persistSoon()
