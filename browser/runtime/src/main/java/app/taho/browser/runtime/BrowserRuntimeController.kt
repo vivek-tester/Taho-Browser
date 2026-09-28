@@ -413,6 +413,15 @@ class BrowserRuntimeController(context: Context) {
         tab.session.reload()
     }
 
+    fun printCurrentPage(): Boolean {
+        val tab = requireSelected()
+        if (tab.crashed || tab.location.isNullOrBlank()) return false
+        return runCatching {
+            tab.session.printPageContent()
+            true
+        }.getOrDefault(false)
+    }
+
     fun clearBrowsingStorage(
         clearCache: Boolean,
         clearCookiesAndSiteData: Boolean,
