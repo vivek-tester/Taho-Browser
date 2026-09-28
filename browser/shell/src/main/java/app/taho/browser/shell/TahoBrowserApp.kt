@@ -184,6 +184,11 @@ fun TahoBrowserApp(
         { _, callback -> callback(false) },
     onCheckPasswordBreach: (String, (Int?) -> Unit) -> Unit =
         { _, callback -> callback(null) },
+    onDownloadPauseResume: (String) -> Unit = {},
+    onDownloadCancel: (String) -> Unit = {},
+    onDownloadRetry: (DownloadItemUi) -> Unit = {},
+    onDownloadOpen: (DownloadItemUi) -> Unit = {},
+    onDownloadDelete: (DownloadItemUi) -> Unit = {},
     onExtractReaderContent: ((ReaderPageContentUi?) -> Unit) -> Unit = { callback -> callback(null) },
     onPrintPage: () -> Boolean = { false },
     onAddToHomeScreen: (String, String) -> Unit = { _, _ -> },
@@ -918,6 +923,11 @@ fun TahoBrowserApp(
                     onClearEngineData = onClearBrowserStorage,
                     onAuthenticateSensitive = onAuthenticateSensitive,
                     onCheckPasswordBreach = onCheckPasswordBreach,
+                    onDownloadPauseResume = onDownloadPauseResume,
+                    onDownloadCancel = onDownloadCancel,
+                    onDownloadRetry = onDownloadRetry,
+                    onDownloadOpen = onDownloadOpen,
+                    onDownloadDelete = onDownloadDelete,
                     onDismiss = {
                         showSettings = false
                         settingsInitialSubPage = null
