@@ -118,6 +118,8 @@ fun TahoSettingsHubSheet(
     onSetExtensionPrivate: (String, Boolean) -> Unit = { _, _ -> },
     onUpdateExtension: (String) -> Unit = {},
     onUninstallExtension: (String) -> Unit = {},
+    onSwitchProfile: (String) -> Unit = {},
+    onCreateLocalProfile: (String) -> Unit = {},
     onSearchExtensionMarketplace: (
         String,
         (List<ExtensionMarketplaceItemUi>, String?) -> Unit,
@@ -261,7 +263,10 @@ fun TahoSettingsHubSheet(
                     onCheckPasswordBreach = onCheckPasswordBreach,
                 )
                 SettingsSubPage.AUTOFILL -> SettingsAutofillPage()
-                SettingsSubPage.PROFILES_SYNC -> SettingsProfilesSyncPage()
+                SettingsSubPage.PROFILES_SYNC -> SettingsProfilesSyncPage(
+                    onSwitchProfile = onSwitchProfile,
+                    onCreateLocalProfile = onCreateLocalProfile,
+                )
                 SettingsSubPage.EXTENSIONS -> SettingsExtensionsPage(
                     onRefresh = onRefreshExtensions,
                     onInstall = onInstallExtension,
@@ -2010,9 +2015,13 @@ private fun SettingsAutofillPage() {
 // 10. PROFILES & SYNC
 // -------------------------------------------------------------
 @Composable
-private fun SettingsProfilesSyncPage() {
+private fun SettingsProfilesSyncPage(
+    onSwitchProfile: (String) -> Unit,
+    onCreateLocalProfile: (String) -> Unit,
+) {
     val profiles = TahoBrowserStateStore.profiles
     val devices = TahoBrowserStateStore.syncedDevices
+    var newProfileName by rememberSaveable { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -2027,7 +2036,7 @@ private fun SettingsProfilesSyncPage() {
                     .clip(TahoBlockShape)
                     .background(if (profile.isActive) TahoSurfaceRowHover else TahoSurfaceRow)
                     .border(1.dp, if (profile.isActive) TahoGold.copy(alpha = 0.5f) else TahoHairline, TahoBlockShape)
-                    .clickable { TahoBrowserStateStore.switchProfile(profile.id) }
+                    .clickable { onSwitchProfile(profile.id) }
                     .padding(horizontal = 14.dp, vertical = 11.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
@@ -2051,6 +2060,52 @@ private fun SettingsProfilesSyncPage() {
             }
             Spacer(Modifier.height(6.dp))
         }
+
+        Spacer(Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            BasicTextField(
+                value = newProfileName,
+                onValueChange = { newProfileName = it.take(40) },
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(TahoBlockShape)
+                    .background(TahoSurfaceControl)
+                    .border(1.dp, TahoHairline, TahoBlockShape)
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                singleLine = true,
+                textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 10.sp),
+                cursorBrush = SolidColor(TahoGold),
+                decorationBox = { inner ->
+                    Box {
+                        if (newProfileName.isBlank()) {
+                            Text(
+                                "New local profile name",
+                                color = TahoFaint,
+                                fontFamily = TahoMono,
+                                fontSize = 9.5.sp,
+                            )
+                        }
+                        inner()
+                    }
+                },
+            )
+            M7SecondaryButton("Create", Modifier.width(76.dp)) {
+                if (newProfileName.isNotBlank()) {
+                    onCreateLocalProfile(newProfileName)
+                    newProfileName = ""
+                }
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Normal profiles isolate Taho history/passwords and Gecko site storage. Guest is ephemeral and is never restored after app restart.",
+            color = TahoFaint,
+            fontFamily = TahoMono,
+            fontSize = 8.5.sp,
+        )
 
         Spacer(Modifier.height(18.dp))
         SettingsSectionTitle("CROSS-DEVICE SYNC")
