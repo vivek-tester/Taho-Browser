@@ -836,7 +836,7 @@ private fun SettingsClearDataPage(
         SettingsSectionTitle("DATA TYPES TO CLEAR")
 
         SettingsCheckboxRow("Browsing History", "${TahoBrowserStateStore.history.size} items", clearHistory) { clearHistory = !clearHistory }
-        SettingsCheckboxRow("Cached Images & Files", "~14.2 MB", clearCache) { clearCache = !clearCache }
+        SettingsCheckboxRow("Cached Images & Files", "Gecko-managed", clearCache) { clearCache = !clearCache }
         SettingsCheckboxRow("Cookies & Site Data", "${TahoBrowserStateStore.siteData.size} origins", clearCookies) { clearCookies = !clearCookies }
         SettingsCheckboxRow("Saved Form Autofill Data", "Names & addresses", clearFormData) { clearFormData = !clearFormData }
         SettingsCheckboxRow("Saved Passwords", "${TahoBrowserStateStore.savedPasswords.size} credentials", clearPasswords) { clearPasswords = !clearPasswords }
@@ -2898,70 +2898,78 @@ private fun SettingsPerformanceMediaPage() {
 // -------------------------------------------------------------
 @Composable
 private fun SettingsStorageUsagePage() {
-    val siteData = TahoBrowserStateStore.siteData
+    val context = LocalContext.current
+    val downloads = TahoBrowserStateStore.downloads
     val offlinePages = TahoBrowserStateStore.offlinePages
-    val offlineBytes = offlinePages.sumOf { it.sizeBytes }
+
+    fun directoryBytes(root: java.io.File): Long {
+        if (!root.exists()) return 0L
+        return root.walkTopDown()
+            .filter { it.isFile }
+            .sumOf { file -> runCatching { file.length() }.getOrDefault(0L) }
+    }
+
+    fun readableBytes(bytes: Long): String {
+        val safe = bytes.coerceAtLeast(0L)
+        return when {
+            safe >= 1024L * 1024L * 1024L ->
+                String.format("%.2f GB", safe / (1024.0 * 1024.0 * 1024.0))
+            safe >= 1024L * 1024L ->
+                String.format("%.2f MB", safe / (1024.0 * 1024.0))
+            safe >= 1024L ->
+                String.format("%.1f KB", safe / 1024.0)
+            else -> "$safe B"
+        }
+    }
+
+    // These are app-owned directories, so byte counts are measured rather than
+    // inferred from metadata. Accessing the observable lists keeps this page
+    // recomposing when download/offline records change.
+    val downloadBytes = downloads.let {
+        directoryBytes(java.io.File(context.filesDir, "downloads"))
+    }
+    val offlineBytes = offlinePages.let {
+        directoryBytes(java.io.File(context.filesDir, "offline_pages"))
+    }
+    val browserStateBytes =
+        directoryBytes(java.io.File(context.noBackupFilesDir, "browser_state"))
+    val totalTahoOwned = downloadBytes + offlineBytes + browserStateBytes
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
-        SettingsSectionTitle("LOCAL BROWSER STORAGE")
-        DiagItem("Offline page records", offlinePages.size.toString())
-        DiagItem("Recorded offline bytes", "${offlineBytes / 1024} KB")
-        DiagItem("Tracked site-data origins", siteData.size.toString())
+        SettingsSectionTitle("MEASURED TAHO-OWNED STORAGE")
+        DiagItem("Downloaded files", readableBytes(downloadBytes))
+        DiagItem("Offline page snapshots", readableBytes(offlineBytes))
+        DiagItem("Browser state + encrypted vaults", readableBytes(browserStateBytes))
+        DiagItem("Measured subtotal", readableBytes(totalTahoOwned))
+
         Spacer(Modifier.height(8.dp))
         Text(
-            "Exact Gecko cache, IndexedDB and cookie byte totals are not exposed by the current Browser storage adapter, so Taho does not estimate them.",
+            "These numbers are read from Taho's app-private files. Capture storage is managed by its own Room/file layer and is not merged into this browser subtotal.",
             color = TahoFaint,
             fontFamily = TahoMono,
             fontSize = 9.5.sp,
         )
 
         Spacer(Modifier.height(20.dp))
-        SettingsSectionTitle("SITE STORAGE (${siteData.size} DOMAINS)")
-
-        if (siteData.isEmpty()) {
+        SettingsSectionTitle("GECKO-MANAGED WEBSITE STORAGE")
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(TahoCardShape)
+                .background(TahoSurfaceRow)
+                .border(1.dp, TahoHairline, TahoCardShape)
+                .padding(14.dp),
+        ) {
             Text(
-                "No per-origin storage measurements are available from the current runtime adapter.",
-                color = TahoFaint,
+                "Exact cache, cookie, IndexedDB, service-worker and per-origin byte totals are not exposed through the current GeckoView storage APIs used by Taho. They are therefore shown as unavailable rather than estimated.",
+                color = TahoMuted,
                 fontFamily = TahoMono,
-                fontSize = 10.sp,
+                fontSize = 9.5.sp,
             )
-        }
-
-        siteData.forEach { data ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(TahoBlockShape)
-                    .background(TahoSurfaceRow)
-                    .border(1.dp, TahoHairline, TahoBlockShape)
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column {
-                    Text(data.origin, color = TahoText, fontFamily = TahoMono, fontSize = 11.sp)
-                    Text(
-                        "${data.cookieCount} cookies · ${data.storageSizeBytes / 1024} KB",
-                        color = TahoFaint,
-                        fontFamily = TahoMono,
-                        fontSize = 8.5.sp,
-                    )
-                }
-                Text(
-                    "Clear",
-                    color = TahoError,
-                    fontFamily = TahoMono,
-                    fontSize = 9.sp,
-                    modifier = Modifier.clickable {
-                        TahoBrowserStateStore.clearSiteDataForOrigin(data.origin)
-                    },
-                )
-            }
-            Spacer(Modifier.height(6.dp))
         }
     }
 }
