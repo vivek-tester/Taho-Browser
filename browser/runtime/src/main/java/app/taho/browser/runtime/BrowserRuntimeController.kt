@@ -12,6 +12,7 @@ import org.mozilla.geckoview.GeckoResult
 import org.mozilla.geckoview.GeckoRuntimeSettings
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSessionSettings
+import org.mozilla.geckoview.GeckoWebExecutor
 import org.mozilla.geckoview.PageExtractionController
 import org.mozilla.geckoview.StorageController
 import org.mozilla.geckoview.TranslationsController
@@ -219,6 +220,7 @@ class BrowserRuntimeController(context: Context) {
     }
 
     private val runtime = GeckoRuntimeHolder.get(context)
+    private val webExecutor = GeckoWebExecutor(runtime)
     private val sessionStore = BrowserSessionStore(context.applicationContext)
     private val mainHandler = Handler(Looper.getMainLooper())
     private val tabs = mutableListOf<RuntimeTab>()
@@ -678,7 +680,7 @@ class BrowserRuntimeController(context: Context) {
             isHttpNavigation(uri)
         ) {
             runCatching {
-                runtime.webExecutor.speculativeConnect(uri)
+                webExecutor.speculativeConnect(uri)
             }
         }
         tab.session.loadUri(uri)
