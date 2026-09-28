@@ -94,6 +94,16 @@ data class SitePermissionUiState(
     val isPrivate: Boolean,
 )
 
+data class SiteSecurityUiState(
+    val isSecure: Boolean,
+    val isException: Boolean,
+    val host: String,
+    val certificateSubject: String?,
+    val certificateIssuer: String?,
+    val activeMixedContentLoaded: Boolean,
+    val passiveMixedContentLoaded: Boolean,
+)
+
 data class BrowserUiState(
     val captureState: CaptureState = CaptureState.OFF,
     val relevantCount: Int = 0,
@@ -105,6 +115,7 @@ data class BrowserUiState(
     val isPrivate: Boolean = false,
     val canGoBack: Boolean = false,
     val canGoForward: Boolean = false,
+    val securityInfo: SiteSecurityUiState? = null,
     val sitePermission: SitePermissionUiState? = null,
     val notice: String? = null,
     val captureCapabilityNote: String? = null,
@@ -952,7 +963,8 @@ fun TahoBrowserApp(
 
         if (showSiteInfo && state.sitePermission == null) {
             TahoSiteInfoSheet(
-                url = currentTab?.location ?: "https://taho.app",
+                url = currentTab?.location ?: "about:blank",
+                securityInfo = state.securityInfo,
                 onDismiss = { showSiteInfo = false },
                 onClearSiteData = { origin ->
                     TahoBrowserStateStore.clearSiteDataForOrigin(origin)
