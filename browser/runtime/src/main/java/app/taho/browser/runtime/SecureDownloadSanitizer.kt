@@ -4,7 +4,7 @@ import java.io.File
 
 object SecureDownloadSanitizer {
     private const val MAX_FILENAME_LENGTH = 128
-    private val ILLEGAL_CHARS = Regex("[\\\\/:*?\"<>|\\x00-\\x1F]")
+    private val ILLEGAL_CHARS = Regex("[\\\\/:*?\"<>|\\x00-\\x1F]+")
 
     fun sanitizeFilename(candidate: String?, defaultName: String = "download"): String {
         if (candidate.isNullOrBlank()) return defaultName
@@ -44,7 +44,12 @@ object SecureDownloadSanitizer {
         }
         val target = File(downloadDir, sanitizedFilename)
         // Verify canonical path does not escape downloadDir (anti-path-traversal)
-        check(target.canonicalPath.startsWith(downloadDir.canonicalPath)) {
+        val canonicalDir = downloadDir.canonicalFile
+        val canonicalTarget = target.canonicalFile
+        check(
+            canonicalTarget.parentFile == canonicalDir ||
+                canonicalTarget.toPath().startsWith(canonicalDir.toPath()),
+        ) {
             "Path traversal detected for $sanitizedFilename"
         }
         return target
