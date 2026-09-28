@@ -9,6 +9,7 @@ import java.util.UUID
 
 object TahoBrowserStateStore {
     private var persistence: TahoBrowserPersistence? = null
+    private var uiMetaPreferences: android.content.SharedPreferences? = null
 
     var settings by mutableStateOf(BrowserSettingsState())
 
@@ -49,6 +50,8 @@ object TahoBrowserStateStore {
     )
     var syncedDevices by mutableStateOf(emptyList<SyncedDeviceUi>())
     var tabGroups by mutableStateOf(emptyList<TabGroupUi>())
+    var pinnedTabIds by mutableStateOf(emptySet<String>())
+        private set
     var sitePermissions by mutableStateOf(emptyList<SitePermissionEntry>())
     var siteData by mutableStateOf(emptyList<SiteDataUi>())
 
@@ -66,6 +69,14 @@ object TahoBrowserStateStore {
         if (persistence != null) return
         val store = TahoBrowserPersistence(context.applicationContext)
         persistence = store
+        uiMetaPreferences = context.applicationContext.getSharedPreferences(
+            "taho_browser_ui_meta",
+            Context.MODE_PRIVATE,
+        )
+        pinnedTabIds = uiMetaPreferences
+            ?.getStringSet("pinned_tab_ids", emptySet())
+            ?.toSet()
+            .orEmpty()
 
         store.loadState()?.let { saved ->
             settings = saved.settings
@@ -169,6 +180,8 @@ object TahoBrowserStateStore {
         )
         syncedDevices = emptyList()
         tabGroups = emptyList()
+        pinnedTabIds = emptySet()
+        uiMetaPreferences = null
         sitePermissions = emptyList()
         siteData = emptyList()
         extensions = emptyList()
@@ -364,6 +377,36 @@ object TahoBrowserStateStore {
             it.copy(isActive = it.id == profileId)
         }
         settings = settings.copy(currentProfileId = profileId)
+    }
+
+    // --- Pinned Tabs ---
+    fun togglePinnedTab(tabId: String, isPrivate: Boolean = false) {
+        if (isPrivate) return
+        pinnedTabIds = pinnedTabIds.toMutableSet().also { pins ->
+            if (!pins.add(tabId)) pins.remove(tabId)
+        }
+        persistPinnedTabs()
+    }
+
+    fun unpinTab(tabId: String) {
+        if (tabId !in pinnedTabIds) return
+        pinnedTabIds = pinnedTabIds - tabId
+        persistPinnedTabs()
+    }
+
+    fun prunePinnedTabs(liveTabIds: Set<String>) {
+        val pruned = pinnedTabIds.intersect(liveTabIds)
+        if (pruned != pinnedTabIds) {
+            pinnedTabIds = pruned
+            persistPinnedTabs()
+        }
+    }
+
+    private fun persistPinnedTabs() {
+        uiMetaPreferences
+            ?.edit()
+            ?.putStringSet("pinned_tab_ids", pinnedTabIds)
+            ?.apply()
     }
 
     fun toggleExtension(id: String) {
