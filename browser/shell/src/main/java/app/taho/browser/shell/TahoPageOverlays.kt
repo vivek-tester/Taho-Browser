@@ -937,7 +937,8 @@ fun TahoTranslationBar(
             .border(1.dp, TahoHairlineStrong, TahoPillShape)
             .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
-        Row(
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -978,7 +979,7 @@ fun TahoTranslationBar(
                 Text("✕", color = TahoFaint, fontSize = 12.sp, modifier = Modifier.clickable(onClick = onClose).padding(4.dp))
             }
         }
-        statusMessage?.takeIf(String::isNotBlank)?.let { message ->
+            statusMessage?.takeIf(String::isNotBlank)?.let { message ->
             Spacer(Modifier.height(4.dp))
             Text(
                 text = message,
@@ -987,7 +988,7 @@ fun TahoTranslationBar(
                 fontSize = 8.5.sp,
                 maxLines = 2,
             )
+            }
         }
-
     }
 }
