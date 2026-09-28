@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import org.mozilla.geckoview.AllowOrDeny
+import org.mozilla.geckoview.Autocomplete
 import org.mozilla.geckoview.GeckoResult
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSessionSettings
@@ -91,6 +92,7 @@ data class BrowserSnapshot(
     val sitePermission: BrowserSitePermissionPrompt?,
     val androidPermissionRequest: BrowserAndroidPermissionRequest?,
     val externalNavigationRequest: BrowserExternalNavigationRequest?,
+    val autofillPrompt: BrowserAutofillPrompt?,
     val notice: String?,
     val tabs: List<BrowserTabSnapshot>,
 )
@@ -139,6 +141,65 @@ class BrowserRuntimeController(context: Context) {
         var launched: Boolean = false,
     )
 
+    private sealed interface PendingAutofillPrompt {
+        val prompt: BrowserAutofillPrompt
+        fun complete(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse
+
+        data class LoginSave(
+            override val prompt: BrowserAutofillPrompt,
+            val request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.LoginSaveOption>,
+        ) : PendingAutofillPrompt {
+            override fun complete(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
+                selectedIndex?.let { request.options.getOrNull(it) }?.let(request::confirm)
+                    ?: request.dismiss()
+        }
+
+        data class LoginSelect(
+            override val prompt: BrowserAutofillPrompt,
+            val request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.LoginSelectOption>,
+        ) : PendingAutofillPrompt {
+            override fun complete(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
+                selectedIndex?.let { request.options.getOrNull(it) }?.let(request::confirm)
+                    ?: request.dismiss()
+        }
+
+        data class AddressSave(
+            override val prompt: BrowserAutofillPrompt,
+            val request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.AddressSaveOption>,
+        ) : PendingAutofillPrompt {
+            override fun complete(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
+                selectedIndex?.let { request.options.getOrNull(it) }?.let(request::confirm)
+                    ?: request.dismiss()
+        }
+
+        data class AddressSelect(
+            override val prompt: BrowserAutofillPrompt,
+            val request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.AddressSelectOption>,
+        ) : PendingAutofillPrompt {
+            override fun complete(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
+                selectedIndex?.let { request.options.getOrNull(it) }?.let(request::confirm)
+                    ?: request.dismiss()
+        }
+
+        data class CreditCardSave(
+            override val prompt: BrowserAutofillPrompt,
+            val request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.CreditCardSaveOption>,
+        ) : PendingAutofillPrompt {
+            override fun complete(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
+                selectedIndex?.let { request.options.getOrNull(it) }?.let(request::confirm)
+                    ?: request.dismiss()
+        }
+
+        data class CreditCardSelect(
+            override val prompt: BrowserAutofillPrompt,
+            val request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.CreditCardSelectOption>,
+        ) : PendingAutofillPrompt {
+            override fun complete(selectedIndex: Int?): GeckoSession.PromptDelegate.PromptResponse =
+                selectedIndex?.let { request.options.getOrNull(it) }?.let(request::confirm)
+                    ?: request.dismiss()
+        }
+    }
+
     private val runtime = GeckoRuntimeHolder.get(context)
     private val sessionStore = BrowserSessionStore(context.applicationContext)
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -149,6 +210,8 @@ class BrowserRuntimeController(context: Context) {
     private var pendingSitePermission: PendingSitePermission? = null
     private var pendingAndroidPermission: PendingAndroidPermission? = null
     private var pendingExternalNavigation: PendingExternalNavigation? = null
+    private var pendingAutofillPrompt: PendingAutofillPrompt? = null
+    private var autofillStore: BrowserAutofillStore? = null
     private var notice: String? = null
 
     private val persistRunnable = Runnable { persistNow() }
@@ -198,6 +261,7 @@ class BrowserRuntimeController(context: Context) {
             sitePermission = pendingSitePermission?.prompt,
             androidPermissionRequest = pendingAndroidPermission?.request,
             externalNavigationRequest = pendingExternalNavigation?.request,
+            autofillPrompt = pendingAutofillPrompt?.prompt,
             notice = notice,
             tabs = tabs.map { tab ->
                 BrowserTabSnapshot(
@@ -218,6 +282,68 @@ class BrowserRuntimeController(context: Context) {
     fun setListener(listener: ((BrowserSnapshot) -> Unit)?) {
         this.listener = listener
         listener?.invoke(snapshot())
+    }
+
+    fun setAutofillStore(store: BrowserAutofillStore?) {
+        autofillStore = store
+        runtime.settings.setLoginAutofillEnabled(store?.loginAutofillEnabled == true)
+        runtime.setAutocompleteStorageDelegate(
+            store?.let {
+                object : Autocomplete.StorageDelegate {
+                    override fun onLoginFetch(domain: String): GeckoResult<Array<Autocomplete.LoginEntry>> =
+                        GeckoResult.fromValue(
+                            it.loginsForDomain(domain)
+                                .map(::toGeckoLogin)
+                                .toTypedArray(),
+                        )
+
+                    override fun onLoginFetch(): GeckoResult<Array<Autocomplete.LoginEntry>> =
+                        GeckoResult.fromValue(it.allLogins().map(::toGeckoLogin).toTypedArray())
+
+                    override fun onAddressFetch(): GeckoResult<Array<Autocomplete.Address>> =
+                        GeckoResult.fromValue(
+                            if (it.addressAutofillEnabled) {
+                                it.addresses().map(::toGeckoAddress).toTypedArray()
+                            } else {
+                                emptyArray()
+                            },
+                        )
+
+                    override fun onCreditCardFetch(): GeckoResult<Array<Autocomplete.CreditCard>> =
+                        GeckoResult.fromValue(
+                            if (it.paymentAutofillEnabled) {
+                                it.creditCards().map(::toGeckoCreditCard).toTypedArray()
+                            } else {
+                                emptyArray()
+                            },
+                        )
+
+                    override fun onLoginSave(login: Autocomplete.LoginEntry) {
+                        it.saveLogin(fromGeckoLogin(login))
+                    }
+
+                    override fun onLoginUsed(login: Autocomplete.LoginEntry, usedFields: Int) {
+                        login.guid?.let(it::markLoginUsed)
+                    }
+
+                    override fun onAddressSave(address: Autocomplete.Address) {
+                        it.saveAddress(fromGeckoAddress(address))
+                    }
+
+                    override fun onCreditCardSave(creditCard: Autocomplete.CreditCard) {
+                        it.saveCreditCard(fromGeckoCreditCard(creditCard))
+                    }
+                }
+            },
+        )
+    }
+
+    fun resolveAutofillPrompt(requestId: String, selectedIndex: Int?) {
+        val pending = pendingAutofillPrompt
+        if (pending?.prompt?.id != requestId) return
+        pendingAutofillPrompt = null
+        runCatching { pending.complete(selectedIndex) }
+        notifyChanged()
     }
 
     fun createTab(privateMode: Boolean): String =
@@ -797,6 +923,135 @@ class BrowserRuntimeController(context: Context) {
             }
         })
 
+        session.setPromptDelegate(object : GeckoSession.PromptDelegate {
+            override fun onLoginSave(
+                session: GeckoSession,
+                request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.LoginSaveOption>,
+            ): GeckoResult<GeckoSession.PromptDelegate.PromptResponse>? {
+                val store = autofillStore
+                if (
+                    tab.isPrivate ||
+                    store?.passwordSavePromptEnabled != true ||
+                    pendingAutofillPrompt != null ||
+                    request.options.isEmpty()
+                ) {
+                    return GeckoResult.fromValue(request.dismiss())
+                }
+                pendingAutofillPrompt = PendingAutofillPrompt.LoginSave(
+                    prompt = loginPrompt(tab, BrowserAutofillPromptKind.LOGIN_SAVE, request.options),
+                    request = request,
+                )
+                notifyChangedIfReady()
+                return GeckoResult()
+            }
+
+            override fun onLoginSelect(
+                session: GeckoSession,
+                request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.LoginSelectOption>,
+            ): GeckoResult<GeckoSession.PromptDelegate.PromptResponse>? {
+                if (
+                    autofillStore?.loginAutofillEnabled != true ||
+                    pendingAutofillPrompt != null ||
+                    request.options.isEmpty()
+                ) {
+                    return GeckoResult.fromValue(request.dismiss())
+                }
+                if (request.options.size == 1) {
+                    return GeckoResult.fromValue(request.confirm(request.options[0]))
+                }
+                pendingAutofillPrompt = PendingAutofillPrompt.LoginSelect(
+                    prompt = loginPrompt(tab, BrowserAutofillPromptKind.LOGIN_SELECT, request.options),
+                    request = request,
+                )
+                notifyChangedIfReady()
+                return GeckoResult()
+            }
+
+            override fun onAddressSave(
+                session: GeckoSession,
+                request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.AddressSaveOption>,
+            ): GeckoResult<GeckoSession.PromptDelegate.PromptResponse>? {
+                if (
+                    tab.isPrivate ||
+                    autofillStore?.addressAutofillEnabled != true ||
+                    pendingAutofillPrompt != null ||
+                    request.options.isEmpty()
+                ) {
+                    return GeckoResult.fromValue(request.dismiss())
+                }
+                pendingAutofillPrompt = PendingAutofillPrompt.AddressSave(
+                    prompt = addressPrompt(tab, BrowserAutofillPromptKind.ADDRESS_SAVE, request.options),
+                    request = request,
+                )
+                notifyChangedIfReady()
+                return GeckoResult()
+            }
+
+            override fun onAddressSelect(
+                session: GeckoSession,
+                request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.AddressSelectOption>,
+            ): GeckoResult<GeckoSession.PromptDelegate.PromptResponse>? {
+                if (
+                    autofillStore?.addressAutofillEnabled != true ||
+                    pendingAutofillPrompt != null ||
+                    request.options.isEmpty()
+                ) {
+                    return GeckoResult.fromValue(request.dismiss())
+                }
+                if (request.options.size == 1) {
+                    return GeckoResult.fromValue(request.confirm(request.options[0]))
+                }
+                pendingAutofillPrompt = PendingAutofillPrompt.AddressSelect(
+                    prompt = addressPrompt(tab, BrowserAutofillPromptKind.ADDRESS_SELECT, request.options),
+                    request = request,
+                )
+                notifyChangedIfReady()
+                return GeckoResult()
+            }
+
+            override fun onCreditCardSave(
+                session: GeckoSession,
+                request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.CreditCardSaveOption>,
+            ): GeckoResult<GeckoSession.PromptDelegate.PromptResponse>? {
+                if (
+                    tab.isPrivate ||
+                    autofillStore?.paymentAutofillEnabled != true ||
+                    pendingAutofillPrompt != null ||
+                    request.options.isEmpty()
+                ) {
+                    return GeckoResult.fromValue(request.dismiss())
+                }
+                pendingAutofillPrompt = PendingAutofillPrompt.CreditCardSave(
+                    prompt = creditCardPrompt(tab, BrowserAutofillPromptKind.CREDIT_CARD_SAVE, request.options),
+                    request = request,
+                )
+                notifyChangedIfReady()
+                return GeckoResult()
+            }
+
+            override fun onCreditCardSelect(
+                session: GeckoSession,
+                request: GeckoSession.PromptDelegate.AutocompleteRequest<Autocomplete.CreditCardSelectOption>,
+            ): GeckoResult<GeckoSession.PromptDelegate.PromptResponse>? {
+                if (
+                    autofillStore?.paymentAutofillEnabled != true ||
+                    pendingAutofillPrompt != null ||
+                    request.options.isEmpty()
+                ) {
+                    return GeckoResult.fromValue(request.dismiss())
+                }
+                if (request.options.size == 1) {
+                    return GeckoResult.fromValue(request.confirm(request.options[0]))
+                }
+                pendingAutofillPrompt = PendingAutofillPrompt.CreditCardSelect(
+                    prompt = creditCardPrompt(tab, BrowserAutofillPromptKind.CREDIT_CARD_SELECT, request.options),
+                    request = request,
+                )
+                notifyChangedIfReady()
+                return GeckoResult()
+            }
+        })
+
         session.setContentDelegate(object : GeckoSession.ContentDelegate {
             override fun onTitleChange(session: GeckoSession, title: String?) {
                 tab.title = title
@@ -980,6 +1235,147 @@ class BrowserRuntimeController(context: Context) {
         replacement.setFocused(selected)
         persistSoon()
     }
+
+    private fun toGeckoLogin(login: BrowserStoredLogin): Autocomplete.LoginEntry =
+        Autocomplete.LoginEntry.Builder()
+            .guid(login.id)
+            .origin(originForDomain(login.domain))
+            .username(login.username)
+            .password(login.password)
+            .build()
+
+    private fun fromGeckoLogin(login: Autocomplete.LoginEntry): BrowserStoredLogin =
+        BrowserStoredLogin(
+            id = login.guid ?: UUID.randomUUID().toString(),
+            domain = hostOrOrigin(login.origin),
+            username = login.username,
+            password = login.password,
+        )
+
+    private fun toGeckoAddress(address: BrowserStoredAddress): Autocomplete.Address =
+        Autocomplete.Address.Builder()
+            .guid(address.id)
+            .name(address.fullName)
+            .streetAddress(address.street)
+            .addressLevel2(address.city)
+            .addressLevel1(address.state)
+            .postalCode(address.postalCode)
+            .country(address.country)
+            .tel(address.phone)
+            .email(address.email)
+            .build()
+
+    private fun fromGeckoAddress(address: Autocomplete.Address): BrowserStoredAddress =
+        BrowserStoredAddress(
+            id = address.guid ?: UUID.randomUUID().toString(),
+            label = "Web form",
+            fullName = address.name,
+            street = address.streetAddress,
+            city = address.addressLevel2,
+            state = address.addressLevel1,
+            postalCode = address.postalCode,
+            country = address.country,
+            phone = address.tel,
+            email = address.email,
+        )
+
+    private fun toGeckoCreditCard(card: BrowserStoredCreditCard): Autocomplete.CreditCard =
+        Autocomplete.CreditCard.Builder()
+            .guid(card.id)
+            .name(card.cardholderName)
+            .number(card.number)
+            .expirationMonth(card.expirationMonth)
+            .expirationYear(card.expirationYear)
+            .build()
+
+    private fun fromGeckoCreditCard(card: Autocomplete.CreditCard): BrowserStoredCreditCard =
+        BrowserStoredCreditCard(
+            id = card.guid ?: UUID.randomUUID().toString(),
+            cardholderName = card.name,
+            number = card.number,
+            expirationMonth = card.expirationMonth,
+            expirationYear = card.expirationYear,
+        )
+
+    private fun loginPrompt(
+        tab: RuntimeTab,
+        kind: BrowserAutofillPromptKind,
+        options: Array<out Autocomplete.Option<Autocomplete.LoginEntry>>,
+    ): BrowserAutofillPrompt =
+        BrowserAutofillPrompt(
+            id = UUID.randomUUID().toString(),
+            tabId = tab.id,
+            origin = tab.location?.let(::displayOrigin),
+            kind = kind,
+            options = options.mapIndexed { index, option ->
+                BrowserAutofillPromptOption(
+                    index = index,
+                    title = option.value.username.ifBlank { "Saved login" },
+                    subtitle = hostOrOrigin(option.value.origin),
+                )
+            },
+        )
+
+    private fun addressPrompt(
+        tab: RuntimeTab,
+        kind: BrowserAutofillPromptKind,
+        options: Array<out Autocomplete.Option<Autocomplete.Address>>,
+    ): BrowserAutofillPrompt =
+        BrowserAutofillPrompt(
+            id = UUID.randomUUID().toString(),
+            tabId = tab.id,
+            origin = tab.location?.let(::displayOrigin),
+            kind = kind,
+            options = options.mapIndexed { index, option ->
+                BrowserAutofillPromptOption(
+                    index = index,
+                    title = option.value.name.ifBlank { "Saved address" },
+                    subtitle = listOf(option.value.addressLevel2, option.value.country)
+                        .filter(String::isNotBlank)
+                        .joinToString(", ")
+                        .takeIf(String::isNotBlank),
+                )
+            },
+        )
+
+    private fun creditCardPrompt(
+        tab: RuntimeTab,
+        kind: BrowserAutofillPromptKind,
+        options: Array<out Autocomplete.Option<Autocomplete.CreditCard>>,
+    ): BrowserAutofillPrompt =
+        BrowserAutofillPrompt(
+            id = UUID.randomUUID().toString(),
+            tabId = tab.id,
+            origin = tab.location?.let(::displayOrigin),
+            kind = kind,
+            options = options.mapIndexed { index, option ->
+                BrowserAutofillPromptOption(
+                    index = index,
+                    title = option.value.name.ifBlank { "Payment card" },
+                    subtitle = "•••• " + option.value.number.takeLast(4),
+                )
+            },
+        )
+
+    private fun originForDomain(domain: String): String {
+        val trimmed = domain.trim()
+        if (trimmed.startsWith("https://") || trimmed.startsWith("http://")) {
+            return displayOrigin(trimmed)
+        }
+        return "https://" + trimmed.substringBefore('/').lowercase()
+    }
+
+    private fun displayOrigin(raw: String): String =
+        runCatching {
+            val uri = java.net.URI(raw)
+            val scheme = uri.scheme?.lowercase() ?: return@runCatching raw
+            val host = uri.host?.lowercase() ?: return@runCatching raw
+            scheme + "://" + host + if (uri.port >= 0) ":" + uri.port else ""
+        }.getOrDefault(raw)
+
+    private fun hostOrOrigin(raw: String): String =
+        runCatching { java.net.URI(raw).host?.lowercase() }.getOrNull()
+            ?: raw.removePrefix("https://").removePrefix("http://").substringBefore('/')
 
     private fun selectTab(tabId: String, persist: Boolean) {
         val next = tabs.firstOrNull { it.id == tabId } ?: return
