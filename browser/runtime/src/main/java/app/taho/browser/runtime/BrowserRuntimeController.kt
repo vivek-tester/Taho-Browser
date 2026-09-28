@@ -14,6 +14,7 @@ import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSessionSettings
 import org.mozilla.geckoview.PageExtractionController
 import org.mozilla.geckoview.StorageController
+import org.mozilla.geckoview.TranslationsController
 import org.mozilla.geckoview.WebResponse
 import java.util.UUID
 
@@ -738,6 +739,96 @@ class BrowserRuntimeController(context: Context) {
 
     fun clearFindInPage() {
         requireSelected().session.finder.clear()
+    }
+
+    fun translateCurrentPage(
+        targetLanguage: String,
+        onComplete: (success: Boolean, sourceLanguage: String?, error: String?) -> Unit,
+    ) {
+        val tab = requireSelected()
+        if (tab.crashed || tab.location.isNullOrBlank()) {
+            onComplete(false, null, "No active page is available to translate.")
+            return
+        }
+
+        val target = targetLanguage.trim().replace('_', '-')
+        if (target.isBlank()) {
+            onComplete(false, null, "Choose a translation target language.")
+            return
+        }
+
+        tab.session.sessionPageExtractor.getPageMetadata().accept(
+            { metadata ->
+                val source = metadata?.language
+                    ?.trim()
+                    ?.replace('_', '-')
+                    ?.takeIf(String::isNotBlank)
+                if (source == null) {
+                    onComplete(false, null, "The page language could not be detected.")
+                    return@accept
+                }
+                if (source.equals(target, ignoreCase = true)) {
+                    onComplete(true, source, null)
+                    return@accept
+                }
+
+                val translator = tab.session.sessionTranslation
+                if (translator == null) {
+                    onComplete(false, source, "Gecko translation is unavailable for this session.")
+                    return@accept
+                }
+
+                val options = TranslationsController.SessionTranslation.TranslationOptions.Builder()
+                    .downloadModel(true)
+                    .build()
+
+                translator.translate(source, target, options).accept(
+                    { onComplete(true, source, null) },
+                    { error ->
+                        onComplete(
+                            false,
+                            source,
+                            error?.message
+                                ?.takeIf(String::isNotBlank)
+                                ?: error?.javaClass?.simpleName
+                                ?: "Translation failed.",
+                        )
+                    },
+                )
+            },
+            {
+                onComplete(false, null, "The page language could not be detected.")
+            },
+        )
+    }
+
+    fun restoreOriginalPageTranslation(
+        onComplete: (success: Boolean, error: String?) -> Unit,
+    ) {
+        val tab = requireSelected()
+        if (tab.crashed) {
+            onComplete(false, "The page is unavailable.")
+            return
+        }
+
+        val translator = tab.session.sessionTranslation
+        if (translator == null) {
+            onComplete(false, "Gecko translation is unavailable for this session.")
+            return
+        }
+
+        translator.restoreOriginalPage().accept(
+            { onComplete(true, null) },
+            { error ->
+                onComplete(
+                    false,
+                    error?.message
+                        ?.takeIf(String::isNotBlank)
+                        ?: error?.javaClass?.simpleName
+                        ?: "Unable to restore the original page.",
+                )
+            },
+        )
     }
 
     fun extractReaderContent(onResult: (BrowserReaderContent?) -> Unit) {
