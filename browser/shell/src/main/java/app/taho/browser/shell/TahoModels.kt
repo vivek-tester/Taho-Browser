@@ -2,6 +2,13 @@ package app.taho.browser.shell
 
 import java.io.Serializable
 
+data class ReaderPageContentUi(
+    val text: String,
+    val wordCount: Int,
+    val language: String,
+    val isGated: Boolean,
+)
+
 enum class TahoThemeMode { SYSTEM, DARK, LIGHT }
 enum class TahoToolbarPosition { BOTTOM, TOP }
 enum class TahoHomePageMode { START_PAGE, CUSTOM_URL }
