@@ -52,7 +52,9 @@ fun TahoBrowserMenuSheet(
     onToggleDesktopMode: () -> Unit,
     onReaderMode: () -> Unit,
     onTranslate: () -> Unit,
+    installableWebAppName: String? = null,
     onAddToHomeScreen: () -> Unit,
+    onInstallWebApp: () -> Unit = {},
     onPrintPage: () -> Unit,
     onSaveOffline: () -> Unit,
     onSiteInfo: () -> Unit,
@@ -228,9 +230,19 @@ fun TahoBrowserMenuSheet(
                 onTranslate()
             }
             MenuItemDivider()
-            MenuItemRow("⊞ Add to Home Screen / Install PWA", "Create launcher shortcut") {
-                onCloseMenu()
-                onAddToHomeScreen()
+            if (installableWebAppName != null) {
+                MenuItemRow(
+                    "⊞ Install Web App",
+                    "Install ${installableWebAppName.take(36)} in Taho's standalone PWA runtime",
+                ) {
+                    onCloseMenu()
+                    onInstallWebApp()
+                }
+            } else {
+                MenuItemRow("⊞ Add Page to Home Screen", "Create a launcher shortcut") {
+                    onCloseMenu()
+                    onAddToHomeScreen()
+                }
             }
             MenuItemDivider()
             MenuItemRow("⎙ Print or Save as PDF", "Export page via Android print engine") {
