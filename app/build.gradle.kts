@@ -78,4 +78,5 @@ dependencies {
     implementation("androidx.compose.foundation:foundation-layout:1.9.1")
     implementation("androidx.compose.material3:material3:1.3.2")
     implementation("androidx.core:core-ktx:1.17.0")
+    implementation("androidx.biometric:biometric:1.1.0")
 }
