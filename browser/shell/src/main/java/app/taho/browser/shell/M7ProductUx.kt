@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -120,9 +121,12 @@ internal object M7CaptureUx {
 @Composable
 internal fun M7CaptureSummarySheet(
     requests: List<M4CaptureRequestUiState>,
+    filter: M7CaptureFilterUi,
+    listState: LazyListState,
+    selectedId: String?,
+    onFilterSelected: (M7CaptureFilterUi) -> Unit,
     onSelect: (String) -> Unit,
 ) {
-    var filter by rememberSaveable { mutableStateOf(M7CaptureFilterUi.RELEVANT) }
     val relevantCount = requests.count { it.relevantByDefault }
     val visible = M7CaptureUx.filtered(requests, filter)
 
@@ -148,10 +152,10 @@ internal fun M7CaptureSummarySheet(
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(7.dp),
         ) {
-            M7FilterChip("Relevant", M7CaptureFilterUi.RELEVANT, filter) { filter = it }
-            M7FilterChip("All", M7CaptureFilterUi.ALL, filter) { filter = it }
-            M7FilterChip("Auth", M7CaptureFilterUi.AUTH, filter) { filter = it }
-            M7FilterChip("API", M7CaptureFilterUi.API, filter) { filter = it }
+            M7FilterChip("Relevant", M7CaptureFilterUi.RELEVANT, filter, onFilterSelected)
+            M7FilterChip("All", M7CaptureFilterUi.ALL, filter, onFilterSelected)
+            M7FilterChip("Auth", M7CaptureFilterUi.AUTH, filter, onFilterSelected)
+            M7FilterChip("API", M7CaptureFilterUi.API, filter, onFilterSelected)
         }
         Spacer(Modifier.height(12.dp))
 
@@ -178,6 +182,7 @@ internal fun M7CaptureSummarySheet(
         } else {
             LazyColumn(
                 modifier = Modifier.weight(1f),
+                state = listState,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(visible, key = { it.id }) { request ->
@@ -185,6 +190,7 @@ internal fun M7CaptureSummarySheet(
                     M7SummaryRow(
                         request = request,
                         inspectable = inspectable,
+                        selected = request.id == selectedId,
                         onClick = { if (inspectable) onSelect(request.id) },
                     )
                 }
@@ -243,6 +249,7 @@ private fun M7FilterChip(
 private fun M7SummaryRow(
     request: M4CaptureRequestUiState,
     inspectable: Boolean,
+    selected: Boolean,
     onClick: () -> Unit,
 ) {
     val parsed = runCatching { URI(request.url) }.getOrNull()
@@ -261,7 +268,11 @@ private fun M7SummaryRow(
             .alpha(if (inspectable) 1f else .42f)
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White.copy(alpha = .028f))
-            .border(1.dp, Color.White.copy(alpha = .08f), RoundedCornerShape(16.dp))
+            .border(
+                1.dp,
+                if (selected) TahoGold.copy(alpha = .5f) else Color.White.copy(alpha = .08f),
+                RoundedCornerShape(16.dp),
+            )
             .semantics {
                 if (inspectable) role = Role.Button
                 contentDescription = buildString {
