@@ -109,6 +109,7 @@ class BrowserRuntimeController(context: Context) {
         var canGoForward: Boolean = false,
         var security: BrowserSecuritySnapshot? = null,
         var sessionState: GeckoSession.SessionState? = null,
+        var lastAccessedAtEpochMs: Long = System.currentTimeMillis(),
     )
 
     private sealed interface PendingSitePermission {
@@ -167,6 +168,7 @@ class BrowserRuntimeController(context: Context) {
                     initialLocation = saved.location,
                     initialTitle = saved.title,
                     restoredState = state,
+                    restoredLastAccessedAtEpochMs = saved.lastAccessedAtEpochMs,
                 )
             }
 
@@ -225,12 +227,66 @@ class BrowserRuntimeController(context: Context) {
             initialLocation = null,
             initialTitle = null,
             restoredState = null,
+            restoredLastAccessedAtEpochMs = null,
         ).id
 
     fun newTab(privateMode: Boolean): String {
         val id = createTab(privateMode)
         selectTab(id)
         return id
+    }
+
+    /**
+     * Replace the current normal browsing session with a single blank tab.
+     * Used only for explicit startup policy; private tabs are never restored.
+     */
+    fun resetToSingleTab(initialUri: String? = null) {
+        val existing = tabs.toList()
+        existing.forEach { tab ->
+            rejectPermissionsForTab(tab.id)
+            clearExternalNavigationForTab(tab.id)
+            if (!tab.crashed) {
+                runCatching {
+                    tab.session.setFocused(false)
+                    tab.session.setActive(false)
+                    tab.session.close()
+                }
+            }
+        }
+        tabs.clear()
+
+        val id = createRuntimeTab(
+            id = UUID.randomUUID().toString(),
+            privateMode = false,
+            initialLocation = null,
+            initialTitle = null,
+            restoredState = null,
+            restoredLastAccessedAtEpochMs = null,
+        ).id
+        selectedTabId = id
+        selectTab(id, persist = false)
+        initialUri?.takeIf { it.isNotBlank() && it != "about:blank" }?.let { load(id, it) }
+        persistNow()
+    }
+
+    /**
+     * Close stale non-selected tabs while preserving pinned tabs. Returns the
+     * number actually closed so the shell can report truthful cleanup.
+     */
+    fun closeInactiveTabs(
+        olderThanEpochMs: Long,
+        pinnedTabIds: Set<String> = emptySet(),
+    ): Int {
+        val candidates = tabs
+            .filter { tab ->
+                tab.id != selectedTabId &&
+                    tab.id !in pinnedTabIds &&
+                    tab.lastAccessedAtEpochMs < olderThanEpochMs
+            }
+            .map { it.id }
+
+        candidates.forEach(::closeTab)
+        return candidates.size
     }
 
     fun closeTab(tabId: String) {
@@ -569,6 +625,7 @@ class BrowserRuntimeController(context: Context) {
                         location = tab.location,
                         serializedSessionState = tab.sessionState?.toString(),
                         isPrivate = tab.isPrivate,
+                        lastAccessedAtEpochMs = tab.lastAccessedAtEpochMs,
                     )
                 },
                 selectedTabId = selectedTabId,
@@ -582,6 +639,7 @@ class BrowserRuntimeController(context: Context) {
         initialLocation: String?,
         initialTitle: String?,
         restoredState: GeckoSession.SessionState?,
+        restoredLastAccessedAtEpochMs: Long?,
     ): RuntimeTab {
         val session = newSession(privateMode)
         val tab = RuntimeTab(
@@ -591,6 +649,7 @@ class BrowserRuntimeController(context: Context) {
             title = initialTitle,
             location = initialLocation,
             sessionState = restoredState,
+            lastAccessedAtEpochMs = restoredLastAccessedAtEpochMs ?: System.currentTimeMillis(),
         )
 
         attachDelegates(tab)
@@ -927,6 +986,7 @@ class BrowserRuntimeController(context: Context) {
             tab.session.setFocused(selected)
         }
         selectedTabId = next.id
+        next.lastAccessedAtEpochMs = System.currentTimeMillis()
         if (persist) persistSoon()
         notifyChanged()
     }
