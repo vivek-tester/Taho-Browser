@@ -5,6 +5,8 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -2466,7 +2468,89 @@ private fun SettingsDiagnosticsPage() {
 // -------------------------------------------------------------
 @Composable
 private fun SettingsBackupExportPage() {
+    val context = LocalContext.current
     var statusMessage by rememberSaveable { mutableStateOf<String?>(null) }
+
+    fun writeText(uri: Uri, text: String): Boolean =
+        runCatching {
+            context.contentResolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use {
+                it.write(text)
+            } ?: error("Unable to open destination")
+        }.isSuccess
+
+    fun readText(uri: Uri): String? =
+        runCatching {
+            context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use {
+                it.readText()
+            }
+        }.getOrNull()
+
+    val exportBookmarks = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/html"),
+    ) { uri ->
+        if (uri != null) {
+            val content = TahoBrowserStateStore.exportBookmarksHtml()
+            statusMessage = if (writeText(uri, content)) {
+                "Exported ${TahoBrowserStateStore.bookmarks.size} bookmarks."
+            } else {
+                "Bookmark export failed."
+            }
+        }
+    }
+
+    val exportPasswords = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        if (uri != null) {
+            val content = TahoBrowserStateStore.exportPasswordsJson()
+            statusMessage = if (writeText(uri, content)) {
+                "Password export completed. The exported JSON contains readable credentials."
+            } else {
+                "Password export failed."
+            }
+        }
+    }
+
+    val exportSettings = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        if (uri != null) {
+            val content = TahoBrowserStateStore.exportSettingsJson()
+            statusMessage = if (writeText(uri, content)) {
+                "Core browser settings exported."
+            } else {
+                "Settings export failed."
+            }
+        }
+    }
+
+    val importBookmarks = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            val content = readText(uri)
+            statusMessage = if (content != null) {
+                val count = TahoBrowserStateStore.importBookmarksFromHtml(content)
+                "Imported $count bookmark${if (count == 1) "" else "s"}."
+            } else {
+                "Unable to read bookmark file."
+            }
+        }
+    }
+
+    val importPasswords = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            val content = readText(uri)
+            statusMessage = if (content != null) {
+                val count = TahoBrowserStateStore.importPasswordsFromJson(content)
+                "Imported $count credential${if (count == 1) "" else "s"} into the encrypted local vault."
+            } else {
+                "Unable to read password file."
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -2474,54 +2558,67 @@ private fun SettingsBackupExportPage() {
             .verticalScroll(rememberScrollState()),
     ) {
         SettingsSectionTitle("DATA EXPORT & PORTABILITY")
-        Text("Export your browser data in standard open formats for full data sovereignty.", color = TahoMuted, fontFamily = TahoMono, fontSize = 10.sp)
+        Text(
+            "Choose the destination with Android's system document picker. Taho never fabricates an export success.",
+            color = TahoMuted,
+            fontFamily = TahoMono,
+            fontSize = 10.sp,
+        )
         Spacer(Modifier.height(14.dp))
 
-        if (statusMessage != null) {
+        statusMessage?.let { message ->
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(TahoBlockShape)
-                    .background(TahoOk.copy(alpha = 0.15f))
-                    .border(1.dp, TahoOk.copy(alpha = 0.4f), TahoBlockShape)
+                    .background(TahoSurfaceRow)
+                    .border(1.dp, TahoHairlineStrong, TahoBlockShape)
                     .padding(12.dp),
             ) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text(statusMessage ?: "", color = TahoOk, fontFamily = TahoMono, fontSize = 10.5.sp, modifier = Modifier.weight(1f))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        message,
+                        color = TahoText,
+                        fontFamily = TahoMono,
+                        fontSize = 10.5.sp,
+                        modifier = Modifier.weight(1f),
+                    )
                     Spacer(Modifier.width(8.dp))
-                    Text("×", color = TahoOk, fontSize = 14.sp, modifier = Modifier.clickable { statusMessage = null })
+                    Text(
+                        "×",
+                        color = TahoMuted,
+                        fontSize = 14.sp,
+                        modifier = Modifier.clickable { statusMessage = null },
+                    )
                 }
             }
             Spacer(Modifier.height(12.dp))
         }
 
-        M7SecondaryButton("Export Bookmarks (HTML / Netscape Format)", Modifier.fillMaxWidth()) {
-            val html = TahoBrowserStateStore.exportBookmarksHtml()
-            statusMessage = "Exported ${TahoBrowserStateStore.bookmarks.size} bookmarks (${html.length} chars generated)"
+        M7SecondaryButton("Export Bookmarks (HTML)", Modifier.fillMaxWidth()) {
+            exportBookmarks.launch("taho-bookmarks.html")
         }
         Spacer(Modifier.height(8.dp))
-        M7SecondaryButton("Export Password Vault (Encrypted JSON)", Modifier.fillMaxWidth()) {
-            val json = TahoBrowserStateStore.exportPasswordsJson()
-            statusMessage = "Exported ${TahoBrowserStateStore.savedPasswords.size} passwords (${json.length} bytes JSON)"
+        M7SecondaryButton("Export Passwords (JSON — contains secrets)", Modifier.fillMaxWidth()) {
+            exportPasswords.launch("taho-passwords.json")
         }
         Spacer(Modifier.height(8.dp))
-        M7SecondaryButton("Export Full Settings Backup", Modifier.fillMaxWidth()) {
-            val json = TahoBrowserStateStore.exportSettingsJson()
-            statusMessage = "Exported full browser preferences (${json.length} bytes JSON)"
+        M7SecondaryButton("Export Core Settings (JSON)", Modifier.fillMaxWidth()) {
+            exportSettings.launch("taho-settings.json")
         }
 
         Spacer(Modifier.height(20.dp))
         SettingsSectionTitle("DATA IMPORT")
-        M7SecondaryButton("Import Bookmarks & Favorites", Modifier.fillMaxWidth()) {
-            val sampleHtml = "<!DOCTYPE NETSCAPE-Bookmark-file-1><TITLE>Bookmarks</TITLE><H1>Bookmarks</H1><DL><p><DT><A HREF=\"https://developer.mozilla.org\">MDN Web Docs</A></DL><p>"
-            val count = TahoBrowserStateStore.importBookmarksFromHtml(sampleHtml)
-            statusMessage = "Successfully imported $count bookmarks into library"
+        M7SecondaryButton("Import Bookmarks (HTML)", Modifier.fillMaxWidth()) {
+            importBookmarks.launch(arrayOf("text/html", "text/plain", "application/xhtml+xml"))
         }
         Spacer(Modifier.height(8.dp))
-        M7SecondaryButton("Import Passwords from Chrome / Firefox", Modifier.fillMaxWidth()) {
-            val sampleJson = "[{\"domain\":\"accounts.firefox.com\",\"username\":\"user@taho.app\",\"password\":\"Secr3t!P@ss\"}]"
-            val count = TahoBrowserStateStore.importPasswordsFromJson(sampleJson)
-            statusMessage = "Successfully imported $count credentials into password vault"
+        M7SecondaryButton("Import Passwords (Taho JSON)", Modifier.fillMaxWidth()) {
+            importPasswords.launch(arrayOf("application/json", "text/plain"))
         }
     }
 }
