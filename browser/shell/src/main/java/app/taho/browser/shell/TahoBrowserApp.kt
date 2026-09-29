@@ -1142,6 +1142,26 @@ fun TahoBrowserApp(
                         showBrowserMenu = false
                     },
                     onCloseMenu = { showBrowserMenu = false },
+                    captureCount = state.relevantCount,
+                    onOpenCapture = {
+                        showBrowserMenu = false
+                        selectedCaptureId = null
+                        showTransferConfirmation = false
+                        showCaptureSummary = true
+                    },
+                    onClearCapturedCalls = {
+                        showBrowserMenu = false
+                        onClearCaptureData()
+                    },
+                    onOpenCaptureSettings = {
+                        showBrowserMenu = false
+                        settingsInitialSubPage = SettingsSubPage.MAIN
+                        showSettings = true
+                    },
+                    onReload = {
+                        showBrowserMenu = false
+                        onReload()
+                    },
                 )
             }
         }
