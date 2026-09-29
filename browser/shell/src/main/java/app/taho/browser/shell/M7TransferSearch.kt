@@ -78,7 +78,7 @@ internal fun M7TransferProgressOverlay(
                     modifier = Modifier
                         .size(46.dp)
                         .clip(TahoPillShape)
-                        .background(TahoGold.copy(alpha = .14f)),
+                        .background(TahoGoldWash),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
@@ -127,7 +127,7 @@ private fun M7ProgressBar(fraction: Float) {
             .width(210.dp)
             .height(2.dp)
             .clip(TahoPillShape)
-            .background(Color.White.copy(alpha = .09f)),
+            .background(TahoLine),
     ) {
         Box(
             modifier = Modifier
@@ -190,9 +190,9 @@ internal fun M7CaptureSearchField(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 40.dp)
+            .heightIn(min = TahoCompactTouchTarget)
             .clip(TahoPillShape)
-            .background(Color.White.copy(alpha = .03f))
+            .background(TahoRaised)
             .border(1.dp, TahoHairline, TahoPillShape),
     ) {
         androidx.compose.foundation.text.BasicTextField(
