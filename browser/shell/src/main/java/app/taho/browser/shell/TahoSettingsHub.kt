@@ -433,7 +433,7 @@ private fun SettingsAppearancePage() {
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
-        SettingsSectionTitle("THEME MODE")
+        SettingsSectionTitle("Theme mode")
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             .heightIn(min = TahoTouchTarget)
             listOf(TahoThemeMode.DARK to "Dark (OLED)", TahoThemeMode.LIGHT to "Light", TahoThemeMode.SYSTEM to "System").forEach { (m, label) ->
@@ -455,7 +455,7 @@ private fun SettingsAppearancePage() {
         }
 
         Spacer(Modifier.height(18.dp))
-        SettingsSectionTitle("BROWSER ACCENT COLOR")
+        SettingsSectionTitle("Browser accent color")
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(
                 0xFFE2B44A to "Taho Gold",
@@ -480,7 +480,7 @@ private fun SettingsAppearancePage() {
         }
 
         Spacer(Modifier.height(18.dp))
-        SettingsSectionTitle("TOOLBAR & ADDRESS BAR POSITION")
+        SettingsSectionTitle("Toolbar & address bar position")
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             .heightIn(min = TahoTouchTarget)
             listOf(TahoToolbarPosition.BOTTOM to "Bottom (One-Handed)", TahoToolbarPosition.TOP to "Top (Classic)").forEach { (pos, label) ->
@@ -501,7 +501,7 @@ private fun SettingsAppearancePage() {
         }
 
         Spacer(Modifier.height(18.dp))
-        SettingsSectionTitle("HOMEPAGE CUSTOMIZATION")
+        SettingsSectionTitle("Homepage customization")
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             .heightIn(min = TahoTouchTarget)
             listOf(TahoHomePageMode.START_PAGE to "Default Start Page", TahoHomePageMode.CUSTOM_URL to "Custom URL").forEach { (mode, label) ->
@@ -562,7 +562,7 @@ private fun SettingsSearchEnginePage() {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SettingsSectionTitle("DEFAULT SEARCH ENGINE")
+            SettingsSectionTitle("Default search engine")
             Text(
                 text = "+ Add Engine",
                 color = TahoGoldHi,
@@ -676,7 +676,7 @@ private fun SettingsSearchEnginePage() {
         }
 
         Spacer(Modifier.height(16.dp))
-        SettingsSectionTitle("SEARCH SUGGESTIONS & AUTOCOMPLETE")
+        SettingsSectionTitle("Search suggestions & autocomplete")
         SettingsToggleRow("Search Suggestions", "Provide real-time query suggestions", settings.searchSuggestionsEnabled) {
             TahoBrowserStateStore.updateSettings { it.copy(searchSuggestionsEnabled = !it.searchSuggestionsEnabled) }
         }
@@ -701,7 +701,7 @@ private fun SettingsPrivacySecurityPage() {
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
-        SettingsSectionTitle("TRACKING PROTECTION LEVEL")
+        SettingsSectionTitle("Tracking protection level")
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             .heightIn(min = TahoTouchTarget)
             listOf(
@@ -726,7 +726,7 @@ private fun SettingsPrivacySecurityPage() {
         }
 
         Spacer(Modifier.height(16.dp))
-        SettingsSectionTitle("PROTECTION GUARDS")
+        SettingsSectionTitle("Protection guards")
         SettingsToggleRow("Cross-Site Tracker Blocking", "Block known ad and telemetry trackers", settings.blockTrackers) {
             TahoBrowserStateStore.updateSettings { it.copy(blockTrackers = !it.blockTrackers) }
         }
@@ -756,7 +756,7 @@ private fun SettingsPrivacySecurityPage() {
         }
 
         Spacer(Modifier.height(16.dp))
-        SettingsSectionTitle("SECURE DNS (DNS-OVER-HTTPS)")
+        SettingsSectionTitle("Secure DNS (dns-over-https)")
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             .heightIn(min = TahoTouchTarget)
             listOf(TahoSecureDns.CLOUDFLARE to "Cloudflare", TahoSecureDns.QUAD9 to "Quad9", TahoSecureDns.GOOGLE to "Google", TahoSecureDns.OFF to "System").forEach { (dns, label) ->
@@ -777,7 +777,7 @@ private fun SettingsPrivacySecurityPage() {
         }
 
         Spacer(Modifier.height(16.dp))
-        SettingsSectionTitle("PRIVATE BROWSING GUARDS")
+        SettingsSectionTitle("Private browsing guards")
         SettingsToggleRow("Private Tab PIN / Biometric Lock", "Require authentication when switching to private session", settings.privateTabLock) {
             TahoBrowserStateStore.updateSettings { it.copy(privateTabLock = !it.privateTabLock) }
         }
@@ -859,7 +859,7 @@ private fun SettingsClearDataPage(
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
-        SettingsSectionTitle("TIME RANGE")
+        SettingsSectionTitle("Time range")
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             .heightIn(min = TahoTouchTarget)
             listOf("HOUR" to "1 Hour", "24_HOURS" to "24 Hours", "7_DAYS" to "7 Days", "ALL_TIME" to "All Time").forEach { (key, label) ->
@@ -880,7 +880,7 @@ private fun SettingsClearDataPage(
         }
 
         Spacer(Modifier.height(16.dp))
-        SettingsSectionTitle("DATA TYPES TO CLEAR")
+        SettingsSectionTitle("Data types to clear")
 
         SettingsCheckboxRow("Browsing History", "${TahoBrowserStateStore.history.size} items", clearHistory) { clearHistory = !clearHistory }
         SettingsCheckboxRow("Cached Images & Files", "Gecko-managed", clearCache) { clearCache = !clearCache }
@@ -1958,7 +1958,7 @@ private fun SettingsAutofillPage() {
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
-        SettingsSectionTitle("AUTOFILL SETTINGS")
+        SettingsSectionTitle("Autofill settings")
         SettingsToggleRow("Autofill Addresses & Forms", "Save and fill addresses automatically on web forms", settings.addressAutofillEnabled) {
             TahoBrowserStateStore.updateSettings { it.copy(addressAutofillEnabled = !it.addressAutofillEnabled) }
         }
@@ -2147,7 +2147,7 @@ private fun SettingsProfilesSyncPage(
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
-        SettingsSectionTitle("LOCAL BROWSER PROFILES")
+        SettingsSectionTitle("Local browser profiles")
         profiles.forEach { profile ->
             Row(
                 modifier = Modifier
@@ -2228,7 +2228,7 @@ private fun SettingsProfilesSyncPage(
         )
 
         Spacer(Modifier.height(18.dp))
-        SettingsSectionTitle("CROSS-DEVICE SYNC")
+        SettingsSectionTitle("Cross-device sync")
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2256,7 +2256,7 @@ private fun SettingsProfilesSyncPage(
 
         if (devices.isNotEmpty()) {
             Spacer(Modifier.height(14.dp))
-            SettingsSectionTitle("SYNCED DEVICES")
+            SettingsSectionTitle("Synced devices")
             devices.forEach { dev ->
                 Row(
                     modifier = Modifier
@@ -2310,7 +2310,7 @@ private fun SettingsExtensionsPage(
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
-        SettingsSectionTitle("MOZILLA WEBEXTENSIONS")
+        SettingsSectionTitle("Mozilla webextensions")
         Text(
             "Installed extensions below come directly from GeckoView. New packages are validated and must be Mozilla-signed before Gecko installs them.",
             color = TahoMuted,
@@ -2728,7 +2728,7 @@ private fun SettingsAccessibilityPage() {
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
-        SettingsSectionTitle("MOTION & CONTRAST")
+        SettingsSectionTitle("Motion & contrast")
         SettingsToggleRow("Reduced Motion", "Honor system reduced animation preference", settings.reducedMotion) {
             TahoBrowserStateStore.updateSettings { it.copy(reducedMotion = !it.reducedMotion) }
         }
@@ -2765,7 +2765,7 @@ private fun SettingsLanguagesPage() {
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
-        SettingsSectionTitle("BROWSER INTERFACE LANGUAGE")
+        SettingsSectionTitle("Browser interface language")
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2777,7 +2777,7 @@ private fun SettingsLanguagesPage() {
         }
 
         Spacer(Modifier.height(16.dp))
-        SettingsSectionTitle("PREFERRED WEBSITE LANGUAGES")
+        SettingsSectionTitle("Preferred website languages")
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2789,7 +2789,7 @@ private fun SettingsLanguagesPage() {
         }
 
         Spacer(Modifier.height(16.dp))
-        SettingsSectionTitle("PAGE TRANSLATION")
+        SettingsSectionTitle("Page translation")
         SettingsToggleRow("Offer Automatic Translation", "Translate foreign language pages automatically", settings.autoTranslateEnabled) {
             TahoBrowserStateStore.updateSettings { it.copy(autoTranslateEnabled = !it.autoTranslateEnabled) }
         }
@@ -2807,7 +2807,7 @@ private fun SettingsDefaultBrowserPage() {
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
-        SettingsSectionTitle("DEFAULT APPLICATION DISPATCH")
+        SettingsSectionTitle("Default application dispatch")
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2878,7 +2878,7 @@ private fun SettingsPerformanceMediaPage() {
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
-        SettingsSectionTitle("STARTUP & SESSION RESTORATION")
+        SettingsSectionTitle("Startup & session restoration")
         Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
             listOf(
                 TahoStartupBehavior.PREVIOUS_TABS to "Continue Previous Tabs",
@@ -2954,7 +2954,7 @@ private fun SettingsPerformanceMediaPage() {
         }
 
         Spacer(Modifier.height(18.dp))
-        SettingsSectionTitle("AUTOMATIC INACTIVE TAB CLOSING")
+        SettingsSectionTitle("Automatic inactive tab closing")
         Row(
             modifier = Modifier
                 .heightIn(min = TahoTouchTarget)
@@ -2999,7 +2999,7 @@ private fun SettingsPerformanceMediaPage() {
         )
 
         Spacer(Modifier.height(18.dp))
-        SettingsSectionTitle("MEMORY & SYSTEM EFFICIENCY")
+        SettingsSectionTitle("Memory & system efficiency")
         SettingsToggleRow("Memory Saver Mode", "Discard background tabs when memory is low", settings.memorySaverEnabled) {
             TahoBrowserStateStore.updateSettings { it.copy(memorySaverEnabled = !it.memorySaverEnabled) }
         }
@@ -3011,7 +3011,7 @@ private fun SettingsPerformanceMediaPage() {
         }
 
         Spacer(Modifier.height(18.dp))
-        SettingsSectionTitle("MEDIA PLAYBACK")
+        SettingsSectionTitle("Media playback")
         SettingsToggleRow("Background Audio", "Continue audio playback when browser is in background", settings.backgroundAudioEnabled) {
             TahoBrowserStateStore.updateSettings { it.copy(backgroundAudioEnabled = !it.backgroundAudioEnabled) }
         }
@@ -3068,7 +3068,7 @@ private fun SettingsStorageUsagePage() {
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
-        SettingsSectionTitle("MEASURED TAHO-OWNED STORAGE")
+        SettingsSectionTitle("Measured taho-owned storage")
         DiagItem("Downloaded files", readableBytes(downloadBytes))
         DiagItem("Offline page snapshots", readableBytes(offlineBytes))
         DiagItem("Browser state + encrypted vaults", readableBytes(browserStateBytes))
@@ -3083,7 +3083,7 @@ private fun SettingsStorageUsagePage() {
         )
 
         Spacer(Modifier.height(20.dp))
-        SettingsSectionTitle("GECKO-MANAGED WEBSITE STORAGE")
+        SettingsSectionTitle("Gecko-managed website storage")
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -3121,7 +3121,7 @@ private fun SettingsDiagnosticsPage() {
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
-        SettingsSectionTitle("RUNTIME DIAGNOSTICS")
+        SettingsSectionTitle("Runtime diagnostics")
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -3143,7 +3143,7 @@ private fun SettingsDiagnosticsPage() {
         }
 
         Spacer(Modifier.height(18.dp))
-        SettingsSectionTitle("CRASH REPORTING & TELEMETRY")
+        SettingsSectionTitle("Crash reporting & telemetry")
         Text(
             "No crash-report upload backend is connected in this build. The preference is stored locally only.",
             color = TahoFaint,
@@ -3243,7 +3243,7 @@ private fun SettingsDiagnosticsPage() {
         }
 
         Spacer(Modifier.height(20.dp))
-        SettingsSectionTitle("RESET CONTROLS")
+        SettingsSectionTitle("Reset controls")
         M7SecondaryButton(
             label = "Reset Site Permissions",
             modifier = Modifier.fillMaxWidth(),
@@ -3406,7 +3406,7 @@ private fun SettingsBackupExportPage(
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
-        SettingsSectionTitle("ENCRYPTED FULL TAHO BACKUP")
+        SettingsSectionTitle("Encrypted full taho backup")
         Text(
             "Includes Taho-owned settings, bookmarks, history, passwords, addresses, payment cards, local profiles, downloads metadata/files, offline snapshots, collections, PWAs and browser UI records. Gecko-owned cookies, cache and IndexedDB are not copied.",
             color = TahoMuted,
@@ -3483,7 +3483,7 @@ private fun SettingsBackupExportPage(
         }
 
         Spacer(Modifier.height(22.dp))
-        SettingsSectionTitle("DATA EXPORT & PORTABILITY")
+        SettingsSectionTitle("Data export & portability")
         Text(
             "Choose the destination with Android's system document picker. Taho never fabricates an export success.",
             color = TahoMuted,
@@ -3549,7 +3549,7 @@ private fun SettingsBackupExportPage(
         }
 
         Spacer(Modifier.height(20.dp))
-        SettingsSectionTitle("DATA IMPORT")
+        SettingsSectionTitle("Data import")
         M7SecondaryButton("Import Bookmarks (HTML)", Modifier.fillMaxWidth()) {
             importBookmarks.launch(arrayOf("text/html", "text/plain", "application/xhtml+xml"))
         }
@@ -3784,7 +3784,7 @@ private fun SettingsAboutPage(
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
     ) {
-        SettingsSectionTitle("TAHO BROWSER")
+        SettingsSectionTitle("Taho browser")
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -3848,7 +3848,7 @@ private fun SettingsAboutPage(
         }
 
         Spacer(Modifier.height(16.dp))
-        SettingsSectionTitle("LEGAL & SUPPORT")
+        SettingsSectionTitle("Legal & support")
         SettingsLinkRow("Privacy Policy", "https://taho.app/privacy")
         SettingsLinkRow("Terms of Service", "https://taho.app/terms")
         SettingsLinkRow("Open Source Licenses", "https://taho.app/licenses")
