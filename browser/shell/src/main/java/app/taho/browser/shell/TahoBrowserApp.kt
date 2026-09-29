@@ -898,7 +898,7 @@ fun TahoBrowserApp(
                     Text(
                         text = "This request is addressed to $parsedTarget, which differs from your current tab origin. Replaying it will send network traffic to this external host without live browser cookies or credentials.",
                         color = TahoText,
-                        fontFamily = TahoMono,
+                        fontFamily = TahoSans,
                         fontSize = 11.sp,
                     )
                     Spacer(Modifier.height(16.dp))
@@ -1231,7 +1231,7 @@ private fun BrowserNoticeBanner(
             text = message,
             modifier = Modifier.weight(1f),
             color = TahoMuted,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 10.sp,
         )
         Box(
@@ -1264,13 +1264,13 @@ private fun PageCrashBanner(
             Text(
                 text = "This page stopped responding.",
                 color = TahoText,
-                fontFamily = TahoMono,
+                fontFamily = TahoSans,
                 fontSize = 11.sp,
             )
             Text(
                 text = "The tab is still open.",
                 color = TahoFaint,
-                fontFamily = TahoMono,
+                fontFamily = TahoSans,
                 fontSize = 9.sp,
             )
         }
@@ -1284,7 +1284,7 @@ private fun PageCrashBanner(
                     .clickable(onClick = onReload)
                     .padding(horizontal = 10.dp, vertical = 7.dp),
                 color = TahoGoldHi,
-                fontFamily = TahoMono,
+                fontFamily = TahoSans,
                 fontSize = 10.sp,
             )
             Text(
@@ -1296,7 +1296,7 @@ private fun PageCrashBanner(
                     .clickable(onClick = onViewCaptured)
                     .padding(horizontal = 10.dp, vertical = 7.dp),
                 color = TahoMuted,
-                fontFamily = TahoMono,
+                fontFamily = TahoSans,
                 fontSize = 9.sp,
             )
         }
@@ -1318,7 +1318,7 @@ private fun LoadFailureBanner(onReload: () -> Unit) {
             text = "Page failed to load",
             modifier = Modifier.weight(1f),
             color = TahoText,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 11.sp,
         )
         Text(
@@ -1330,7 +1330,7 @@ private fun LoadFailureBanner(onReload: () -> Unit) {
                 .clickable(onClick = onReload)
                 .padding(horizontal = 10.dp, vertical = 7.dp),
             color = TahoGoldHi,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 10.sp,
         )
     }
@@ -1384,7 +1384,7 @@ private fun ChromeAction(
         Text(
             text = label,
             color = if (enabled) TahoMuted else TahoFaint,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 9.sp,
             maxLines = 1,
         )
@@ -1452,7 +1452,7 @@ private fun CaptureIndicator(
         Text(
             text = label,
             color = TahoText,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 10.5.sp,
         )
     }
@@ -1527,7 +1527,7 @@ private fun Omnibox(
                         Text(
                             text = "Search or enter address",
                             color = TahoFaint,
-                            fontFamily = TahoMono,
+                            fontFamily = TahoSans,
                             fontSize = 12.sp,
                         )
                     }
@@ -1540,7 +1540,7 @@ private fun Omnibox(
                         singleLine = true,
                         textStyle = TextStyle(
                             color = TahoText,
-                            fontFamily = TahoMono,
+                            fontFamily = TahoSans,
                             fontSize = 12.sp,
                         ),
                         cursorBrush = SolidColor(TahoGold),
@@ -1557,7 +1557,7 @@ private fun Omnibox(
                 Text(
                     text = tokenizedUrl(value),
                     modifier = Modifier.weight(1f),
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 12.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -1624,7 +1624,7 @@ private fun Omnibox(
                             Text(
                                 text = url,
                                 color = TahoFaint,
-                                fontFamily = TahoMono,
+                                fontFamily = TahoSans,
                                 fontSize = 8.5.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -1782,7 +1782,7 @@ private fun TabCountButton(
             Text(
                 text = count.toString(),
                 color = TahoText,
-                fontFamily = TahoMono,
+                fontFamily = TahoSans,
                 fontSize = 10.sp,
             )
         }
@@ -1825,7 +1825,7 @@ private fun AutofillPromptSheet(
             Text(
                 text = origin,
                 color = TahoGoldHi,
-                fontFamily = TahoMono,
+                fontFamily = TahoSans,
                 fontSize = 9.5.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -1848,7 +1848,7 @@ private fun AutofillPromptSheet(
                     Text(
                         text = option.title,
                         color = TahoText,
-                        fontFamily = TahoMono,
+                        fontFamily = TahoSans,
                         fontSize = 11.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -1858,7 +1858,7 @@ private fun AutofillPromptSheet(
                         Text(
                             text = subtitle,
                             color = TahoFaint,
-                            fontFamily = TahoMono,
+                            fontFamily = TahoSans,
                             fontSize = 8.5.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -1868,7 +1868,7 @@ private fun AutofillPromptSheet(
                 Text(
                     text = if (savePrompt) "Save" else "Use",
                     color = TahoGoldHi,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 9.5.sp,
                 )
             }
@@ -1906,7 +1906,7 @@ private fun SitePermissionSheet(
         Text(
             text = prompt.origin,
             color = TahoGoldHi,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 10.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -1929,7 +1929,7 @@ private fun SitePermissionSheet(
             Text(
                 text = "Private tab · this prompt is not saved by Taho Browser.",
                 color = TahoFaint,
-                fontFamily = TahoMono,
+                fontFamily = TahoSans,
                 fontSize = 9.sp,
             )
         }
@@ -1978,7 +1978,7 @@ private fun PermissionAction(
         Text(
             text = text,
             color = if (primary) TahoBg else TahoText,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 11.sp,
         )
     }
@@ -2014,7 +2014,7 @@ private fun TabSwitcher(
                 Text(
                     text = tabs.size.toString() + if (tabs.size == 1) " open tab" else " open tabs",
                     color = TahoMuted,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 10.sp,
                 )
             }
@@ -2060,7 +2060,7 @@ private fun MiniAction(
         Text(
             text = text,
             color = TahoGoldHi,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 10.sp,
         )
     }
@@ -2095,7 +2095,7 @@ private fun TabRow(
                     Text(
                         text = "PRIVATE",
                         color = TahoGoldHi,
-                        fontFamily = TahoMono,
+                        fontFamily = TahoSans,
                         fontSize = 8.sp,
                     )
                     Spacer(Modifier.width(7.dp))
@@ -2103,7 +2103,7 @@ private fun TabRow(
                 Text(
                     text = tab.title?.takeIf { it.isNotBlank() } ?: tabTitle(tab.location),
                     color = TahoText,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 11.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -2132,7 +2132,7 @@ private fun TabRow(
                     tab.loadFailed -> TahoError
                     else -> TahoFaint
                 },
-                fontFamily = TahoMono,
+                fontFamily = TahoSans,
                 fontSize = 9.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
