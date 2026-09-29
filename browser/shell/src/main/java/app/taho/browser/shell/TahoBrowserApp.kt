@@ -56,6 +56,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -65,6 +66,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -434,12 +436,30 @@ fun TahoBrowserApp(
     }
 
     TahoTheme {
+        val isTopToolbar = TahoBrowserStateStore.settings.toolbarPosition == TahoToolbarPosition.TOP
+        var chromeHeightPx by remember { mutableStateOf(0) }
+        val chromeHeight = with(LocalDensity.current) { chromeHeightPx.toDp() }
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(TahoBg),
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(
+                        if (state.isPictureInPicture) {
+                            Modifier
+                        } else if (isTopToolbar) {
+                            Modifier.padding(top = chromeHeight)
+                        } else {
+                            Modifier
+                                .statusBarsPadding()
+                                .padding(bottom = chromeHeight)
+                        },
+                    ),
+            ) {
                 browserContent()
 
                 if (isStartPage && !showReaderMode) {
@@ -477,7 +497,6 @@ fun TahoBrowserApp(
                 }
             }
 
-            val isTopToolbar = TahoBrowserStateStore.settings.toolbarPosition == TahoToolbarPosition.TOP
             val toolbarAlignment = if (isTopToolbar) Alignment.TopCenter else Alignment.BottomCenter
 
             if (!state.isPictureInPicture) {
@@ -485,8 +504,10 @@ fun TahoBrowserApp(
                     modifier = Modifier
                         .align(toolbarAlignment)
                         .fillMaxWidth()
+                        .onSizeChanged { chromeHeightPx = it.height }
+                        .background(TahoBg)
                         .then(if (isTopToolbar) Modifier.statusBarsPadding() else Modifier.navigationBarsPadding())
-                        .padding(horizontal = 13.dp, vertical = 11.dp),
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                 if (isTopToolbar) {
@@ -559,21 +580,19 @@ fun TahoBrowserApp(
                     Spacer(Modifier.height(9.dp))
                 }
 
-                if (state.captureState != CaptureState.OFF) {
-                    CaptureIndicator(
-                        state = state.captureState,
-                        relevantCount = state.relevantCount,
-                        onClick = {
-                            showTabs = false
-                            editing = false
-                            selectedCaptureId = null
-                            showTransferConfirmation = false
-                            showCaptureSummary = true
-                            onCaptureClick()
-                        },
-                    )
-                    Spacer(Modifier.height(9.dp))
-                }
+                CaptureIndicator(
+                    state = state.captureState,
+                    relevantCount = state.relevantCount,
+                    onClick = {
+                        showTabs = false
+                        editing = false
+                        selectedCaptureId = null
+                        showTransferConfirmation = false
+                        showCaptureSummary = true
+                        onCaptureClick()
+                    },
+                )
+                Spacer(Modifier.height(8.dp))
 
                 if (editing) {
                     NavigationTray(
