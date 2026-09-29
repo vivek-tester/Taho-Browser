@@ -911,7 +911,7 @@ private fun SettingsClearDataPage(
         }
 
         M7PrimaryButton(
-            label = "Clear Browsing Data Now",
+            label = "Clear browsing data",
             showArrow = false,
             modifier = Modifier.fillMaxWidth(),
             onClick = {
@@ -1496,9 +1496,9 @@ private fun SettingsDownloadsPage(
                         modifier = Modifier
                             .clip(TahoBadgeShape)
                             .background(when (dl.status) {
-                                TahoDownloadStatus.COMPLETED -> TahoOk.copy(alpha = 0.2f)
+                                TahoDownloadStatus.COMPLETED -> TahoRaised
                                 TahoDownloadStatus.DOWNLOADING -> TahoGoldWash
-                                TahoDownloadStatus.PAUSED -> TahoWarn.copy(alpha = 0.2f)
+                                TahoDownloadStatus.PAUSED -> TahoRaised
                                 else -> TahoDeleteWash
                             })
                             .padding(horizontal = 6.dp, vertical = 2.dp)
@@ -1933,10 +1933,10 @@ private fun SettingsAutofillPage() {
             .verticalScroll(rememberScrollState()),
     ) {
         SettingsSectionTitle("Autofill settings")
-        SettingsToggleRow("Autofill Addresses & Forms", "Save and fill addresses automatically on web forms", settings.addressAutofillEnabled) {
+        SettingsToggleRow("Autofill addresses and forms", "Save and fill addresses automatically on web forms", settings.addressAutofillEnabled) {
             TahoBrowserStateStore.updateSettings { it.copy(addressAutofillEnabled = !it.addressAutofillEnabled) }
         }
-        SettingsToggleRow("Autofill Payment Cards", "Securely fill payment details on checkout forms", settings.paymentAutofillEnabled) {
+        SettingsToggleRow("Autofill payment cards", "Securely fill payment details on checkout forms", settings.paymentAutofillEnabled) {
             TahoBrowserStateStore.updateSettings { it.copy(paymentAutofillEnabled = !it.paymentAutofillEnabled) }
         }
 
@@ -1946,8 +1946,8 @@ private fun SettingsAutofillPage() {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SettingsSectionTitle("SAVED ADDRESSES (${addresses.size})")
-            Text("+ Add Address", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 12.sp, modifier = Modifier.heightIn(min = TahoCompactTouchTarget).clickable { showAddAddress = true })
+            SettingsSectionTitle("Saved addresses (${addresses.size})")
+            Text("Add address", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 12.sp, modifier = Modifier.heightIn(min = TahoCompactTouchTarget).clickable { showAddAddress = true })
         }
 
         if (showAddAddress) {
@@ -1960,13 +1960,13 @@ private fun SettingsAutofillPage() {
                     .border(1.dp, TahoGold, TahoCardShape)
                     .padding(12.dp),
             ) {
-                Text("Add Address", color = TahoGoldHi, fontFamily = TahoDisplay, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Text("Add address", color = TahoGoldHi, fontFamily = TahoDisplay, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(6.dp))
                 BasicTextField(value = addrLabel, onValueChange = { addrLabel = it }, modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 14.sp), decorationBox = { if (addrLabel.isEmpty()) Text("Label (e.g. Home, Office)", color = TahoFaint, fontFamily = TahoSans, fontSize = 13.sp); it() })
                 Spacer(Modifier.height(6.dp))
-                BasicTextField(value = addrFullName, onValueChange = { addrFullName = it }, modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 14.sp), decorationBox = { if (addrFullName.isEmpty()) Text("Full Name", color = TahoFaint, fontFamily = TahoSans, fontSize = 13.sp); it() })
+                BasicTextField(value = addrFullName, onValueChange = { addrFullName = it }, modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 14.sp), decorationBox = { if (addrFullName.isEmpty()) Text("Full name", color = TahoFaint, fontFamily = TahoSans, fontSize = 13.sp); it() })
                 Spacer(Modifier.height(6.dp))
-                BasicTextField(value = addrStreet, onValueChange = { addrStreet = it }, modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 14.sp), decorationBox = { if (addrStreet.isEmpty()) Text("Street Address", color = TahoFaint, fontFamily = TahoSans, fontSize = 13.sp); it() })
+                BasicTextField(value = addrStreet, onValueChange = { addrStreet = it }, modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 14.sp), decorationBox = { if (addrStreet.isEmpty()) Text("Street address", color = TahoFaint, fontFamily = TahoSans, fontSize = 13.sp); it() })
                 Spacer(Modifier.height(6.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     BasicTextField(value = addrCity, onValueChange = { addrCity = it }, modifier = Modifier.weight(1f).clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 14.sp), decorationBox = { if (addrCity.isEmpty()) Text("City", color = TahoFaint, fontFamily = TahoSans, fontSize = 13.sp); it() })
@@ -2051,7 +2051,7 @@ private fun SettingsAutofillPage() {
                 Spacer(Modifier.height(10.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     M7SecondaryButton("Cancel", Modifier.weight(1f)) { showAddPayment = false }
-                    M7PrimaryButton("Save Card", showArrow = false, modifier = Modifier.weight(1f), enabled = payHolder.isNotBlank() && payNumber.isNotBlank()) {
+                    M7PrimaryButton("Save card", showArrow = false, modifier = Modifier.weight(1f), enabled = payHolder.isNotBlank() && payNumber.isNotBlank()) {
                         TahoBrowserStateStore.addSavedPayment(
                             cardHolder = payHolder.trim(),
                             cardNumber = payNumber.trim(),
