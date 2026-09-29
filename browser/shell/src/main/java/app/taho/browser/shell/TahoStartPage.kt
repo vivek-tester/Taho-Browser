@@ -518,19 +518,19 @@ fun TahoStartPage(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                text = "PRIVACY & SECURITY SHIELD",
-                                color = TahoGoldHi,
+                                text = "Privacy and security",
+                                color = TahoText,
                                 fontFamily = TahoSans,
                                 fontWeight = FontWeight.SemiBold,
-                                fontSize = 9.5.sp,
+                                fontSize = 13.sp,
                             )
                             Box(
                                 modifier = Modifier
                                     .clip(TahoBadgeShape)
-                                    .background(TahoOk.copy(alpha = 0.2f))
+                                    .background(TahoRaised)
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
-                                Text("PROTECTED", color = TahoOk, fontFamily = TahoSans, fontSize = 8.5.sp)
+                                Text("Protected", color = TahoOk, fontFamily = TahoSans, fontSize = 12.sp)
                             }
                         }
                         Spacer(Modifier.height(8.dp))
