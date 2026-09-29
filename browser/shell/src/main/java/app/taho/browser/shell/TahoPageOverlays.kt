@@ -89,7 +89,12 @@ fun TahoFindInPageBar(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("⌕", color = TahoGoldHi, fontSize = 14.sp)
+            TahoIcon(
+                name = TahoIconName.SEARCH,
+                contentDescription = null,
+                tint = TahoGoldHi,
+                size = 18.dp,
+            )
             Spacer(Modifier.width(8.dp))
 
             Box(modifier = Modifier.weight(1f)) {
@@ -116,33 +121,25 @@ fun TahoFindInPageBar(
                     modifier = Modifier.padding(horizontal = 6.dp),
                 )
 
-                Text(
-                    text = "▲",
-                    color = if (matchCount > 0) TahoText else TahoFaint,
-                    fontSize = 11.sp,
-                    modifier = Modifier
-                        .clickable(enabled = matchCount > 0, onClick = onPrevious)
-                        .padding(horizontal = 6.dp),
+                TahoIconButton(
+                    name = TahoIconName.UP,
+                    contentDescription = "Previous match",
+                    enabled = matchCount > 0,
+                    onClick = onPrevious,
                 )
-
-                Text(
-                    text = "▼",
-                    color = if (matchCount > 0) TahoText else TahoFaint,
-                    fontSize = 11.sp,
-                    modifier = Modifier
-                        .clickable(enabled = matchCount > 0, onClick = onNext)
-                        .padding(horizontal = 6.dp),
+                TahoIconButton(
+                    name = TahoIconName.DOWN,
+                    contentDescription = "Next match",
+                    enabled = matchCount > 0,
+                    onClick = onNext,
                 )
             }
 
             Spacer(Modifier.width(6.dp))
-            Text(
-                text = "✕",
-                color = TahoMuted,
-                fontSize = 14.sp,
-                modifier = Modifier
-                    .clickable(onClick = onClose)
-                    .padding(4.dp),
+            TahoIconButton(
+                name = TahoIconName.CLOSE,
+                contentDescription = "Close find in page",
+                onClick = onClose,
             )
         }
     }
@@ -593,8 +590,8 @@ fun TahoSiteInfoSheet(
                         Box(
                             modifier = Modifier
                                 .clip(TahoPillShape)
-                                .background(TahoError.copy(alpha = 0.15f))
-                                .border(1.dp, TahoError.copy(alpha = 0.35f), TahoPillShape)
+                                .background(TahoDeleteWash)
+                                .border(1.dp, TahoError, TahoPillShape)
                                 .clickable {
                                     siteDataNotice = null
                                     onClearSiteData(host) { success ->
@@ -749,8 +746,10 @@ fun TahoReaderModeView(
             ) {
                 Box(
                     modifier = Modifier
+                        .heightIn(min = TahoCompactTouchTarget)
                         .clip(TahoPillShape)
-                        .background(TahoSurfaceControl)
+                        .background(TahoRaised)
+                        .border(1.dp, TahoLine, TahoPillShape)
                         .clickable(onClick = onClose)
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                 ) {
@@ -759,8 +758,10 @@ fun TahoReaderModeView(
 
                 Box(
                     modifier = Modifier
+                        .heightIn(min = TahoCompactTouchTarget)
                         .clip(TahoPillShape)
-                        .background(TahoSurfaceControl)
+                        .background(TahoRaised)
+                        .border(1.dp, TahoLine, TahoPillShape)
                         .clickable { showAppearanceDrawer = true }
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                 ) {
@@ -956,10 +957,11 @@ fun TahoTranslationBar(
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
+                        .heightIn(min = TahoCompactTouchTarget)
                         .clip(TahoPillShape)
                         .background(TahoGold)
                         .clickable(onClick = onTranslate)
-                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
                 ) {
                     Text(
                         if (isTranslating) "Working…" else if (translated) "Translated" else "Translate",
@@ -972,15 +974,21 @@ fun TahoTranslationBar(
 
                 Box(
                     modifier = Modifier
+                        .heightIn(min = TahoCompactTouchTarget)
                         .clip(TahoPillShape)
-                        .background(TahoSurfaceControl)
+                        .background(TahoRaised)
+                        .border(1.dp, TahoLine, TahoPillShape)
                         .clickable(onClick = onRevert)
-                        .padding(horizontal = 8.dp, vertical = 5.dp),
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
                 ) {
                     Text("Original", color = TahoMuted, fontFamily = TahoSans, fontSize = 9.sp)
                 }
 
-                Text("✕", color = TahoFaint, fontSize = 12.sp, modifier = Modifier.clickable(onClick = onClose).padding(4.dp))
+                TahoIconButton(
+                    name = TahoIconName.CLOSE,
+                    contentDescription = "Close translation controls",
+                    onClick = onClose,
+                )
             }
         }
             statusMessage?.takeIf(String::isNotBlank)?.let { message ->
