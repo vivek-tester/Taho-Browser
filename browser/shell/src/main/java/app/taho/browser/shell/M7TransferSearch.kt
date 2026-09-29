@@ -81,16 +81,17 @@ internal fun M7TransferProgressOverlay(
                         .background(TahoGoldWash),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        text = "↗",
-                        color = TahoGoldHi,
-                        fontSize = 18.sp,
+                    TahoIcon(
+                        name = TahoIconName.OPEN_EXTERNAL,
+                        contentDescription = null,
+                        tint = TahoText,
+                        size = 20.dp,
                     )
                 }
             }
             Spacer(Modifier.height(26.dp))
             Text(
-                text = "Sending to Taho…",
+                text = "Sending to Taho",
                 color = TahoText,
                 fontFamily = TahoDisplay,
                 fontWeight = FontWeight.Medium,
@@ -104,11 +105,12 @@ internal fun M7TransferProgressOverlay(
                 },
             )
             Spacer(Modifier.height(18.dp))
-            Text(
-                text = "taho.request-transfer · v1 · local intent",
+            DataText(
+                text = "taho.request-transfer / v1 / local intent",
                 color = TahoFaint,
-                fontFamily = TahoSans,
-                fontSize = 10.sp,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                maxLines = 1,
             )
         }
     }
@@ -202,7 +204,7 @@ internal fun M7CaptureSearchField(
             textStyle = androidx.compose.ui.text.TextStyle(
                 color = TahoText,
                 fontFamily = TahoSans,
-                fontSize = 10.5.sp,
+                fontSize = 14.sp,
             ),
             cursorBrush = androidx.compose.ui.graphics.SolidColor(TahoGold),
             modifier = Modifier
@@ -210,7 +212,12 @@ internal fun M7CaptureSearchField(
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             decorationBox = { inner ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("⌕", color = TahoFaint, fontSize = 12.sp)
+                    TahoIcon(
+                        name = TahoIconName.SEARCH,
+                        contentDescription = null,
+                        tint = TahoMuted,
+                        size = 20.dp,
+                    )
                     Spacer(Modifier.width(8.dp))
                     Box {
                         if (query.isEmpty()) {
@@ -218,7 +225,7 @@ internal fun M7CaptureSearchField(
                                 text = "Search captured requests",
                                 color = TahoFaint,
                                 fontFamily = TahoSans,
-                                fontSize = 10.5.sp,
+                                fontSize = 14.sp,
                             )
                         }
                         inner()
