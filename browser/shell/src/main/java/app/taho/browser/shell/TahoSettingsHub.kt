@@ -3724,70 +3724,75 @@ private fun SettingsAboutPage(
 // -------------------------------------------------------------
 @Composable
 private fun SettingsSectionTitle(title: String) {
-    Text(
-        text = title,
-        color = TahoFaint,
-        fontFamily = TahoSans,
-        fontSize = 9.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = 0.8.sp,
-        modifier = Modifier.padding(bottom = 6.dp),
+    TahoSectionLabel(title)
+}
+
+@Composable
+private fun SettingsToggleRow(
+    title: String,
+    desc: String,
+    checked: Boolean,
+    onToggle: () -> Unit,
+) {
+    TahoToggleRow(
+        title = title,
+        description = desc,
+        checked = checked,
+        onToggle = onToggle,
     )
 }
 
 @Composable
-private fun SettingsToggleRow(title: String, desc: String, checked: Boolean, onToggle: () -> Unit) {
+private fun SettingsCheckboxRow(
+    title: String,
+    count: String,
+    checked: Boolean,
+    onToggle: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = TahoTouchTarget)
             .clip(TahoBlockShape)
             .clickable(onClick = onToggle)
-            .padding(vertical = 10.dp, horizontal = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, color = TahoText, fontFamily = TahoSans, fontSize = 11.sp)
-            Text(desc, color = TahoFaint, fontFamily = TahoSans, fontSize = 8.5.sp)
-        }
-        Spacer(Modifier.width(8.dp))
-        Box(
-            modifier = Modifier
-                .clip(TahoPillShape)
-                .background(if (checked) TahoGold else TahoSurfaceControl)
-                .padding(horizontal = 9.dp, vertical = 4.dp),
-        ) {
-            Text(if (checked) "ON" else "OFF", color = if (checked) TahoBg else TahoFaint, fontFamily = TahoSans, fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-private fun SettingsCheckboxRow(title: String, count: String, checked: Boolean, onToggle: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(TahoBlockShape)
-            .clickable(onClick = onToggle)
-            .padding(vertical = 8.dp, horizontal = 4.dp),
+            .padding(horizontal = 10.dp, vertical = 9.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
-                    .size(18.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(if (checked) TahoGold else TahoSurfaceControl)
-                    .border(1.dp, if (checked) TahoGoldHi else TahoHairline, RoundedCornerShape(4.dp)),
+                    .size(20.dp)
+                    .clip(TahoBadgeShape)
+                    .background(if (checked) TahoGold else TahoRaised)
+                    .border(1.dp, if (checked) TahoGold else TahoLine, TahoBadgeShape),
                 contentAlignment = Alignment.Center,
             ) {
-                if (checked) Text("✓", color = TahoBg, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                if (checked) {
+                    Text(
+                        "✓",
+                        color = TahoPrimaryInk,
+                        fontFamily = TahoSans,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             }
             Spacer(Modifier.width(10.dp))
-            Text(title, color = TahoText, fontFamily = TahoSans, fontSize = 11.sp)
+            Text(
+                title,
+                color = TahoText,
+                fontFamily = TahoSans,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+            )
         }
-        Text(count, color = TahoFaint, fontFamily = TahoSans, fontSize = 9.sp)
+        Text(
+            count,
+            color = TahoFaint,
+            fontFamily = TahoSans,
+            fontSize = 12.sp,
+        )
     }
 }
 
@@ -3831,21 +3836,14 @@ private fun DiagItem(key: String, value: String) {
 @Composable
 private fun SettingsLinkRow(label: String, url: String) {
     val context = LocalContext.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(TahoBlockShape)
-            .background(TahoSurfaceRow)
-            .border(1.dp, TahoHairline, TahoBlockShape)
-            .clickable {
-                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+    TahoLinkRow(
+        label = label,
+        onClick = {
+            runCatching {
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
             }
-            .padding(horizontal = 14.dp, vertical = 11.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, color = TahoText, fontFamily = TahoSans, fontSize = 11.sp)
-        Text("↗", color = TahoGoldHi, fontSize = 13.sp)
-    }
-    Spacer(Modifier.height(6.dp))
+        },
+    )
+    Spacer(Modifier.height(8.dp))
 }
+
