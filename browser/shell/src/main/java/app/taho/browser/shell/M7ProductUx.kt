@@ -301,7 +301,7 @@ internal fun M7CaptureSummarySheet(
                     text = relevantCount.toString() +
                         if (relevantCount == 1) " relevant request · filtered" else " relevant requests · filtered",
                     color = TahoMuted,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 10.sp,
                 )
             }
@@ -369,14 +369,14 @@ internal fun M7CaptureSummarySheet(
                 Text(
                     text = emptyTitle,
                     color = TahoText,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 11.sp,
                 )
                 Spacer(Modifier.height(5.dp))
                 Text(
                     text = emptyDetail,
                     color = TahoFaint,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 10.sp,
                 )
             }
@@ -403,7 +403,7 @@ internal fun M7CaptureSummarySheet(
             Text(
                 text = "view all — includes noise · read-only",
                 color = TahoFaint,
-                fontFamily = TahoMono,
+                fontFamily = TahoSans,
                 fontSize = 9.sp,
             )
         }
@@ -476,7 +476,7 @@ private fun M7SummaryRow(
                 text = path,
                 modifier = Modifier.weight(1f),
                 color = TahoText,
-                fontFamily = TahoMono,
+                fontFamily = TahoSans,
                 fontSize = 11.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -485,7 +485,7 @@ private fun M7SummaryRow(
                 Text(
                     text = it.toString(),
                     color = if (it in 200..399) TahoOk else TahoWarn,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 10.sp,
                 )
             }
@@ -494,7 +494,7 @@ private fun M7SummaryRow(
                 Text(
                     text = it.toString() + " ms",
                     color = TahoFaint,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 9.sp,
                 )
             }
@@ -510,7 +510,7 @@ private fun M7SummaryRow(
                 Text(
                     text = "⚑ credential detected",
                     color = TahoWarn,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 9.sp,
                 )
             }
@@ -518,7 +518,7 @@ private fun M7SummaryRow(
                 Text(
                     text = bodyFlag,
                     color = TahoInfo,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 9.sp,
                 )
             }
@@ -528,7 +528,7 @@ private fun M7SummaryRow(
                     Text(
                         text = "△ " + it.lowercase(),
                         color = TahoWarn,
-                        fontFamily = TahoMono,
+                        fontFamily = TahoSans,
                         fontSize = 9.sp,
                     )
                 }
@@ -569,7 +569,7 @@ internal fun M7RequestInspectorSheet(
                 Text(
                     text = path,
                     color = TahoText,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 13.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -581,7 +581,7 @@ internal fun M7RequestInspectorSheet(
                         request.durationMs?.let { append(" · ").append(it).append(" ms") }
                     },
                     color = TahoFaint,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 9.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -722,7 +722,7 @@ private fun M7InspectorTabChip(
         Text(
             text = tab.name.uppercase(),
             color = if (active) TahoGoldHi else TahoMuted,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 10.sp,
         )
     }
@@ -825,7 +825,7 @@ private fun M7Headers(request: M4CaptureRequestUiState) {
                     text = header.name,
                     modifier = Modifier.weight(.42f),
                     color = TahoFaint,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 9.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -834,7 +834,7 @@ private fun M7Headers(request: M4CaptureRequestUiState) {
                     text = header.displayValue + if (header.sensitive) "  sensitive" else "",
                     modifier = Modifier.weight(.58f),
                     color = if (header.sensitive) TahoWarn else TahoText,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 9.sp,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
@@ -876,7 +876,7 @@ private fun M7Body(request: M4CaptureRequestUiState) {
                     .border(1.dp, TahoHairline, TahoBlockShape)
                     .padding(horizontal = 14.dp, vertical = 12.dp),
                 color = TahoText,
-                fontFamily = TahoMono,
+                fontFamily = TahoSans,
                 fontSize = 10.sp,
                 lineHeight = 17.sp,
             )
@@ -938,7 +938,7 @@ private fun M7Provenance(request: M4CaptureRequestUiState) {
         Text(
             text = "provenance",
             color = TahoFaint,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 9.sp,
         )
         M7KeyValue(
@@ -1003,7 +1003,7 @@ internal fun M7SendConfirmationSheet(
                 Text(
                     text = request.method + " " + host + path,
                     color = TahoMuted,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 10.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -1055,7 +1055,7 @@ internal fun M7SendConfirmationSheet(
         Text(
             text = "Credential policy",
             color = TahoMuted,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 10.sp,
         )
         Spacer(Modifier.height(8.dp))
@@ -1091,7 +1091,7 @@ internal fun M7SendConfirmationSheet(
                 )
                 .padding(12.dp),
             color = if (selectedPolicy == M4SecretPolicyUi.EXPLICIT) TahoWarn else TahoGoldHi,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 9.sp,
         )
         Spacer(Modifier.height(5.dp))
@@ -1109,7 +1109,7 @@ internal fun M7SendConfirmationSheet(
                     }
             },
             color = TahoFaint,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 9.sp,
         )
 
@@ -1156,7 +1156,7 @@ internal fun M7SendConfirmationSheet(
         Text(
             text = "Import ≠ execute. Taho opens an unsaved request; no network request runs during import.",
             color = TahoFaint,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 9.sp,
         )
     }
@@ -1187,7 +1187,7 @@ internal fun M7SettingsSheet(
         Text(
             text = "Browser and capture",
             color = TahoMuted,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 10.sp,
         )
         Spacer(Modifier.height(16.dp))
@@ -1201,7 +1201,7 @@ internal fun M7SettingsSheet(
                 Text(
                     text = "Capture retention",
                     color = TahoText,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 11.sp,
                 )
                 Text(
@@ -1211,7 +1211,7 @@ internal fun M7SettingsSheet(
                         "Ephemeral: records are cleared when tabs close."
                     },
                     color = TahoMuted,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 9.sp,
                 )
             }
@@ -1223,7 +1223,7 @@ internal fun M7SettingsSheet(
                         .clickable { onRetentionModeChanged("Session only") }
                         .padding(horizontal = 9.dp, vertical = 6.dp),
                 ) {
-                    Text("Session", color = if (retentionMode == "Session only") TahoGoldHi else TahoMuted, fontSize = 10.sp, fontFamily = TahoMono)
+                    Text("Session", color = if (retentionMode == "Session only") TahoGoldHi else TahoMuted, fontSize = 10.sp, fontFamily = TahoSans)
                 }
                 Box(
                     modifier = Modifier
@@ -1232,7 +1232,7 @@ internal fun M7SettingsSheet(
                         .clickable { onRetentionModeChanged("Keep until deleted") }
                         .padding(horizontal = 9.dp, vertical = 6.dp),
                 ) {
-                    Text("Keep until deleted", color = if (retentionMode == "Keep until deleted") TahoGoldHi else TahoMuted, fontSize = 10.sp, fontFamily = TahoMono)
+                    Text("Keep until deleted", color = if (retentionMode == "Keep until deleted") TahoGoldHi else TahoMuted, fontSize = 10.sp, fontFamily = TahoSans)
                 }
             }
         }
@@ -1258,14 +1258,14 @@ internal fun M7SettingsSheet(
             Text(
                 text = "Delete captured requests?",
                 color = TahoText,
-                fontFamily = TahoMono,
+                fontFamily = TahoSans,
                 fontSize = 11.sp,
             )
             Spacer(Modifier.height(5.dp))
             Text(
                 text = "Your websites and login sessions will remain.",
                 color = TahoFaint,
-                fontFamily = TahoMono,
+                fontFamily = TahoSans,
                 fontSize = 9.sp,
             )
             Spacer(Modifier.height(10.dp))
@@ -1310,14 +1310,14 @@ internal fun M7TechnicalWorkspaceView(
                 Text(
                     text = "TECHNICAL WORKSPACE",
                     color = TahoGoldHi,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
                 )
                 Text(
                     text = request.method + " " + request.url,
                     color = TahoText,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 12.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -1408,7 +1408,7 @@ private fun M7RawSection(title: String, entries: List<Pair<String, String>>) {
         Text(
             text = title,
             color = TahoMuted,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontWeight = FontWeight.Bold,
             fontSize = 10.sp,
         )
@@ -1423,14 +1423,14 @@ private fun M7RawSection(title: String, entries: List<Pair<String, String>>) {
                 Text(
                     text = key,
                     color = TahoFaint,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 10.sp,
                     modifier = Modifier.weight(0.4f),
                 )
                 Text(
                     text = value,
                     color = TahoText,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 10.sp,
                     modifier = Modifier.weight(0.6f),
                     overflow = TextOverflow.Ellipsis,
@@ -1453,7 +1453,7 @@ private fun M7RawBlock(title: String, content: String) {
         Text(
             text = title,
             color = TahoMuted,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontWeight = FontWeight.Bold,
             fontSize = 10.sp,
         )
@@ -1461,7 +1461,7 @@ private fun M7RawBlock(title: String, content: String) {
         Text(
             text = content,
             color = TahoGoldHi,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 10.sp,
         )
     }
@@ -1507,13 +1507,13 @@ private fun M7Evidence(label: String, completeness: M4CompletenessUi) {
             text = label,
             modifier = Modifier.weight(1f),
             color = TahoMuted,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 10.sp,
         )
         Text(
             text = value,
             color = color,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 9.sp,
         )
     }
@@ -1530,14 +1530,14 @@ private fun M7KeyValue(label: String, value: String) {
             text = label,
             modifier = Modifier.weight(.42f),
             color = TahoFaint,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 9.sp,
         )
         Text(
             text = value,
             modifier = Modifier.weight(.58f),
             color = TahoText,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 9.sp,
         )
     }
@@ -1554,7 +1554,7 @@ private fun M7HonestyNote(text: String, warning: Boolean = false) {
             .border(1.dp, TahoHairline, TahoNoteShape)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         color = if (warning) TahoWarn else TahoMuted,
-        fontFamily = TahoMono,
+        fontFamily = TahoSans,
         fontSize = 9.5.sp,
         lineHeight = 15.sp,
     )
@@ -1567,9 +1567,9 @@ private fun M7TransferLine(glyph: String, copy: String, color: Color) {
             .fillMaxWidth()
             .padding(vertical = 4.dp),
     ) {
-        Text(glyph, color = color, fontFamily = TahoMono, fontSize = 10.sp)
+        Text(glyph, color = color, fontFamily = TahoSans, fontSize = 10.sp)
         Spacer(Modifier.width(7.dp))
-        Text(copy, color = color, fontFamily = TahoMono, fontSize = 10.sp)
+        Text(copy, color = color, fontFamily = TahoSans, fontSize = 10.sp)
     }
 }
 
@@ -1597,7 +1597,7 @@ private fun M7MethodBadge(method: String) {
         Text(
             text = upper,
             color = foreground,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontWeight = FontWeight.SemiBold,
             fontSize = 9.5.sp,
             letterSpacing = .4.sp,
@@ -1636,7 +1636,7 @@ private fun M7CategoryChip(category: String) {
         Text(
             text = label,
             color = accent,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 9.5.sp,
         )
     }
