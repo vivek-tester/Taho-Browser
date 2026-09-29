@@ -1384,14 +1384,21 @@ private fun ChromeAction(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
+    val interaction = remember { MutableInteractionSource() }
     Row(
         modifier = modifier
-            .heightIn(min = 44.dp)
-            .clip(RoundedCornerShape(999.dp))
-            .background(Color(0xD9161619))
-            .border(1.dp, Color.White.copy(alpha = .10f), RoundedCornerShape(999.dp))
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 10.dp),
+            .heightIn(min = TahoCompactTouchTarget)
+            .tahoPressScale(interaction, target = .97f)
+            .clip(TahoPillShape)
+            .background(TahoRaised)
+            .border(1.dp, TahoLine, TahoPillShape)
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                enabled = enabled,
+                onClick = onClick,
+            )
+            .padding(horizontal = 12.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1400,12 +1407,13 @@ private fun ChromeAction(
             color = if (enabled) TahoGoldHi else TahoFaint,
             fontSize = 15.sp,
         )
-        Spacer(Modifier.width(5.dp))
+        Spacer(Modifier.width(6.dp))
         Text(
             text = label,
-            color = if (enabled) TahoMuted else TahoFaint,
+            color = if (enabled) TahoText else TahoFaint,
             fontFamily = TahoSans,
-            fontSize = 9.sp,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
             maxLines = 1,
         )
     }
@@ -1443,7 +1451,7 @@ private fun CaptureIndicator(
             .tahoPressScale(pillInteraction, target = .96f)
             .tahoPulse(trigger = label)
             .clip(TahoPillShape)
-            .background(Color(0xD1161619))
+            .background(TahoRaised)
             .border(1.dp, TahoHairlineStrong, TahoPillShape)
             .semantics {
                 role = Role.Button
@@ -1513,8 +1521,8 @@ private fun Omnibox(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(999.dp))
-            .background(Color(0xE618181B))
-            .border(1.dp, Color.White.copy(alpha = .14f), RoundedCornerShape(999.dp)),
+            .background(TahoRaised)
+            .border(1.dp, TahoLine, RoundedCornerShape(999.dp)),
     ) {
         if (isLoading) {
             Box(
@@ -1681,36 +1689,22 @@ private fun Omnibox(
 
 @Composable
 private fun OmniboxHomeButton(onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(34.dp)
-            .clip(RoundedCornerShape(9.dp))
-            .clickable(onClick = onClick)
-            .semantics {
-                role = Role.Button
-                contentDescription = "Home"
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Text("⌂", color = TahoMuted, fontSize = 15.sp)
-    }
+    TahoIconButton(
+        glyph = "⌂",
+        description = "Home",
+        modifier = Modifier.size(TahoCompactTouchTarget),
+        onClick = onClick,
+    )
 }
 
 @Composable
 private fun OmniboxMenuButton(onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(34.dp)
-            .clip(RoundedCornerShape(9.dp))
-            .clickable(onClick = onClick)
-            .semantics {
-                role = Role.Button
-                contentDescription = "Menu"
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Text("⋮", color = TahoText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-    }
+    TahoIconButton(
+        glyph = "⋮",
+        description = "Menu",
+        modifier = Modifier.size(TahoCompactTouchTarget),
+        onClick = onClick,
+    )
 }
 
 @Composable
@@ -1784,7 +1778,7 @@ private fun TabCountButton(
     val count = tabCount.coerceAtLeast(1)
     Box(
         modifier = Modifier
-            .size(44.dp)
+            .size(TahoCompactTouchTarget)
             .semantics {
                 role = Role.Button
                 contentDescription = count.toString() + if (count == 1) " tab" else " tabs"
@@ -1795,15 +1789,16 @@ private fun TabCountButton(
         Box(
             modifier = Modifier
                 .size(30.dp)
-                .clip(RoundedCornerShape(9.dp))
-                .border(1.dp, Color.White.copy(alpha = .14f), RoundedCornerShape(9.dp)),
+                .clip(TahoBadgeShape)
+                .background(TahoSheet)
+                .border(1.dp, TahoLine, TahoBadgeShape),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
+            DataText(
                 text = count.toString(),
                 color = TahoText,
-                fontFamily = TahoSans,
-                fontSize = 10.sp,
+                fontSize = 11.sp,
+                lineHeight = 14.sp,
             )
         }
     }
@@ -1982,26 +1977,13 @@ private fun PermissionAction(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    Box(
-        modifier = modifier
-            .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(999.dp))
-            .background(if (primary) TahoGold else Color.White.copy(alpha = .045f))
-            .border(
-                1.dp,
-                if (primary) TahoGold else Color.White.copy(alpha = .12f),
-                RoundedCornerShape(999.dp),
-            )
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = text,
-            color = if (primary) TahoBg else TahoText,
-            fontFamily = TahoSans,
-            fontSize = 11.sp,
-        )
-    }
+    TahoActionButton(
+        label = text,
+        modifier = modifier,
+        style = if (primary) TahoActionStyle.PRIMARY else TahoActionStyle.SECONDARY,
+        trailingGlyph = null,
+        onClick = onClick,
+    )
 }
 
 @Composable
@@ -2067,23 +2049,12 @@ private fun MiniAction(
     text: String,
     onClick: () -> Unit,
 ) {
-    Box(
-        modifier = Modifier
-            .heightIn(min = 44.dp)
-            .clip(RoundedCornerShape(999.dp))
-            .background(Color.White.copy(alpha = .04f))
-            .border(1.dp, Color.White.copy(alpha = .10f), RoundedCornerShape(999.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = text,
-            color = TahoGoldHi,
-            fontFamily = TahoSans,
-            fontSize = 10.sp,
-        )
-    }
+    TahoActionButton(
+        label = text,
+        style = TahoActionStyle.MINI,
+        trailingGlyph = null,
+        onClick = onClick,
+    )
 }
 
 @Composable
@@ -2095,7 +2066,7 @@ private fun TabRow(
     val borderColor = if (tab.selected) {
         TahoGold.copy(alpha = .55f)
     } else {
-        Color.White.copy(alpha = .08f)
+        TahoLine
     }
 
     Row(
@@ -2103,7 +2074,7 @@ private fun TabRow(
             .fillMaxWidth()
             .heightIn(min = 58.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = if (tab.selected) .055f else .028f))
+            .background(TahoRaised)
             .border(1.dp, borderColor, RoundedCornerShape(16.dp))
             .clickable(onClick = onSelect)
             .padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
@@ -2172,72 +2143,7 @@ private fun TabRow(
 }
 
 @Composable
-private fun SheetGrabHandle() {
-    Box(
-        modifier = Modifier
-            .padding(top = 10.dp, bottom = 8.dp)
-            .width(42.dp)
-            .height(4.dp)
-            .clip(RoundedCornerShape(999.dp))
-            .background(Color.White.copy(alpha = .16f)),
-    )
+internal fun SheetGrabHandle() {
+    TahoGrabHandle()
 }
 
-private fun tokenizedUrl(value: String) = buildAnnotatedString {
-    if (value == "Search or enter address" || value.isBlank() || value == "about:blank") {
-        pushStyle(SpanStyle(color = TahoMuted))
-        append("Search or enter address")
-        pop()
-        return@buildAnnotatedString
-    }
-
-    val schemeEnd = value.indexOf("://")
-    if (schemeEnd < 0) {
-        pushStyle(SpanStyle(color = TahoText))
-        append(value)
-        pop()
-        return@buildAnnotatedString
-    }
-
-    val authorityStart = schemeEnd + 3
-    val authorityEnd = sequenceOf(
-        value.indexOf('/', authorityStart),
-        value.indexOf('?', authorityStart),
-        value.indexOf('#', authorityStart),
-    ).filter { it >= 0 }.minOrNull() ?: value.length
-
-    pushStyle(SpanStyle(color = TahoFaint))
-    append(value.substring(0, authorityStart))
-    pop()
-
-    pushStyle(SpanStyle(color = TahoText))
-    append(value.substring(authorityStart, authorityEnd))
-    pop()
-
-    if (authorityEnd < value.length) {
-        pushStyle(SpanStyle(color = TahoFaint))
-        append(value.substring(authorityEnd))
-        pop()
-    }
-}
-
-private fun compactLocation(location: String): String =
-    location
-        .removePrefix("https://")
-        .removePrefix("http://")
-
-private fun tabTitle(location: String?): String {
-    if (location.isNullOrBlank() || location == "about:blank") return "New tab"
-    val compact = compactLocation(location)
-    return compact.substringBefore('/').substringBefore('?').ifBlank { "Tab" }
-}
-
-
-private fun Context.findActivity(): Activity? {
-    var current: Context = this
-    while (current is ContextWrapper) {
-        if (current is Activity) return current
-        current = current.baseContext
-    }
-    return current as? Activity
-}
