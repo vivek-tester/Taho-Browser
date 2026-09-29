@@ -12,120 +12,132 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.taho.browser.shell.R
 
 /*
- * Taho design tokens — extracted 1:1 from Doc/TAHO_BROWSER_UI_UX_SPEC.md §2/§15
- * (source of truth: TAHO_BROWSER_UI_PROTOTYPE.html).
+ * Taho visual tokens. TAHO_DESIGN_SYSTEM.md is the visual authority.
+ * UI code should consume these tokens rather than creating local colors,
+ * radii, typography families or elevations.
  */
 
-// ---------- color (spec §2.1) ----------
-internal var TahoBg by mutableStateOf(Color(0xFF050505))
-    private set
-internal var TahoSheet by mutableStateOf(Color(0xFF0D0D10))
-    private set
-internal var TahoGold by mutableStateOf(Color(0xFFE2B44A))
-    private set
-internal var TahoGoldHi by mutableStateOf(Color(0xFFF0CD7E))
-    private set
-internal var TahoText by mutableStateOf(Color(0xFFF3F0E9))
-    private set
-internal var TahoMuted by mutableStateOf(Color(0xFF98948A))
-    private set
-internal var TahoFaint by mutableStateOf(Color(0xFF6B675F))
-    private set
-internal var TahoOk by mutableStateOf(Color(0xFF5FBF8A))
-    private set
-internal var TahoWarn by mutableStateOf(Color(0xFFE0A64A))
-    private set
-internal var TahoInfo by mutableStateOf(Color(0xFF4FBFA3))
-    private set
-internal var TahoError by mutableStateOf(Color(0xFFE06A5A))
-    private set
-internal var TahoNeutral by mutableStateOf(Color(0xFFC9C5BB))
-    private set
-internal var TahoJsonNum by mutableStateOf(Color(0xFFC9B2F0))
-    private set
+// ---------- solid color system ----------
+internal val TahoBg = Color(0xFF0B0B0C)
+internal val TahoSheet = Color(0xFF161619)
+internal val TahoRaised = Color(0xFF1E1E22)
+internal val TahoLine = Color(0xFF2D2D33)
+internal val TahoText = Color(0xFFF2EFE8)
+internal val TahoMuted = Color(0xFFA3A097)
+internal val TahoFaint = Color(0xFF8A867E)
+internal val TahoGold = Color(0xFFE2B44A)
+internal val TahoGoldHi = Color(0xFFF0CD7E)
+internal val TahoGoldWash = Color(0xFF2A2415)
+internal val TahoOk = Color(0xFF5FBF8A)
+internal val TahoWarn = Color(0xFFE0A64A)
+internal val TahoError = Color(0xFFE06A5A)
+internal val TahoInfo = Color(0xFF4FBFA3)
+internal val TahoDeleteWash = Color(0xFF2E1A17)
+internal val TahoPrimaryInk = Color(0xFF1A1405)
+internal val TahoToastInk = Color(0xFF111111)
 
-internal var TahoHairline by mutableStateOf(Color.White.copy(alpha = .08f))
-    private set
-internal var TahoHairlineStrong by mutableStateOf(Color.White.copy(alpha = .14f))
-    private set
-internal var TahoSurfaceRow by mutableStateOf(Color.White.copy(alpha = .028f))
-    private set
-internal var TahoSurfaceRowHover by mutableStateOf(Color.White.copy(alpha = .055f))
-    private set
-internal var TahoSurfaceControl by mutableStateOf(Color.White.copy(alpha = .035f))
-    private set
+// Compatibility aliases. They intentionally collapse the old translucent
+// surface generations into the three solid surface levels from the design system.
+internal val TahoHairline = TahoLine
+internal val TahoHairlineStrong = TahoLine
+internal val TahoSurfaceRow = TahoRaised
+internal val TahoSurfaceRowHover = TahoRaised
+internal val TahoSurfaceControl = TahoRaised
+internal val TahoNeutral = TahoMuted
+internal val TahoJsonNum = TahoMuted
 
-// ---------- typography (spec §2.2) ----------
-internal val TahoMono = FontFamily(
-    Font(R.font.jetbrains_mono_regular, FontWeight.Normal),
-    Font(R.font.jetbrains_mono_medium, FontWeight.Medium),
-    Font(R.font.jetbrains_mono_semibold, FontWeight.SemiBold),
-)
-
-internal val TahoDisplay = FontFamily(
-    Font(R.font.clash_display_medium, FontWeight.Medium),
-    Font(R.font.clash_display_semibold, FontWeight.SemiBold),
-)
-
-internal val TahoBody = FontFamily(
+// ---------- typography ----------
+// General Sans is retained as the bundled sans resource until the repository
+// receives the Plus Jakarta Sans binary assets. All UI text still goes through
+// one sans family; JetBrains Mono is private to DataText.
+internal val TahoSans = FontFamily(
     Font(R.font.general_sans_regular, FontWeight.Normal),
     Font(R.font.general_sans_medium, FontWeight.Medium),
     Font(R.font.general_sans_semibold, FontWeight.SemiBold),
 )
 
-// ---------- shape (spec §2.3) ----------
-internal val TahoSheetShape = RoundedCornerShape(26.dp)
-internal val TahoCardShape = RoundedCornerShape(16.dp)
-internal val TahoBlockShape = RoundedCornerShape(14.dp)
-internal val TahoNoteShape = RoundedCornerShape(12.dp)
-internal val TahoPillShape = RoundedCornerShape(999.dp)
-internal val TahoBadgeShape = RoundedCornerShape(6.dp)
+internal val TahoDisplay = TahoSans
+internal val TahoBody = TahoSans
 
-// ---------- motion (spec §2.6 / §15) ----------
+private val TahoDataFamily = FontFamily(
+    Font(R.font.jetbrains_mono_regular, FontWeight.Normal),
+    Font(R.font.jetbrains_mono_medium, FontWeight.Medium),
+)
+
+@Composable
+internal fun DataText(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = TahoText,
+    fontSize: TextUnit = 12.5.sp,
+    fontWeight: FontWeight = FontWeight.Normal,
+    lineHeight: TextUnit = 18.sp,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip,
+    textAlign: TextAlign? = null,
+) {
+    Text(
+        text = text,
+        modifier = modifier,
+        color = color,
+        fontFamily = TahoDataFamily,
+        fontSize = fontSize,
+        fontWeight = fontWeight,
+        lineHeight = lineHeight,
+        maxLines = maxLines,
+        overflow = overflow,
+        textAlign = textAlign,
+    )
+}
+
+// ---------- radii: 8 / 16 / 24 / pill only ----------
+internal val TahoBadgeShape = RoundedCornerShape(8.dp)
+internal val TahoCardShape = RoundedCornerShape(16.dp)
+internal val TahoBlockShape = RoundedCornerShape(16.dp)
+internal val TahoNoteShape = RoundedCornerShape(16.dp)
+internal val TahoSheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+internal val TahoPillShape = RoundedCornerShape(999.dp)
+
+// ---------- motion ----------
 internal val TahoEasing = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
 internal val TahoSpringEasing = CubicBezierEasing(0.34f, 1.4f, 0.44f, 1f)
-
 internal const val TahoDurationScreen = 600
-internal const val TahoDurationSheet = 750
+internal const val TahoDurationSheet = 700
 internal const val TahoDurationVeil = 550
 
-/** True when the user has disabled system animations (animator scale 0). */
 @Composable
 internal fun TahoReducedMotion(): Boolean {
     val context = LocalContext.current
@@ -138,12 +150,7 @@ internal fun TahoReducedMotion(): Boolean {
     }
 }
 
-/**
- * Spec §15/A1 — capture-pill content pulse: scale 1 → 1.07 @35% → 1 over 800ms.
- * Plays only when [trigger] *changes* after initial composition — never on first
- * entry, matching the prototype (the pill is quiet until an event lands).
- * Disabled under reduced motion.
- */
+/** One-shot capture-count pulse; never loops and never runs on first composition. */
 @Composable
 internal fun Modifier.tahoPulse(trigger: Any?): Modifier {
     val reduced = TahoReducedMotion()
@@ -169,10 +176,6 @@ internal fun Modifier.tahoPulse(trigger: Any?): Modifier {
     }
 }
 
-/**
- * Spec §15/A4 + D1 — press physics: press scales to [target] (.96 primary,
- * .97 controls) with a springy release. Wire [interaction] into clickable().
- */
 @Composable
 internal fun Modifier.tahoPressScale(
     interaction: MutableInteractionSource,
@@ -194,7 +197,7 @@ internal fun Modifier.tahoPressScale(
     }
 }
 
-/** Spec §15/F1 — handoff ring pulse: expanding, fading outline over 1.6s. */
+/** The transfer screen is the only surface allowed to loop while visible. */
 @Composable
 internal fun TahoRingPulse(color: Color, modifier: Modifier = Modifier) {
     val reduced = TahoReducedMotion()
@@ -209,174 +212,102 @@ internal fun TahoRingPulse(color: Color, modifier: Modifier = Modifier) {
     )
     Canvas(modifier = modifier) {
         val radius = size.minDimension / 2f
-        drawCircle(
-            color = color,
-            radius = radius,
-            style = Stroke(width = 1.dp.toPx()),
-        )
+        drawCircle(color = color, radius = radius, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx()))
         if (!reduced) {
             drawCircle(
                 color = color.copy(alpha = (1f - progress) * .65f),
                 radius = radius * (1f + progress * .7f),
-                style = Stroke(width = 1.dp.toPx()),
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx()),
             )
         }
     }
 }
 
-/** Spec §4.2 — status dot with the 10px radial glow from the prototype. */
+/** Solid status dot: no glow or decoration. */
 @Composable
-internal fun TahoStatusDot(color: Color, modifier: Modifier = Modifier, glow: Boolean = true) {
+internal fun TahoStatusDot(
+    color: Color,
+    modifier: Modifier = Modifier,
+    glow: Boolean = false,
+) {
     Box(
         modifier = modifier
-            .size(6.dp)
+            .size(8.dp)
             .drawBehind {
-                if (glow) {
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = listOf(color.copy(alpha = .55f), Color.Transparent),
-                            center = Offset(size.width / 2f, size.height / 2f),
-                            radius = size.width * 2.6f,
-                        ),
-                        radius = size.width * 2.6f,
-                    )
-                }
                 drawCircle(color = color, radius = size.minDimension / 2f)
             },
     )
 }
 
-// ---------- theme ----------
-private fun tahoColorScheme(dark: Boolean) =
-    if (dark) {
-        darkColorScheme(
-            background = TahoBg,
-            surface = TahoSheet,
-            primary = TahoGold,
-            onPrimary = TahoBg,
-            primaryContainer = TahoGold.copy(alpha = .16f),
-            onPrimaryContainer = TahoGoldHi,
-            secondary = TahoGoldHi,
-            onSecondary = TahoBg,
-            tertiary = TahoInfo,
-            error = TahoError,
-            onError = TahoBg,
-            onBackground = TahoText,
-            onSurface = TahoText,
-            onSurfaceVariant = TahoMuted,
-            outline = TahoHairlineStrong,
-            outlineVariant = TahoHairline,
-            scrim = Color.Black.copy(alpha = .5f),
-        )
-    } else {
-        lightColorScheme(
-            background = TahoBg,
-            surface = TahoSheet,
-            primary = TahoGold,
-            onPrimary = Color.White,
-            primaryContainer = TahoGold.copy(alpha = .14f),
-            onPrimaryContainer = TahoText,
-            secondary = TahoGoldHi,
-            onSecondary = Color.White,
-            tertiary = TahoInfo,
-            error = TahoError,
-            onError = Color.White,
-            onBackground = TahoText,
-            onSurface = TahoText,
-            onSurfaceVariant = TahoMuted,
-            outline = TahoHairlineStrong,
-            outlineVariant = TahoHairline,
-            scrim = Color.Black.copy(alpha = .35f),
-        )
-    }
-
-private fun applyThemeTokens(
-    dark: Boolean,
-    accent: Color,
-    highContrast: Boolean,
-) {
-    TahoGold = accent
-    TahoGoldHi = if (dark) accent.lighten(.22f) else accent.darken(.12f)
-
-    if (dark) {
-        TahoBg = Color(0xFF050505)
-        TahoSheet = Color(0xFF0D0D10)
-        TahoText = Color(0xFFF3F0E9)
-        TahoMuted = if (highContrast) Color(0xFFBBB7AE) else Color(0xFF98948A)
-        TahoFaint = if (highContrast) Color(0xFF918D84) else Color(0xFF6B675F)
-        TahoNeutral = Color(0xFFC9C5BB)
-        TahoHairline = Color.White.copy(alpha = if (highContrast) .18f else .08f)
-        TahoHairlineStrong = Color.White.copy(alpha = if (highContrast) .28f else .14f)
-        TahoSurfaceRow = Color.White.copy(alpha = if (highContrast) .055f else .028f)
-        TahoSurfaceRowHover = Color.White.copy(alpha = if (highContrast) .095f else .055f)
-        TahoSurfaceControl = Color.White.copy(alpha = if (highContrast) .07f else .035f)
-    } else {
-        TahoBg = Color(0xFFF7F5EF)
-        TahoSheet = Color(0xFFFFFFFF)
-        TahoText = Color(0xFF171612)
-        TahoMuted = if (highContrast) Color(0xFF4E4B44) else Color(0xFF68645C)
-        TahoFaint = if (highContrast) Color(0xFF5D5951) else Color(0xFF817C72)
-        TahoNeutral = Color(0xFF5E5A52)
-        TahoHairline = Color.Black.copy(alpha = if (highContrast) .22f else .10f)
-        TahoHairlineStrong = Color.Black.copy(alpha = if (highContrast) .34f else .18f)
-        TahoSurfaceRow = Color.Black.copy(alpha = if (highContrast) .055f else .025f)
-        TahoSurfaceRowHover = Color.Black.copy(alpha = if (highContrast) .09f else .05f)
-        TahoSurfaceControl = Color.Black.copy(alpha = if (highContrast) .075f else .035f)
-    }
-}
-
-private fun Color.lighten(amount: Float): Color =
-    Color(
-        red = red + (1f - red) * amount,
-        green = green + (1f - green) * amount,
-        blue = blue + (1f - blue) * amount,
-        alpha = alpha,
-    )
-
-private fun Color.darken(amount: Float): Color =
-    Color(
-        red = red * (1f - amount),
-        green = green * (1f - amount),
-        blue = blue * (1f - amount),
-        alpha = alpha,
-    )
-
+// ---------- Material theme ----------
+private val TahoColorScheme = darkColorScheme(
+    background = TahoBg,
+    surface = TahoSheet,
+    surfaceVariant = TahoRaised,
+    primary = TahoGold,
+    onPrimary = TahoPrimaryInk,
+    primaryContainer = TahoGoldWash,
+    onPrimaryContainer = TahoGoldHi,
+    secondary = TahoMuted,
+    onSecondary = TahoBg,
+    tertiary = TahoInfo,
+    error = TahoError,
+    onError = TahoBg,
+    onBackground = TahoText,
+    onSurface = TahoText,
+    onSurfaceVariant = TahoMuted,
+    outline = TahoLine,
+    outlineVariant = TahoLine,
+    scrim = Color.Black.copy(alpha = .60f),
+)
 
 private val TahoTypography = Typography(
-    displaySmall = TextStyle(fontFamily = TahoDisplay, fontWeight = FontWeight.SemiBold, fontSize = 19.sp),
-    titleMedium = TextStyle(fontFamily = TahoDisplay, fontWeight = FontWeight.Medium, fontSize = 18.sp),
-    titleSmall = TextStyle(fontFamily = TahoBody, fontWeight = FontWeight.Medium, fontSize = 15.sp),
-    bodyMedium = TextStyle(fontFamily = TahoBody, fontWeight = FontWeight.Normal, fontSize = 13.sp),
-    bodySmall = TextStyle(fontFamily = TahoBody, fontWeight = FontWeight.Normal, fontSize = 11.sp),
-    labelMedium = TextStyle(fontFamily = TahoMono, fontWeight = FontWeight.Normal, fontSize = 10.sp),
-    labelSmall = TextStyle(fontFamily = TahoMono, fontWeight = FontWeight.Normal, fontSize = 9.sp),
+    titleLarge = TextStyle(
+        fontFamily = TahoSans,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 20.sp,
+        lineHeight = 26.sp,
+    ),
+    titleMedium = TextStyle(
+        fontFamily = TahoSans,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 20.sp,
+        lineHeight = 26.sp,
+    ),
+    bodyMedium = TextStyle(
+        fontFamily = TahoSans,
+        fontWeight = FontWeight.Normal,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+    ),
+    labelMedium = TextStyle(
+        fontFamily = TahoSans,
+        fontWeight = FontWeight.Medium,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
+    ),
+    bodySmall = TextStyle(
+        fontFamily = TahoSans,
+        fontWeight = FontWeight.Normal,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+    ),
+    labelSmall = TextStyle(
+        fontFamily = TahoSans,
+        fontWeight = FontWeight.Medium,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+    ),
 )
 
 @Composable
 internal fun TahoTheme(content: @Composable () -> Unit) {
-    val settings = TahoBrowserStateStore.settings
-    val systemDark = isSystemInDarkTheme()
-    val dark = when (settings.themeMode) {
-        TahoThemeMode.DARK -> true
-        TahoThemeMode.LIGHT -> false
-        TahoThemeMode.SYSTEM -> systemDark
-    }
-    val accent = Color(settings.accentColorHex)
-
-    SideEffect {
-        applyThemeTokens(
-            dark = dark,
-            accent = accent,
-            highContrast = settings.highContrast,
-        )
-    }
-
     MaterialTheme(
-        colorScheme = tahoColorScheme(dark),
+        colorScheme = TahoColorScheme,
         typography = TahoTypography,
         shapes = MaterialTheme.shapes.copy(
             extraSmall = TahoBadgeShape,
-            small = TahoNoteShape,
+            small = TahoCardShape,
             medium = TahoCardShape,
             large = TahoSheetShape,
         ),
