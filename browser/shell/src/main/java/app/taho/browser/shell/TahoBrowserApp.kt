@@ -61,6 +61,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -1142,7 +1143,7 @@ fun TahoBrowserApp(
                         }
                     },
                     onSiteInfo = { showSiteInfo = true },
-                    onOpenSettings = { section ->
+                    onOpenSettings = { section: String? ->
                         settingsInitialSubPage = when (section) {
                             "BOOKMARKS" -> SettingsSubPage.BOOKMARKS
                             "HISTORY" -> SettingsSubPage.HISTORY
@@ -2105,10 +2106,10 @@ private fun TabRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (tab.isPrivate) {
                     Text(
-                        text = "PRIVATE",
-                        color = TahoGoldHi,
+                        text = "Private",
+                        color = TahoMuted,
                         fontFamily = TahoSans,
-                        fontSize = 8.sp,
+                        fontSize = 12.sp,
                     )
                     Spacer(Modifier.width(7.dp))
                 }
@@ -2116,7 +2117,7 @@ private fun TabRow(
                     text = tab.title?.takeIf { it.isNotBlank() } ?: tabTitle(tab.location),
                     color = TahoText,
                     fontFamily = TahoSans,
-                    fontSize = 11.sp,
+                    fontSize = 14.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -2128,7 +2129,7 @@ private fun TabRow(
                         when {
                             tab.crashed -> "Page stopped responding"
                             tab.loadFailed -> "Failed to load"
-                            tab.isLoading -> "Loading…"
+                            tab.isLoading -> "Loading"
                             tab.location.isNullOrBlank() || tab.location == "about:blank" -> "New tab"
                             else -> compactLocation(tab.location)
                         },
@@ -2145,7 +2146,7 @@ private fun TabRow(
                     else -> TahoFaint
                 },
                 fontFamily = TahoSans,
-                fontSize = 9.sp,
+                fontSize = 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -2164,3 +2165,39 @@ internal fun SheetGrabHandle() {
     TahoGrabHandle()
 }
 
+
+
+private fun Context.findActivity(): Activity? {
+    var current: Context = this
+    while (current is ContextWrapper) {
+        if (current is Activity) return current
+        current = current.baseContext
+    }
+    return current as? Activity
+}
+
+private fun tabTitle(location: String?): String =
+    location
+        ?.takeIf { it.isNotBlank() && it != "about:blank" }
+        ?.let { raw ->
+            runCatching { java.net.URI(raw).host }
+                .getOrNull()
+                ?.takeIf(String::isNotBlank)
+                ?: "New tab"
+        }
+        ?: "New tab"
+
+private fun compactLocation(location: String?): String =
+    location
+        ?.takeIf { it.isNotBlank() && it != "about:blank" }
+        ?.let { raw ->
+            runCatching {
+                val uri = java.net.URI(raw)
+                buildString {
+                    append(uri.host ?: raw)
+                    val path = uri.rawPath.orEmpty()
+                    if (path.isNotBlank() && path != "/") append(path)
+                }
+            }.getOrDefault(raw)
+        }
+        ?: "New tab"
