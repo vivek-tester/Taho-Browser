@@ -308,7 +308,7 @@ internal fun M7CaptureSummarySheet(
             Box(
                 modifier = Modifier
                     .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(TahoNoteShape)
                     .semantics { role = Role.Button; contentDescription = "Close captured requests" }
                     .clickable(onClick = onClose),
                 contentAlignment = Alignment.Center,
@@ -446,12 +446,12 @@ private fun M7SummaryRow(
             .fillMaxWidth()
             .heightIn(min = 58.dp)
             .alpha(if (inspectable) 1f else .42f)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = .028f))
+            .clip(TahoCardShape)
+            .background(TahoRaised)
             .border(
                 1.dp,
-                if (selected) TahoGold.copy(alpha = .5f) else Color.White.copy(alpha = .08f),
-                RoundedCornerShape(16.dp),
+                if (selected) TahoGold else TahoLine,
+                TahoCardShape,
             )
             .semantics {
                 if (inspectable) role = Role.Button
@@ -591,7 +591,7 @@ internal fun M7RequestInspectorSheet(
                 Box(
                     modifier = Modifier
                         .size(44.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(TahoNoteShape)
                         .semantics {
                             role = Role.Button
                             contentDescription = "Open full-screen technical workspace"
@@ -606,7 +606,7 @@ internal fun M7RequestInspectorSheet(
             Box(
                 modifier = Modifier
                     .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(TahoNoteShape)
                     .semantics {
                         role = Role.Button
                         contentDescription = "Close request inspector"
@@ -712,7 +712,7 @@ private fun M7InspectorTabChip(
     Box(
         modifier = Modifier
             .heightIn(min = 44.dp)
-            .clip(RoundedCornerShape(10.dp))
+            .clip(TahoBadgeShape)
             .background(if (active) TahoGold.copy(alpha = .10f) else Color.Transparent)
             .semantics { selected = active; role = Role.Button }
             .clickable { onSelect(tab) }
@@ -872,7 +872,7 @@ private fun M7Body(request: M4CaptureRequestUiState) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(TahoBlockShape)
-                    .background(Color.White.copy(alpha = .03f))
+                    .background(TahoRaised)
                     .border(1.dp, TahoHairline, TahoBlockShape)
                     .padding(horizontal = 14.dp, vertical = 12.dp),
                 color = TahoText,
@@ -929,9 +929,9 @@ private fun M7Provenance(request: M4CaptureRequestUiState) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 8.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color.White.copy(alpha = .02f))
-            .border(1.dp, Color.White.copy(alpha = .07f), RoundedCornerShape(14.dp))
+            .clip(TahoBlockShape)
+            .background(TahoRaised)
+            .border(1.dp, TahoLine, TahoBlockShape)
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
@@ -1012,7 +1012,7 @@ internal fun M7SendConfirmationSheet(
             Box(
                 modifier = Modifier
                     .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(TahoNoteShape)
                     .semantics { role = Role.Button; contentDescription = "Close Send to Taho confirmation" }
                     .clickable(onClick = onCancel),
                 contentAlignment = Alignment.Center,
@@ -1081,13 +1081,13 @@ internal fun M7SendConfirmationSheet(
             text = M7CaptureUx.policyPreview(request, selectedPolicy),
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(Color.White.copy(alpha = .025f))
+                .clip(TahoBlockShape)
+                .background(TahoRaised)
                 .border(
                     1.dp,
-                    if (selectedPolicy == M4SecretPolicyUi.EXPLICIT) TahoWarn.copy(alpha = .5f)
-                    else Color.White.copy(alpha = .08f),
-                    RoundedCornerShape(14.dp),
+                    if (selectedPolicy == M4SecretPolicyUi.EXPLICIT) TahoWarn
+                    else TahoLine,
+                    TahoBlockShape,
                 )
                 .padding(12.dp),
             color = if (selectedPolicy == M4SecretPolicyUi.EXPLICIT) TahoWarn else TahoGoldHi,
@@ -1218,8 +1218,8 @@ internal fun M7SettingsSheet(
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (retentionMode == "Session only") TahoGold.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f))
+                        .clip(TahoBadgeShape)
+                        .background(if (retentionMode == "Session only") TahoGoldWash else TahoRaised)
                         .clickable { onRetentionModeChanged("Session only") }
                         .padding(horizontal = 9.dp, vertical = 6.dp),
                 ) {
@@ -1227,8 +1227,8 @@ internal fun M7SettingsSheet(
                 }
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (retentionMode == "Keep until deleted") TahoGold.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f))
+                        .clip(TahoBadgeShape)
+                        .background(if (retentionMode == "Keep until deleted") TahoGoldWash else TahoRaised)
                         .clickable { onRetentionModeChanged("Keep until deleted") }
                         .padding(horizontal = 9.dp, vertical = 6.dp),
                 ) {
@@ -1326,7 +1326,7 @@ internal fun M7TechnicalWorkspaceView(
             Box(
                 modifier = Modifier
                     .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(TahoNoteShape)
                     .clickable(onClick = onClose),
                 contentAlignment = Alignment.Center,
             ) {
@@ -1400,9 +1400,9 @@ private fun M7RawSection(title: String, entries: List<Pair<String, String>>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.03f))
-            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
+            .clip(TahoNoteShape)
+            .background(TahoRaised)
+            .border(1.dp, TahoLine, TahoNoteShape)
             .padding(12.dp),
     ) {
         Text(
@@ -1445,9 +1445,9 @@ private fun M7RawBlock(title: String, content: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.03f))
-            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
+            .clip(TahoNoteShape)
+            .background(TahoRaised)
+            .border(1.dp, TahoLine, TahoNoteShape)
             .padding(12.dp),
     ) {
         Text(
@@ -1550,7 +1550,7 @@ private fun M7HonestyNote(text: String, warning: Boolean = false) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(TahoNoteShape)
-            .background(Color.White.copy(alpha = .03f))
+            .background(TahoRaised)
             .border(1.dp, TahoHairline, TahoNoteShape)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         color = if (warning) TahoWarn else TahoMuted,
@@ -1577,9 +1577,9 @@ private fun M7TransferLine(glyph: String, copy: String, color: Color) {
 private fun M7MethodBadge(method: String) {
     val upper = method.uppercase()
     val background = when (upper) {
-        "POST" -> TahoGold.copy(alpha = .15f)
-        "DELETE" -> TahoError.copy(alpha = .14f)
-        else -> Color.White.copy(alpha = .07f)
+        "POST" -> TahoGoldWash
+        "DELETE" -> TahoDeleteWash
+        else -> TahoLine
     }
     val foreground = when (upper) {
         "POST" -> TahoGoldHi
