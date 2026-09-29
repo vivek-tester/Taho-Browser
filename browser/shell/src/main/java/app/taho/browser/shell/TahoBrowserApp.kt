@@ -34,6 +34,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -755,10 +756,10 @@ fun TahoBrowserApp(
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                 containerColor = TahoSheet,
                 contentColor = TahoText,
-                shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+                shape = TahoSheetShape,
                 tonalElevation = 0.dp,
-                scrimColor = Color.Black.copy(alpha = .50f),
-                dragHandle = { SheetGrabHandle() },
+                scrimColor = MaterialTheme.colorScheme.scrim,
+                dragHandle = { TahoGrabHandle() },
             ) {
                 M7CaptureSummarySheet(
                     requests = state.captureRequests,
@@ -793,10 +794,10 @@ fun TahoBrowserApp(
                     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                     containerColor = TahoSheet,
                     contentColor = TahoText,
-                    shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+                    shape = TahoSheetShape,
                     tonalElevation = 0.dp,
-                    scrimColor = Color.Black.copy(alpha = .50f),
-                    dragHandle = { SheetGrabHandle() },
+                    scrimColor = MaterialTheme.colorScheme.scrim,
+                    dragHandle = { TahoGrabHandle() },
                 ) {
                     M7RequestInspectorSheet(
                         request = request,
@@ -843,10 +844,10 @@ fun TahoBrowserApp(
                     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                     containerColor = TahoSheet,
                     contentColor = TahoText,
-                    shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+                    shape = TahoSheetShape,
                     tonalElevation = 0.dp,
-                    scrimColor = Color.Black.copy(alpha = .50f),
-                    dragHandle = { SheetGrabHandle() },
+                    scrimColor = MaterialTheme.colorScheme.scrim,
+                    dragHandle = { TahoGrabHandle() },
                 ) {
                     M7SendConfirmationSheet(
                         request = request,
@@ -895,10 +896,10 @@ fun TahoBrowserApp(
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                 containerColor = TahoSheet,
                 contentColor = TahoText,
-                shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+                shape = TahoSheetShape,
                 tonalElevation = 0.dp,
-                scrimColor = Color.Black.copy(alpha = .50f),
-                dragHandle = { SheetGrabHandle() },
+                scrimColor = MaterialTheme.colorScheme.scrim,
+                dragHandle = { TahoGrabHandle() },
             ) {
                 Column(
                     modifier = Modifier
@@ -952,8 +953,8 @@ fun TahoBrowserApp(
                 contentColor = TahoText,
                 shape = TahoSheetShape,
                 tonalElevation = 0.dp,
-                scrimColor = Color.Black.copy(alpha = .50f),
-                dragHandle = { SheetGrabHandle() },
+                scrimColor = MaterialTheme.colorScheme.scrim,
+                dragHandle = { TahoGrabHandle() },
             ) {
                 TahoTabsOverviewSheet(
                     tabs = state.tabs,
@@ -1017,8 +1018,8 @@ fun TahoBrowserApp(
                 contentColor = TahoText,
                 shape = TahoSheetShape,
                 tonalElevation = 0.dp,
-                scrimColor = Color.Black.copy(alpha = .50f),
-                dragHandle = { SheetGrabHandle() },
+                scrimColor = MaterialTheme.colorScheme.scrim,
+                dragHandle = { TahoGrabHandle() },
             ) {
                 TahoSettingsHubSheet(
                     initialSubPage = settingsInitialSubPage ?: SettingsSubPage.MAIN,
@@ -1065,8 +1066,8 @@ fun TahoBrowserApp(
                 contentColor = TahoText,
                 shape = TahoSheetShape,
                 tonalElevation = 0.dp,
-                scrimColor = Color.Black.copy(alpha = .50f),
-                dragHandle = { SheetGrabHandle() },
+                scrimColor = MaterialTheme.colorScheme.scrim,
+                dragHandle = { TahoGrabHandle() },
             ) {
                 TahoBrowserMenuSheet(
                     currentLocation = currentTab?.location,
@@ -1210,10 +1211,10 @@ fun TahoBrowserApp(
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                 containerColor = TahoSheet,
                 contentColor = TahoText,
-                shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+                shape = TahoSheetShape,
                 tonalElevation = 0.dp,
-                scrimColor = Color.Black.copy(alpha = .50f),
-                dragHandle = { SheetGrabHandle() },
+                scrimColor = MaterialTheme.colorScheme.scrim,
+                dragHandle = { TahoGrabHandle() },
             ) {
                 AutofillPromptSheet(
                     prompt = prompt,
@@ -1233,10 +1234,10 @@ fun TahoBrowserApp(
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                 containerColor = TahoSheet,
                 contentColor = TahoText,
-                shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+                shape = TahoSheetShape,
                 tonalElevation = 0.dp,
-                scrimColor = Color.Black.copy(alpha = .50f),
-                dragHandle = { SheetGrabHandle() },
+                scrimColor = MaterialTheme.colorScheme.scrim,
+                dragHandle = { TahoGrabHandle() },
             ) {
                 SitePermissionSheet(
                     prompt = prompt,
