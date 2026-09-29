@@ -1101,7 +1101,7 @@ private fun SettingsBookmarksPage(
                         singleLine = true,
                         textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 14.sp),
                         decorationBox = { inner ->
-                            if (newFolderName.isEmpty()) Text("New Folder Name…", color = TahoFaint, fontFamily = TahoSans, fontSize = 13.sp)
+                            if (newFolderName.isEmpty()) Text("New Folder Name", color = TahoFaint, fontFamily = TahoSans, fontSize = 13.sp)
                             inner()
                         }
                     )
@@ -1380,7 +1380,7 @@ private fun SettingsHistoryPage(onNavigate: (String) -> Unit) {
                 Box(modifier = Modifier.weight(1f)) {
                     if (search.isEmpty()) {
                         Text(
-                            "Search browsing history…",
+                            "Search browsing history",
                             color = TahoFaint,
                             fontFamily = TahoSans,
                             fontSize = 13.sp,
@@ -1396,14 +1396,10 @@ private fun SettingsHistoryPage(onNavigate: (String) -> Unit) {
                     )
                 }
                 if (search.isNotEmpty()) {
-                    Text(
-                        "×",
-                        color = TahoMuted,
-                        fontSize = 14.sp,
-                        modifier = Modifier
-                            .heightIn(min = TahoTouchTarget)
-                            .clickable { search = "" }
-                            .padding(4.dp),
+                    TahoIconButton(
+                        name = TahoIconName.CLOSE,
+                        contentDescription = "Clear history search",
+                        onClick = { search = "" },
                     )
                 }
             }
@@ -1633,7 +1629,7 @@ private fun SettingsPasswordsPage(
                 Spacer(Modifier.width(8.dp))
                 Box(modifier = Modifier.weight(1f)) {
                     if (search.isEmpty()) {
-                        Text("Search logins & credentials…", color = TahoFaint, fontFamily = TahoSans, fontSize = 13.sp)
+                        Text("Search logins & credentials", color = TahoFaint, fontFamily = TahoSans, fontSize = 13.sp)
                     }
                     BasicTextField(
                         value = search,
@@ -1869,7 +1865,7 @@ private fun SettingsPasswordsPage(
                                 fontFamily = TahoSans,
                                 fontSize = 12.sp,
                                 modifier = Modifier.heightIn(min = TahoCompactTouchTarget).clickable {
-                                    breachStatus = "Checking ${pw.domain}…"
+                                    breachStatus = "Checking ${pw.domain}"
                                     onCheckPasswordBreach(pw.password) { count ->
                                         when {
                                             count == null -> {
@@ -2011,9 +2007,12 @@ private fun SettingsAutofillPage() {
                     Text(addr.fullName, color = TahoText, fontFamily = TahoSans, fontSize = 13.sp)
                     Text("${addr.street}, ${addr.city}, ${addr.state} ${addr.zipCode}", color = TahoMuted, fontFamily = TahoSans, fontSize = 12.sp)
                 }
-                Text("×", color = TahoMuted, fontSize = 16.sp, modifier = Modifier.heightIn(min = TahoCompactTouchTarget).clickable {
-                    TahoBrowserStateStore.removeSavedAddress(addr.id)
-                }.padding(6.dp))
+                TahoIconButton(
+                    name = TahoIconName.DELETE,
+                    contentDescription = "Delete saved address",
+                    destructive = true,
+                    onClick = { TahoBrowserStateStore.removeSavedAddress(addr.id) },
+                )
             }
             Spacer(Modifier.height(6.dp))
         }
@@ -2024,8 +2023,12 @@ private fun SettingsAutofillPage() {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SettingsSectionTitle("SAVED PAYMENT METHODS (${payments.size})")
-            Text("+ Add Card", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 12.sp, modifier = Modifier.heightIn(min = TahoCompactTouchTarget).clickable { showAddPayment = true })
+            SettingsSectionTitle("Saved payment methods (${payments.size})")
+            TahoInlineAction(
+                label = "Add card",
+                icon = TahoIconName.ADD,
+                onClick = { showAddPayment = true },
+            )
         }
 
         if (showAddPayment) {
@@ -2361,7 +2364,7 @@ private fun SettingsExtensionsPage(
                             Box {
                                 if (marketplaceQuery.isBlank()) {
                                     Text(
-                                        "Search public Android extensions…",
+                                        "Search public Android extensions",
                                         color = TahoFaint,
                                         fontFamily = TahoSans,
                                         fontSize = 12.sp,
@@ -2372,7 +2375,7 @@ private fun SettingsExtensionsPage(
                         },
                     )
                     M7SecondaryButton(
-                        if (marketplaceLoading) "…" else "Search",
+                        if (marketplaceLoading) "" else "Search",
                         Modifier.width(78.dp),
                     ) {
                         if (!marketplaceLoading) {
@@ -2490,7 +2493,7 @@ private fun SettingsExtensionsPage(
                 Box {
                     if (xpiUrl.isBlank()) {
                         Text(
-                            "https://…/addon.xpi",
+                            "https:///addon.xpi",
                             color = TahoFaint,
                             fontFamily = TahoSans,
                             fontSize = 12.sp,
@@ -3467,11 +3470,10 @@ private fun SettingsBackupExportPage(
                         modifier = Modifier.weight(1f),
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text(
-                        "×",
-                        color = TahoMuted,
-                        fontSize = 14.sp,
-                        modifier = Modifier.heightIn(min = TahoCompactTouchTarget).clickable { statusMessage = null },
+                    TahoIconButton(
+                        name = TahoIconName.CLOSE,
+                        contentDescription = "Dismiss status",
+                        onClick = { statusMessage = null },
                     )
                 }
             }
@@ -3764,7 +3766,7 @@ private fun SettingsAboutPage(
 
         Spacer(Modifier.height(14.dp))
         M7SecondaryButton(
-            label = if (checking) "Checking…" else "Check for Updates",
+            label = if (checking) "Checking" else "Check for Updates",
             modifier = Modifier.fillMaxWidth(),
         ) {
             if (!checking) {
