@@ -33,6 +33,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -96,6 +97,32 @@ private val TahoDataFamily = FontFamily(
     Font(R.font.jetbrains_mono_regular, FontWeight.Normal),
     Font(R.font.jetbrains_mono_medium, FontWeight.Medium),
 )
+
+@Composable
+internal fun DataText(
+    text: AnnotatedString,
+    modifier: Modifier = Modifier,
+    color: Color = TahoText,
+    fontSize: TextUnit = 12.5.sp,
+    fontWeight: FontWeight = FontWeight.Normal,
+    lineHeight: TextUnit = 18.sp,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip,
+    textAlign: TextAlign? = null,
+) {
+    Text(
+        text = text,
+        modifier = modifier,
+        color = color,
+        fontFamily = TahoDataFamily,
+        fontSize = fontSize,
+        fontWeight = fontWeight,
+        lineHeight = lineHeight,
+        maxLines = maxLines,
+        overflow = overflow,
+        textAlign = textAlign,
+    )
+}
 
 @Composable
 internal fun DataText(
