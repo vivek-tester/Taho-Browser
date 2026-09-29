@@ -401,7 +401,7 @@ internal fun M7CaptureSummarySheet(
                 text = "All includes noise and is read-only",
                 color = TahoFaint,
                 fontFamily = TahoSans,
-                fontSize = 9.sp,
+                fontSize = 12.sp,
             )
         }
     }
@@ -469,30 +469,32 @@ private fun M7SummaryRow(
         Row(verticalAlignment = Alignment.CenterVertically) {
             M7MethodBadge(request.method)
             Spacer(Modifier.width(8.dp))
-            Text(
+            DataText(
                 text = path,
                 modifier = Modifier.weight(1f),
                 color = TahoText,
-                fontFamily = TahoSans,
-                fontSize = 11.sp,
+                fontSize = 12.5.sp,
+                lineHeight = 18.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             request.status?.let {
-                Text(
+                DataText(
                     text = it.toString(),
-                    color = if (it in 200..399) TahoOk else TahoWarn,
-                    fontFamily = TahoSans,
-                    fontSize = 10.sp,
+                    color = if (it in 200..399) TahoOk else TahoError,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    maxLines = 1,
                 )
             }
             request.durationMs?.let {
                 Spacer(Modifier.width(7.dp))
-                Text(
+                DataText(
                     text = it.toString() + " ms",
                     color = TahoFaint,
-                    fontFamily = TahoSans,
-                    fontSize = 9.sp,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    maxLines = 1,
                 )
             }
         }
@@ -563,23 +565,23 @@ internal fun M7RequestInspectorSheet(
             M7MethodBadge(request.method)
             Spacer(Modifier.width(9.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
+                DataText(
                     text = path,
                     color = TahoText,
-                    fontFamily = TahoSans,
-                    fontSize = 13.sp,
+                    fontSize = 15.sp,
+                    lineHeight = 22.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(
+                DataText(
                     text = buildString {
                         append(host)
                         request.status?.let { append(" · ").append(it) }
                         request.durationMs?.let { append(" · ").append(it).append(" ms") }
                     },
                     color = TahoFaint,
-                    fontFamily = TahoSans,
-                    fontSize = 9.sp,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -808,21 +810,21 @@ private fun M7Headers(request: M4CaptureRequestUiState) {
                     }
                     .padding(vertical = 8.dp),
             ) {
-                Text(
+                DataText(
                     text = header.name,
                     modifier = Modifier.weight(.42f),
-                    color = TahoFaint,
-                    fontFamily = TahoSans,
-                    fontSize = 9.sp,
+                    color = TahoMuted,
+                    fontSize = 12.5.sp,
+                    lineHeight = 18.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(
-                    text = header.displayValue + if (header.sensitive) "  sensitive" else "",
+                DataText(
+                    text = header.displayValue + if (header.sensitive) "  [sensitive]" else "",
                     modifier = Modifier.weight(.58f),
                     color = if (header.sensitive) TahoWarn else TahoText,
-                    fontFamily = TahoSans,
-                    fontSize = 9.sp,
+                    fontSize = 12.5.sp,
+                    lineHeight = 18.sp,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
