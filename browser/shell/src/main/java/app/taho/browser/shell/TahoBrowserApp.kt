@@ -1274,15 +1274,11 @@ private fun BrowserNoticeBanner(
             fontFamily = TahoSans,
             fontSize = 10.sp,
         )
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .clickable(onClick = onDismiss),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("×", color = TahoText, fontSize = 17.sp)
-        }
+        TahoIconButton(
+            name = TahoIconName.CLOSE,
+            contentDescription = "Dismiss notice",
+            onClick = onDismiss,
+        )
     }
 }
 
@@ -1291,91 +1287,86 @@ private fun PageCrashBanner(
     onReload: () -> Unit,
     onViewCaptured: () -> Unit,
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(TahoBlockShape)
             .background(TahoSheet)
-            .border(1.dp, TahoWarn.copy(alpha = .50f), RoundedCornerShape(14.dp))
-            .padding(horizontal = 14.dp, vertical = 11.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .border(1.dp, TahoWarn, TahoBlockShape)
+            .padding(14.dp),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "This page stopped responding.",
-                color = TahoText,
-                fontFamily = TahoSans,
-                fontSize = 11.sp,
+        Text(
+            text = "This page stopped responding.",
+            color = TahoText,
+            fontFamily = TahoSans,
+            fontWeight = FontWeight.Medium,
+            fontSize = 13.sp,
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = "The tab is still open.",
+            color = TahoMuted,
+            fontFamily = TahoSans,
+            fontSize = 11.sp,
+        )
+        Spacer(Modifier.height(10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            TahoActionButton(
+                label = "Reload page",
+                modifier = Modifier.weight(1f),
+                style = TahoActionStyle.PRIMARY,
+                trailingGlyph = null,
+                onClick = onReload,
             )
-            Text(
-                text = "The tab is still open.",
-                color = TahoFaint,
-                fontFamily = TahoSans,
-                fontSize = 9.sp,
-            )
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            Text(
-                text = "Reload Page",
-                modifier = Modifier
-                    .heightIn(min = 44.dp)
-                    .clip(RoundedCornerShape(999.dp))
-                    .semantics { role = Role.Button; contentDescription = "Reload Page" }
-                    .clickable(onClick = onReload)
-                    .padding(horizontal = 10.dp, vertical = 7.dp),
-                color = TahoGoldHi,
-                fontFamily = TahoSans,
-                fontSize = 10.sp,
-            )
-            Text(
-                text = "View Captured Requests",
-                modifier = Modifier
-                    .heightIn(min = 44.dp)
-                    .clip(RoundedCornerShape(999.dp))
-                    .semantics { role = Role.Button; contentDescription = "View Captured Requests" }
-                    .clickable(onClick = onViewCaptured)
-                    .padding(horizontal = 10.dp, vertical = 7.dp),
-                color = TahoMuted,
-                fontFamily = TahoSans,
-                fontSize = 9.sp,
+            TahoActionButton(
+                label = "Captured requests",
+                modifier = Modifier.weight(1f),
+                style = TahoActionStyle.SECONDARY,
+                trailingGlyph = null,
+                onClick = onViewCaptured,
             )
         }
     }
 }
-
 @Composable
 private fun LoadFailureBanner(onReload: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(TahoBlockShape)
             .background(TahoSheet)
-            .border(1.dp, TahoError.copy(alpha = .45f), RoundedCornerShape(14.dp))
-            .padding(horizontal = 14.dp, vertical = 11.dp),
+            .border(1.dp, TahoError, TahoBlockShape)
+            .padding(start = 14.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = "Page failed to load",
-            modifier = Modifier.weight(1f),
-            color = TahoText,
-            fontFamily = TahoSans,
-            fontSize = 11.sp,
-        )
-        Text(
-            text = "Reload",
-            modifier = Modifier
-                .heightIn(min = 44.dp)
-                .clip(RoundedCornerShape(999.dp))
-                .semantics { role = Role.Button; contentDescription = "Reload" }
-                .clickable(onClick = onReload)
-                .padding(horizontal = 10.dp, vertical = 7.dp),
-            color = TahoGoldHi,
-            fontFamily = TahoSans,
-            fontSize = 10.sp,
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Page failed to load",
+                color = TahoText,
+                fontFamily = TahoSans,
+                fontWeight = FontWeight.Medium,
+                fontSize = 13.sp,
+            )
+            Text(
+                text = "Check the connection or try again.",
+                color = TahoMuted,
+                fontFamily = TahoSans,
+                fontSize = 11.sp,
+            )
+        }
+        Spacer(Modifier.width(10.dp))
+        TahoActionButton(
+            label = "Reload",
+            modifier = Modifier.width(104.dp),
+            style = TahoActionStyle.SECONDARY,
+            trailingGlyph = null,
+            onClick = onReload,
         )
     }
 }
-
 @Composable
 private fun NavigationTray(
     canGoBack: Boolean,
@@ -2094,7 +2085,7 @@ private fun TabRow(
     onClose: () -> Unit,
 ) {
     val borderColor = if (tab.selected) {
-        TahoGold.copy(alpha = .55f)
+        TahoGold
     } else {
         TahoLine
     }
@@ -2103,9 +2094,9 @@ private fun TabRow(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 58.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(TahoCardShape)
             .background(TahoRaised)
-            .border(1.dp, borderColor, RoundedCornerShape(16.dp))
+            .border(1.dp, borderColor, TahoCardShape)
             .clickable(onClick = onSelect)
             .padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -2160,15 +2151,11 @@ private fun TabRow(
             )
         }
 
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .clickable(onClick = onClose),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("×", color = TahoMuted, fontSize = 18.sp)
-        }
+        TahoIconButton(
+            name = TahoIconName.CLOSE,
+            contentDescription = "Close tab",
+            onClick = onClose,
+        )
     }
 }
 
