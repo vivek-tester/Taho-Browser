@@ -1369,17 +1369,41 @@ private fun NavigationTray(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        ChromeAction("Back", "‹", Modifier.weight(1f), canGoBack, onBack)
-        ChromeAction("Forward", "›", Modifier.weight(1f), canGoForward, onForward)
-        ChromeAction("Reload", "↻", Modifier.weight(1f), true, onReload)
-        ChromeAction("Done", "×", Modifier.weight(1f), true, onCancel)
+        ChromeAction(
+            label = "Back",
+            icon = TahoIconName.BACK,
+            modifier = Modifier.weight(1f),
+            enabled = canGoBack,
+            onClick = onBack,
+        )
+        ChromeAction(
+            label = "Forward",
+            icon = TahoIconName.FORWARD,
+            modifier = Modifier.weight(1f),
+            enabled = canGoForward,
+            onClick = onForward,
+        )
+        ChromeAction(
+            label = "Reload",
+            icon = TahoIconName.RELOAD,
+            modifier = Modifier.weight(1f),
+            enabled = true,
+            onClick = onReload,
+        )
+        ChromeAction(
+            label = "Done",
+            icon = TahoIconName.CLOSE,
+            modifier = Modifier.weight(1f),
+            enabled = true,
+            onClick = onCancel,
+        )
     }
 }
 
 @Composable
 private fun ChromeAction(
     label: String,
-    glyph: String,
+    icon: TahoIconName,
     modifier: Modifier = Modifier,
     enabled: Boolean,
     onClick: () -> Unit,
@@ -1387,8 +1411,8 @@ private fun ChromeAction(
     val interaction = remember { MutableInteractionSource() }
     Row(
         modifier = modifier
-            .heightIn(min = TahoCompactTouchTarget)
-            .tahoPressScale(interaction, target = .97f)
+            .height(48.dp)
+            .tahoPressScale(interaction, target = .96f)
             .clip(TahoPillShape)
             .background(TahoRaised)
             .border(1.dp, TahoLine, TahoPillShape)
@@ -1402,17 +1426,18 @@ private fun ChromeAction(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            glyph,
-            color = if (enabled) TahoGoldHi else TahoFaint,
-            fontSize = 15.sp,
+        TahoIcon(
+            name = icon,
+            contentDescription = null,
+            tint = if (enabled) TahoMuted else TahoFaint,
+            size = 20.dp,
         )
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(8.dp))
         Text(
             text = label,
             color = if (enabled) TahoText else TahoFaint,
             fontFamily = TahoSans,
-            fontSize = 12.sp,
+            fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
             maxLines = 1,
         )
@@ -1429,60 +1454,63 @@ private fun CaptureIndicator(
     val label = when (state) {
         CaptureState.OBSERVING -> "Capture active"
         CaptureState.CAPTURING ->
-            count.toString() + " relevant request" + if (count == 1) "" else "s"
-        CaptureState.PAUSED ->
-            "Ⅱ Capture paused · " + count + " requests retained"
-        CaptureState.LIMITED ->
-            if (count == 0) "△ Capture limited" else "△ Capture limited · " + count + " requests"
+            "$count relevant " + if (count == 1) "request" else "requests"
+        CaptureState.PAUSED -> "Capture paused"
+        CaptureState.LIMITED -> "Capture limited"
         CaptureState.ERROR -> "Capture unavailable"
-        CaptureState.OFF -> return
+        CaptureState.OFF -> "Capture off"
     }
     val dotColor = when (state) {
         CaptureState.OBSERVING, CaptureState.CAPTURING -> TahoOk
         CaptureState.LIMITED -> TahoWarn
         CaptureState.ERROR -> TahoError
-        CaptureState.PAUSED, CaptureState.OFF -> Color.Transparent
+        CaptureState.PAUSED, CaptureState.OFF -> TahoFaint
     }
-    val showDot = state != CaptureState.PAUSED && state != CaptureState.OFF
 
-    val pillInteraction = remember { MutableInteractionSource() }
-    Row(
+    val interaction = remember { MutableInteractionSource() }
+    Box(
         modifier = Modifier
-            .tahoPressScale(pillInteraction, target = .96f)
-            .tahoPulse(trigger = label)
-            .clip(TahoPillShape)
-            .background(TahoRaised)
-            .border(1.dp, TahoHairlineStrong, TahoPillShape)
-            .semantics {
-                role = Role.Button
-                contentDescription = when (state) {
-                    CaptureState.OBSERVING, CaptureState.CAPTURING ->
-                        M7CaptureUx.captureAnnouncement(count)
-                    CaptureState.PAUSED -> "Capture paused, " + count + " requests retained"
-                    CaptureState.LIMITED -> "Capture limited, " + count + " requests retained"
-                    CaptureState.ERROR -> "Capture unavailable"
-                    CaptureState.OFF -> ""
-                }
-            }
-            .clickable(
-                interactionSource = pillInteraction,
-                indication = null,
-                onClick = onClick,
-            )
-            .heightIn(min = 44.dp)
-            .padding(horizontal = 15.dp, vertical = 9.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .height(48.dp)
+            .tahoPulse(trigger = "$state:$count"),
+        contentAlignment = Alignment.Center,
     ) {
-        if (showDot) {
+        Row(
+            modifier = Modifier
+                .height(34.dp)
+                .tahoPressScale(interaction, target = .96f)
+                .clip(TahoPillShape)
+                .background(TahoSheet)
+                .border(1.dp, TahoLine, TahoPillShape)
+                .semantics {
+                    role = Role.Button
+                    contentDescription = buildString {
+                        append(label)
+                        if (count > 0 && state !in setOf(CaptureState.CAPTURING)) {
+                            append(", ")
+                            append(count)
+                            append(if (count == 1) " request" else " requests")
+                        }
+                    }
+                }
+                .clickable(
+                    interactionSource = interaction,
+                    indication = null,
+                    onClick = onClick,
+                )
+                .padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             TahoStatusDot(color = dotColor)
             Spacer(Modifier.width(8.dp))
+            Text(
+                text = label,
+                color = TahoText,
+                fontFamily = TahoSans,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+            )
         }
-        Text(
-            text = label,
-            color = TahoText,
-            fontFamily = TahoSans,
-            fontSize = 10.5.sp,
-        )
     }
 }
 
@@ -1517,31 +1545,19 @@ private fun Omnibox(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(999.dp))
-            .background(TahoRaised)
-            .border(1.dp, TahoLine, RoundedCornerShape(999.dp)),
-    ) {
-        if (isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(.26f)
-                    .height(2.dp)
-                    .background(TahoGold),
-            )
-        }
-
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 44.dp)
+                .height(46.dp)
+                .clip(TahoPillShape)
+                .background(TahoSheet)
+                .border(1.dp, TahoLine, TahoPillShape)
                 .clickable(enabled = !editing, onClick = onBeginEdit)
-                .padding(horizontal = 12.dp),
+                .padding(start = 12.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            OmniboxLeadingGlyph(
+            OmniboxLeadingIcon(
                 value = value,
                 editing = editing,
                 isPrivate = isPrivate,
@@ -1556,7 +1572,7 @@ private fun Omnibox(
                             text = "Search or enter address",
                             color = TahoFaint,
                             fontFamily = TahoSans,
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                         )
                     }
                     BasicTextField(
@@ -1569,7 +1585,7 @@ private fun Omnibox(
                         textStyle = TextStyle(
                             color = TahoText,
                             fontFamily = TahoSans,
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                         ),
                         cursorBrush = SolidColor(TahoGold),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
@@ -1582,25 +1598,26 @@ private fun Omnibox(
                     )
                 }
             } else {
-                Text(
+                DataText(
                     text = tokenizedUrl(value),
                     modifier = Modifier.weight(1f),
-                    fontFamily = TahoSans,
-                    fontSize = 12.sp,
+                    color = TahoText,
+                    fontSize = 12.5.sp,
+                    lineHeight = 18.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
 
-            Spacer(Modifier.width(4.dp))
-            OmniboxHomeButton(onClick = onHomeClick)
-            Spacer(Modifier.width(2.dp))
             TabCountButton(
                 tabCount = tabCount,
                 onClick = onTabsClick,
             )
-            Spacer(Modifier.width(2.dp))
-            OmniboxMenuButton(onClick = onMenuClick)
+            TahoIconButton(
+                name = TahoIconName.MORE,
+                contentDescription = "Browser menu",
+                onClick = onMenuClick,
+            )
         }
 
         if (editing && draft.isNotBlank()) {
@@ -1626,38 +1643,50 @@ private fun Omnibox(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                    .padding(top = 8.dp),
             ) {
-                localSuggestions.forEach { (title, url) ->
+                localSuggestions.forEachIndexed { index, (title, url) ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
+                            .heightIn(min = 52.dp)
                             .clickable { onSuggestionSelected(url) }
-                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                            .padding(horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("↗", color = TahoFaint, fontSize = 11.sp)
-                        Spacer(Modifier.width(8.dp))
+                        TahoIcon(
+                            name = TahoIconName.OPEN_EXTERNAL,
+                            contentDescription = null,
+                            tint = TahoMuted,
+                            size = 20.dp,
+                        )
+                        Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = title,
                                 color = TahoText,
-                                fontFamily = TahoBody,
-                                fontSize = 10.5.sp,
+                                fontFamily = TahoSans,
+                                fontSize = 14.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
-                            Text(
+                            DataText(
                                 text = url,
                                 color = TahoFaint,
-                                fontFamily = TahoSans,
-                                fontSize = 8.5.sp,
+                                fontSize = 12.sp,
+                                lineHeight = 16.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
+                    }
+                    if (index < localSuggestions.lastIndex || settings.searchSuggestionsEnabled) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(TahoLine),
+                        )
                     }
                 }
 
@@ -1665,18 +1694,23 @@ private fun Omnibox(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
+                            .heightIn(min = 52.dp)
                             .clickable { onSuggestionSelected(query) }
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                            .padding(horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("⌕", color = TahoGoldHi, fontSize = 11.sp)
-                        Spacer(Modifier.width(8.dp))
+                        TahoIcon(
+                            name = TahoIconName.SEARCH,
+                            contentDescription = null,
+                            tint = TahoMuted,
+                            size = 20.dp,
+                        )
+                        Spacer(Modifier.width(12.dp))
                         Text(
                             text = "Search for “$query”",
-                            color = TahoGoldHi,
-                            fontFamily = TahoBody,
-                            fontSize = 10.5.sp,
+                            color = TahoText,
+                            fontFamily = TahoSans,
+                            fontSize = 14.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -1688,84 +1722,31 @@ private fun Omnibox(
 }
 
 @Composable
-private fun OmniboxHomeButton(onClick: () -> Unit) {
-    TahoIconButton(
-        glyph = "⌂",
-        description = "Home",
-        modifier = Modifier.size(TahoCompactTouchTarget),
-        onClick = onClick,
-    )
-}
-
-@Composable
-private fun OmniboxMenuButton(onClick: () -> Unit) {
-    TahoIconButton(
-        glyph = "⋮",
-        description = "Menu",
-        modifier = Modifier.size(TahoCompactTouchTarget),
-        onClick = onClick,
-    )
-}
-
-@Composable
-private fun OmniboxLeadingGlyph(
+private fun OmniboxLeadingIcon(
     value: String,
     editing: Boolean,
     isPrivate: Boolean,
-    onClick: () -> Unit = {},
+    onClick: () -> Unit,
 ) {
     Box(
         modifier = Modifier
-            .size(28.dp)
-            .clip(RoundedCornerShape(6.dp))
+            .size(48.dp)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        if (isPrivate) {
-            Text(
-                text = "◐",
-                color = TahoGoldHi,
-                fontSize = 14.sp,
-            )
-            return@Box
-        }
-
-        if (!editing && value.startsWith("https://")) {
-            Canvas(
-                modifier = Modifier
-                    .size(18.dp)
-                    .semantics { contentDescription = "Secure connection" },
-            ) {
-                val stroke = 1.35.dp.toPx()
-                val bodyWidth = size.width * .56f
-                val bodyHeight = size.height * .42f
-                val bodyLeft = (size.width - bodyWidth) / 2f
-                val bodyTop = size.height * .46f
-
-                drawRoundRect(
-                    color = TahoOk,
-                    topLeft = Offset(bodyLeft, bodyTop),
-                    size = Size(bodyWidth, bodyHeight),
-                    cornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx()),
-                    style = Stroke(width = stroke),
-                )
-                drawArc(
-                    color = TahoOk,
-                    startAngle = 180f,
-                    sweepAngle = 180f,
-                    useCenter = false,
-                    topLeft = Offset(size.width * .29f, size.height * .12f),
-                    size = Size(size.width * .42f, size.height * .54f),
-                    style = Stroke(width = stroke),
-                )
-            }
-            return@Box
-        }
-
-        Text(
-            text = "⌕",
-            color = TahoFaint,
-            fontSize = 14.sp,
+        TahoIcon(
+            name = when {
+                isPrivate -> TahoIconName.SECURITY
+                !editing && value.startsWith("https://") -> TahoIconName.LOCK
+                else -> TahoIconName.SEARCH
+            },
+            contentDescription = when {
+                isPrivate -> "Private browsing"
+                !editing && value.startsWith("https://") -> "Secure connection"
+                else -> "Search"
+            },
+            tint = TahoMuted,
+            size = 18.dp,
         )
     }
 }
@@ -1778,7 +1759,7 @@ private fun TabCountButton(
     val count = tabCount.coerceAtLeast(1)
     Box(
         modifier = Modifier
-            .size(TahoCompactTouchTarget)
+            .size(48.dp)
             .semantics {
                 role = Role.Button
                 contentDescription = count.toString() + if (count == 1) " tab" else " tabs"
@@ -1788,20 +1769,49 @@ private fun TabCountButton(
     ) {
         Box(
             modifier = Modifier
-                .size(30.dp)
+                .size(28.dp)
                 .clip(TahoBadgeShape)
-                .background(TahoSheet)
-                .border(1.dp, TahoLine, TahoBadgeShape),
+                .border(1.5.dp, TahoMuted, TahoBadgeShape),
             contentAlignment = Alignment.Center,
         ) {
             DataText(
                 text = count.toString(),
                 color = TahoText,
-                fontSize = 11.sp,
-                lineHeight = 14.sp,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                maxLines = 1,
             )
         }
     }
+}
+
+private fun tokenizedUrl(raw: String) = buildAnnotatedString {
+    val value = raw.takeUnless { it == "Search or enter address" }.orEmpty()
+    if (value.isBlank()) {
+        withStyle(SpanStyle(color = TahoFaint)) {
+            append("Search or enter address")
+        }
+        return@buildAnnotatedString
+    }
+
+    val parsed = runCatching { java.net.URI(value) }.getOrNull()
+    val host = parsed?.host
+    if (host.isNullOrBlank()) {
+        withStyle(SpanStyle(color = TahoText)) { append(value) }
+        return@buildAnnotatedString
+    }
+
+    val scheme = parsed.scheme?.let { "$it://" }.orEmpty()
+    val port = parsed.port.takeIf { it >= 0 }?.let { ":$it" }.orEmpty()
+    val path = buildString {
+        append(parsed.rawPath.orEmpty())
+        parsed.rawQuery?.let { append('?').append(it) }
+        parsed.rawFragment?.let { append('#').append(it) }
+    }
+
+    withStyle(SpanStyle(color = TahoFaint)) { append(scheme) }
+    withStyle(SpanStyle(color = TahoText)) { append(host).append(port) }
+    withStyle(SpanStyle(color = TahoFaint)) { append(path) }
 }
 
 @Composable
