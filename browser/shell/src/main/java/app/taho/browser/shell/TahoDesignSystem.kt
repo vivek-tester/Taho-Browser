@@ -16,12 +16,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.weight
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
@@ -34,13 +34,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 internal val TahoTouchTarget = 48.dp
-internal val TahoCompactTouchTarget = 44.dp
-internal val TahoSheetHorizontalPadding = 19.dp
-internal val TahoChromeHorizontalPadding = 13.dp
+internal val TahoCompactTouchTarget = 48.dp
+internal val TahoSheetHorizontalPadding = 20.dp
+internal val TahoChromeHorizontalPadding = 12.dp
 
 internal enum class TahoActionStyle {
     PRIMARY,
     SECONDARY,
+    TERTIARY,
     MINI,
     DESTRUCTIVE,
 }
@@ -51,48 +52,46 @@ internal fun TahoActionButton(
     modifier: Modifier = Modifier,
     style: TahoActionStyle = TahoActionStyle.PRIMARY,
     enabled: Boolean = true,
-    trailingGlyph: String? = if (style == TahoActionStyle.PRIMARY) "↗" else null,
+    trailingGlyph: String? = null,
     onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val minimumHeight =
-        if (style == TahoActionStyle.MINI) TahoCompactTouchTarget else TahoTouchTarget
+    val showNestedActionIcon =
+        style == TahoActionStyle.PRIMARY &&
+            (label == "Send to Taho" || label == "Open Request")
     val background = when (style) {
-        TahoActionStyle.PRIMARY ->
-            if (enabled) TahoGold else TahoSurfaceControl
+        TahoActionStyle.PRIMARY -> TahoGold
         TahoActionStyle.SECONDARY,
         TahoActionStyle.MINI,
-        -> TahoSurfaceControl
+        -> TahoRaised
+        TahoActionStyle.TERTIARY -> Color.Transparent
         TahoActionStyle.DESTRUCTIVE -> TahoDeleteWash
     }
-    val border = when (style) {
-        TahoActionStyle.PRIMARY -> Color.Transparent
+    val foreground = when (style) {
+        TahoActionStyle.PRIMARY -> TahoPrimaryInk
+        TahoActionStyle.SECONDARY -> TahoText
+        TahoActionStyle.TERTIARY, TahoActionStyle.MINI -> TahoMuted
         TahoActionStyle.DESTRUCTIVE -> TahoError
-        else -> TahoHairline
-    }
-    val foreground = when {
-        !enabled -> TahoFaint
-        style == TahoActionStyle.PRIMARY -> TahoPrimaryInk
-        style == TahoActionStyle.DESTRUCTIVE -> TahoError
-        style == TahoActionStyle.MINI -> TahoMuted
-        else -> TahoText
-    }
-
-    val pressModifier = when (style) {
-        TahoActionStyle.MINI -> Modifier
-        TahoActionStyle.PRIMARY -> Modifier.tahoPressScale(interaction, target = .96f)
-        else -> Modifier.tahoPressScale(interaction, target = .97f)
     }
 
     Box(
         modifier = modifier
-            .then(pressModifier)
-            .heightIn(min = minimumHeight)
+            .heightIn(min = 48.dp)
+            .tahoPressScale(interaction, target = .96f)
             .clip(TahoPillShape)
             .background(background)
             .then(
-                if (border == Color.Transparent) Modifier
-                else Modifier.border(1.dp, border, TahoPillShape),
+                when (style) {
+                    TahoActionStyle.SECONDARY,
+                    TahoActionStyle.MINI,
+                    TahoActionStyle.DESTRUCTIVE,
+                    -> Modifier.border(
+                        1.dp,
+                        if (style == TahoActionStyle.DESTRUCTIVE) TahoError else TahoLine,
+                        TahoPillShape,
+                    )
+                    else -> Modifier
+                },
             )
             .semantics {
                 role = Role.Button
@@ -104,50 +103,41 @@ internal fun TahoActionButton(
                 enabled = enabled,
                 onClick = onClick,
             )
-            .padding(
-                start = if (trailingGlyph != null) 16.dp else 14.dp,
-                end = if (trailingGlyph != null) 6.dp else 14.dp,
-                top = 6.dp,
-                bottom = 6.dp,
-            ),
+            .padding(horizontal = if (showNestedActionIcon) 8.dp else 16.dp),
         contentAlignment = Alignment.Center,
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .alpha(if (enabled) 1f else .40f),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = label,
-                modifier = if (trailingGlyph != null) Modifier.weight(1f) else Modifier,
+                modifier = if (showNestedActionIcon) Modifier.weight(1f) else Modifier,
                 color = foreground,
                 fontFamily = TahoSans,
-                fontWeight =
-                    if (style == TahoActionStyle.MINI) FontWeight.Normal else FontWeight.SemiBold,
-                fontSize =
-                    if (style == TahoActionStyle.MINI) 9.5.sp else 13.sp,
+                fontWeight = if (style == TahoActionStyle.PRIMARY) FontWeight.Bold else FontWeight.SemiBold,
+                fontSize = 13.sp,
+                lineHeight = 18.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            trailingGlyph?.let { glyph ->
+            if (showNestedActionIcon) {
                 Spacer(Modifier.width(8.dp))
                 Box(
                     modifier = Modifier
-                        .size(30.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (style == TahoActionStyle.PRIMARY) {
-                                TahoPrimaryInk
-                            } else {
-                                TahoSurfaceRowHover
-                            },
-                        ),
+                        .size(34.dp)
+                        .clip(TahoPillShape)
+                        .background(TahoPrimaryInk),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        text = glyph,
-                        color = foreground,
-                        fontSize = 12.sp,
+                    TahoIcon(
+                        name = TahoIconName.OPEN_EXTERNAL,
+                        contentDescription = null,
+                        tint = TahoGold,
+                        size = 16.dp,
                     )
                 }
             }
@@ -155,6 +145,10 @@ internal fun TahoActionButton(
     }
 }
 
+/**
+ * Legacy glyph-call adapter while screens are migrated. It renders from the
+ * single outlined icon set; glyph text is never shown.
+ */
 @Composable
 internal fun TahoIconButton(
     glyph: String,
@@ -164,50 +158,26 @@ internal fun TahoIconButton(
     destructive: Boolean = false,
     onClick: () -> Unit,
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    val foreground = when {
-        destructive -> TahoError
-        emphasized -> TahoGoldHi
-        else -> TahoMuted
+    val icon = when (description.lowercase()) {
+        "close", "dismiss", "cancel" -> TahoIconName.CLOSE
+        "back" -> TahoIconName.BACK
+        "forward" -> TahoIconName.FORWARD
+        "home" -> TahoIconName.HOME
+        "menu" -> TahoIconName.MORE
+        "search" -> TahoIconName.SEARCH
+        "settings" -> TahoIconName.SETTINGS
+        "reload" -> TahoIconName.RELOAD
+        "zoom in" -> TahoIconName.ADD
+        "zoom out" -> TahoIconName.REMOVE
+        else -> TahoIconName.INFO
     }
-    Box(
-        modifier = modifier
-            .size(TahoCompactTouchTarget)
-            .tahoPressScale(interaction, target = .97f)
-            .clip(TahoNoteShape)
-            .background(
-                when {
-                    destructive -> TahoDeleteWash
-                    emphasized -> TahoGoldWash
-                    else -> TahoSurfaceControl
-                },
-            )
-            .border(
-                1.dp,
-                when {
-                    destructive -> TahoError
-                    emphasized -> TahoGold
-                    else -> TahoHairline
-                },
-                TahoNoteShape,
-            )
-            .semantics {
-                role = Role.Button
-                contentDescription = description
-            }
-            .clickable(
-                interactionSource = interaction,
-                indication = null,
-                onClick = onClick,
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = glyph,
-            color = foreground,
-            fontSize = 15.sp,
-        )
-    }
+    TahoIconButton(
+        name = icon,
+        contentDescription = description,
+        modifier = modifier,
+        active = emphasized,
+        onClick = onClick,
+    )
 }
 
 @Composable
@@ -220,18 +190,17 @@ internal fun TahoChoiceChip(
     description: String = label,
     onClick: () -> Unit,
 ) {
+    val selectedFill =
+        if (semanticColor == TahoGold) TahoGoldWash
+        else TahoRaised
     Box(
         modifier = modifier
-            .heightIn(min = TahoCompactTouchTarget)
+            .heightIn(min = 48.dp)
             .clip(TahoPillShape)
-            .background(
-                if (selected && semanticColor == TahoGold) TahoGoldWash
-                else TahoSurfaceControl,
-            )
+            .background(if (selected) selectedFill else TahoSheet)
             .border(
                 1.dp,
-                if (selected) semanticColor
-                else TahoHairline,
+                if (selected) semanticColor else TahoLine,
                 TahoPillShape,
             )
             .semantics {
@@ -239,19 +208,21 @@ internal fun TahoChoiceChip(
                 contentDescription = description
             }
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 13.dp),
+            .padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
+            modifier = Modifier.alpha(if (enabled) 1f else .40f),
             color = when {
-                !enabled -> TahoFaint
                 selected && semanticColor == TahoGold -> TahoGoldHi
                 selected -> semanticColor
                 else -> TahoMuted
             },
             fontFamily = TahoSans,
-            fontSize = 9.5.sp,
+            fontWeight = FontWeight.Medium,
+            fontSize = 13.sp,
+            lineHeight = 18.sp,
             maxLines = 1,
         )
     }
@@ -263,13 +234,15 @@ internal fun TahoSectionLabel(
     modifier: Modifier = Modifier,
 ) {
     Text(
-        text = text.uppercase(),
-        modifier = modifier.padding(bottom = 6.dp),
-        color = TahoFaint,
+        text = text,
+        modifier = modifier.padding(bottom = 8.dp),
+        color = TahoMuted,
         fontFamily = TahoSans,
-        fontSize = 9.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = 1.6.sp,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
+        fontWeight = FontWeight.Medium,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
     )
 }
 
@@ -281,55 +254,59 @@ internal fun TahoToggleRow(
     modifier: Modifier = Modifier,
     onToggle: () -> Unit,
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = TahoTouchTarget)
-            .clip(TahoBlockShape)
-            .clickable(onClick = onToggle)
-            .padding(horizontal = 10.dp, vertical = 9.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                color = TahoText,
-                fontFamily = TahoBody,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-            )
-            description?.takeIf(String::isNotBlank)?.let {
-                Spacer(Modifier.height(2.dp))
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 56.dp)
+                .clickable(onClick = onToggle)
+                .padding(horizontal = 4.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = it,
-                    color = TahoMuted,
-                    fontFamily = TahoBody,
-                    fontSize = 10.sp,
-                    maxLines = 3,
+                    text = title,
+                    color = TahoText,
+                    fontFamily = TahoSans,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                description?.takeIf(String::isNotBlank)?.let {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = it,
+                        color = TahoMuted,
+                        fontFamily = TahoSans,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Box(
+                modifier = Modifier
+                    .width(48.dp)
+                    .height(28.dp)
+                    .clip(TahoPillShape)
+                    .background(if (checked) TahoGoldWash else TahoRaised)
+                    .border(1.dp, if (checked) TahoGold else TahoLine, TahoPillShape)
+                    .padding(3.dp),
+                contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(TahoPillShape)
+                        .background(if (checked) TahoGoldHi else TahoMuted),
                 )
             }
         }
-        Spacer(Modifier.width(12.dp))
-        Box(
-            modifier = Modifier
-                .clip(TahoPillShape)
-                .background(if (checked) TahoGoldWash else TahoSurfaceControl)
-                .border(
-                    1.dp,
-                    if (checked) TahoGold else TahoHairline,
-                    TahoPillShape,
-                )
-                .padding(horizontal = 9.dp, vertical = 5.dp),
-        ) {
-            Text(
-                text = if (checked) "ON" else "OFF",
-                color = if (checked) TahoGoldHi else TahoFaint,
-                fontFamily = TahoSans,
-                fontSize = 8.5.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
+        TahoDivider()
     }
 }
 
@@ -338,48 +315,62 @@ internal fun TahoLinkRow(
     label: String,
     supportingText: String? = null,
     modifier: Modifier = Modifier,
-    trailingGlyph: String = "↗",
+    trailingGlyph: String = "",
     onClick: () -> Unit,
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = TahoTouchTarget)
-            .clip(TahoBlockShape)
-            .background(TahoSurfaceRow)
-            .border(1.dp, TahoHairline, TahoBlockShape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = label,
-                color = TahoText,
-                fontFamily = TahoBody,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-            )
-            supportingText?.takeIf(String::isNotBlank)?.let {
-                Spacer(Modifier.height(2.dp))
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 52.dp)
+                .clickable(onClick = onClick)
+                .padding(horizontal = 4.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = it,
-                    color = TahoMuted,
-                    fontFamily = TahoBody,
-                    fontSize = 10.sp,
-                    maxLines = 2,
+                    text = label,
+                    color = TahoText,
+                    fontFamily = TahoSans,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                supportingText?.takeIf(String::isNotBlank)?.let {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = it,
+                        color = TahoMuted,
+                        fontFamily = TahoSans,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
+            Spacer(Modifier.width(12.dp))
+            TahoIcon(
+                name = TahoIconName.CHEVRON_RIGHT,
+                contentDescription = null,
+                tint = TahoMuted,
+                size = 20.dp,
+            )
         }
-        Spacer(Modifier.width(10.dp))
-        Text(
-            text = trailingGlyph,
-            color = TahoGoldHi,
-            fontSize = 13.sp,
-        )
+        TahoDivider()
     }
+}
+
+@Composable
+internal fun TahoDivider(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(TahoLine),
+    )
 }
 
 @Composable
@@ -388,10 +379,10 @@ internal fun TahoGrabHandle(
 ) {
     Box(
         modifier = modifier
-            .padding(top = 10.dp, bottom = 8.dp)
-            .width(38.dp)
+            .padding(top = 8.dp, bottom = 8.dp)
+            .width(36.dp)
             .height(4.dp)
             .clip(TahoPillShape)
-            .background(TahoHairlineStrong),
+            .background(TahoLine),
     )
 }
