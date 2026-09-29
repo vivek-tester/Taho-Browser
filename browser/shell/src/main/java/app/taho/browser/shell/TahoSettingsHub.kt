@@ -287,7 +287,6 @@ fun TahoSettingsHubSheet(
 // -------------------------------------------------------------
 // MAIN INDEX
 // -------------------------------------------------------------
-@Composable
 private data class SettingsIndexItem(
     val icon: TahoIconName,
     val title: String,
