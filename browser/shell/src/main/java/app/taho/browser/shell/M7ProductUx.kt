@@ -418,32 +418,12 @@ private fun M7FilterChip(
     onSelect: (M7CaptureFilterUi) -> Unit,
 ) {
     val active = value == selectedValue
-    Box(
-        modifier = Modifier
-            .heightIn(min = 44.dp)
-            .clip(TahoPillShape)
-            .background(if (active) TahoGold.copy(alpha = .13f) else Color.White.copy(alpha = .025f))
-            .border(
-                1.dp,
-                if (active) TahoGold.copy(alpha = .45f) else Color.White.copy(alpha = .08f),
-                TahoPillShape,
-            )
-            .semantics {
-                selected = active
-                role = Role.Button
-                contentDescription = label + ", filter" + if (active) ", selected" else ""
-            }
-            .clickable(onClick = { onSelect(value) })
-            .padding(horizontal = 13.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            color = if (active) TahoGoldHi else TahoMuted,
-            fontFamily = TahoMono,
-            fontSize = 10.sp,
-        )
-    }
+    TahoChoiceChip(
+        label = label,
+        selected = active,
+        description = label + ", filter" + if (active) ", selected" else "",
+        onClick = { onSelect(value) },
+    )
 }
 
 @Composable
@@ -1495,33 +1475,13 @@ private fun M7PolicyButton(
     enabled: Boolean,
     onSelect: (M4SecretPolicyUi) -> Unit,
 ) {
-    val active = value == selectedValue
-    Box(
-        modifier = Modifier
-            .heightIn(min = 44.dp)
-            .clip(RoundedCornerShape(999.dp))
-            .background(if (active) TahoGold.copy(alpha = .16f) else Color.White.copy(alpha = .03f))
-            .border(
-                1.dp,
-                if (active) TahoGold.copy(alpha = .55f) else Color.White.copy(alpha = .10f),
-                RoundedCornerShape(999.dp),
-            )
-            .semantics { selected = active; role = Role.Button }
-            .clickable(enabled = enabled, onClick = { onSelect(value) })
-            .padding(horizontal = 13.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            color = when {
-                !enabled -> TahoFaint
-                active -> TahoGoldHi
-                else -> TahoMuted
-            },
-            fontFamily = TahoMono,
-            fontSize = 9.sp,
-        )
-    }
+    TahoChoiceChip(
+        label = label,
+        selected = value == selectedValue,
+        enabled = enabled,
+        description = label + ", secret policy" + if (value == selectedValue) ", selected" else "",
+        onClick = { onSelect(value) },
+    )
 }
 
 @Composable
@@ -1688,32 +1648,15 @@ private fun M7MiniButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    Box(
-        modifier = modifier
-            .heightIn(min = 44.dp)
-            .tahoPressScale(interaction, target = .97f)
-            .clip(TahoPillShape)
-            .background(TahoSurfaceControl)
-            .border(1.dp, TahoHairline, TahoPillShape)
-            .semantics { role = Role.Button; contentDescription = label }
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            color = TahoMuted,
-            fontFamily = TahoMono,
-            fontSize = 9.5.sp,
-            maxLines = 1,
-        )
-    }
+    TahoActionButton(
+        label = label,
+        modifier = modifier,
+        style = TahoActionStyle.MINI,
+        trailingGlyph = null,
+        onClick = onClick,
+    )
 }
 
-/**
- * Prototype "button-in-button" primary: gold pill, body-text label, and the
- * trailing arrow nested inside its own dark circular wrapper (spec §6).
- */
 @Composable
 internal fun M7PrimaryButton(
     label: String,
@@ -1722,54 +1665,14 @@ internal fun M7PrimaryButton(
     showArrow: Boolean = true,
     onClick: () -> Unit,
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    Box(
-        modifier = modifier
-            .heightIn(min = 48.dp)
-            .tahoPressScale(interaction, target = .96f)
-            .clip(TahoPillShape)
-            .background(if (enabled) TahoGold else Color.White.copy(alpha = .04f))
-            .semantics {
-                role = Role.Button
-                contentDescription = label
-            }
-            .clickable(
-                interactionSource = interaction,
-                indication = null,
-                enabled = enabled,
-                onClick = onClick,
-            )
-            .padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
-        contentAlignment = Alignment.CenterEnd,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = label,
-                modifier = Modifier.weight(1f, fill = false),
-                color = if (enabled) TahoBg else TahoFaint,
-                fontFamily = TahoBody,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 13.sp,
-                maxLines = 1,
-            )
-            if (showArrow) {
-                Spacer(Modifier.width(8.dp))
-                Box(
-                    modifier = Modifier
-                        .size(30.dp)
-                        .clip(TahoPillShape)
-                        .background(Color.Black.copy(alpha = .15f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "↗",
-                        color = if (enabled) TahoBg else TahoFaint,
-                        fontSize = 12.sp,
-                    )
-                }
-            }
-        }
-    }
+    TahoActionButton(
+        label = label,
+        modifier = modifier,
+        style = TahoActionStyle.PRIMARY,
+        enabled = enabled,
+        trailingGlyph = if (showArrow) "↗" else null,
+        onClick = onClick,
+    )
 }
 
 @Composable
@@ -1778,28 +1681,12 @@ internal fun M7SecondaryButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    Box(
-        modifier = modifier
-            .heightIn(min = 48.dp)
-            .tahoPressScale(interaction, target = .97f)
-            .clip(TahoPillShape)
-            .background(TahoSurfaceControl)
-            .border(1.dp, TahoHairline, TahoPillShape)
-            .semantics { role = Role.Button; contentDescription = label }
-            .clickable(
-                interactionSource = interaction,
-                indication = null,
-                onClick = onClick,
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            color = TahoText,
-            fontFamily = TahoBody,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 13.sp,
-        )
-    }
+    TahoActionButton(
+        label = label,
+        modifier = modifier,
+        style = TahoActionStyle.SECONDARY,
+        trailingGlyph = null,
+        onClick = onClick,
+    )
 }
+
