@@ -437,19 +437,13 @@ private fun SettingsAppearancePage() {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(TahoThemeMode.DARK to "Dark (OLED)", TahoThemeMode.LIGHT to "Light", TahoThemeMode.SYSTEM to "System").forEach { (m, label) ->
                 val sel = settings.themeMode == m
-                Box(
-                    modifier = Modifier
-                        .heightIn(min = TahoTouchTarget)
-                        .weight(1f)
-                        .clip(TahoPillShape)
-                        .background(if (sel) TahoGold else TahoSurfaceControl)
-                        .border(1.dp, if (sel) TahoGoldHi else TahoHairline, TahoPillShape)
-                        .clickable { TahoBrowserStateStore.updateSettings { it.copy(themeMode = m) } }
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(label, color = if (sel) TahoPrimaryInk else TahoText, fontFamily = TahoSans, fontSize = 10.sp)
-                }
+                TahoChoiceChip(
+                    label = label,
+                    selected = sel,
+                    modifier = Modifier.weight(1f),
+                    description = "$label theme" + if (sel) ", selected" else "",
+                    onClick = { TahoBrowserStateStore.updateSettings { it.copy(themeMode = m) } },
+                )
             }
         }
 
@@ -483,18 +477,13 @@ private fun SettingsAppearancePage() {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(TahoToolbarPosition.BOTTOM to "Bottom (One-Handed)", TahoToolbarPosition.TOP to "Top (Classic)").forEach { (pos, label) ->
                 val sel = settings.toolbarPosition == pos
-                Box(
-                    modifier = Modifier
-                        .heightIn(min = TahoTouchTarget)
-                        .weight(1f)
-                        .clip(TahoPillShape)
-                        .background(if (sel) TahoGold else TahoSurfaceControl)
-                        .clickable { TahoBrowserStateStore.updateSettings { it.copy(toolbarPosition = pos) } }
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(label, color = if (sel) TahoPrimaryInk else TahoText, fontFamily = TahoSans, fontSize = 10.sp)
-                }
+                TahoChoiceChip(
+                    label = label,
+                    selected = sel,
+                    modifier = Modifier.weight(1f),
+                    description = "$label toolbar position" + if (sel) ", selected" else "",
+                    onClick = { TahoBrowserStateStore.updateSettings { it.copy(toolbarPosition = pos) } },
+                )
             }
         }
 
@@ -503,18 +492,13 @@ private fun SettingsAppearancePage() {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(TahoHomePageMode.START_PAGE to "Default Start Page", TahoHomePageMode.CUSTOM_URL to "Custom URL").forEach { (mode, label) ->
                 val sel = settings.homePageMode == mode
-                Box(
-                    modifier = Modifier
-                        .heightIn(min = TahoTouchTarget)
-                        .weight(1f)
-                        .clip(TahoPillShape)
-                        .background(if (sel) TahoGold else TahoSurfaceControl)
-                        .clickable { TahoBrowserStateStore.updateSettings { it.copy(homePageMode = mode) } }
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(label, color = if (sel) TahoPrimaryInk else TahoText, fontFamily = TahoSans, fontSize = 10.sp)
-                }
+                TahoChoiceChip(
+                    label = label,
+                    selected = sel,
+                    modifier = Modifier.weight(1f),
+                    description = "$label homepage mode" + if (sel) ", selected" else "",
+                    onClick = { TahoBrowserStateStore.updateSettings { it.copy(homePageMode = mode) } },
+                )
             }
         }
 
@@ -705,18 +689,13 @@ private fun SettingsPrivacySecurityPage() {
                 TahoTrackingProtectionLevel.CUSTOM to "Custom",
             ).forEach { (level, label) ->
                 val sel = settings.trackingProtectionLevel == level
-                Box(
-                    modifier = Modifier
-                        .heightIn(min = TahoTouchTarget)
-                        .weight(1f)
-                        .clip(TahoPillShape)
-                        .background(if (sel) TahoGold else TahoSurfaceControl)
-                        .clickable { TahoBrowserStateStore.updateSettings { it.copy(trackingProtectionLevel = level) } }
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(label, color = if (sel) TahoPrimaryInk else TahoText, fontFamily = TahoSans, fontSize = 9.5.sp)
-                }
+                TahoChoiceChip(
+                    label = label,
+                    selected = sel,
+                    modifier = Modifier.weight(1f),
+                    description = "$label tracking protection" + if (sel) ", selected" else "",
+                    onClick = { TahoBrowserStateStore.updateSettings { it.copy(trackingProtectionLevel = level) } },
+                )
             }
         }
 
@@ -755,18 +734,13 @@ private fun SettingsPrivacySecurityPage() {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(TahoSecureDns.CLOUDFLARE to "Cloudflare", TahoSecureDns.QUAD9 to "Quad9", TahoSecureDns.GOOGLE to "Google", TahoSecureDns.OFF to "System").forEach { (dns, label) ->
                 val sel = settings.secureDns == dns
-                Box(
-                    modifier = Modifier
-                        .heightIn(min = TahoTouchTarget)
-                        .weight(1f)
-                        .clip(TahoPillShape)
-                        .background(if (sel) TahoGold else TahoSurfaceControl)
-                        .clickable { TahoBrowserStateStore.updateSettings { it.copy(secureDns = dns) } }
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(label, color = if (sel) TahoPrimaryInk else TahoText, fontFamily = TahoSans, fontSize = 9.5.sp)
-                }
+                TahoChoiceChip(
+                    label = label,
+                    selected = sel,
+                    modifier = Modifier.weight(1f),
+                    description = "$label secure DNS" + if (sel) ", selected" else "",
+                    onClick = { TahoBrowserStateStore.updateSettings { it.copy(secureDns = dns) } },
+                )
             }
         }
 
@@ -783,7 +757,7 @@ private fun SettingsPrivacySecurityPage() {
         }
 
         Spacer(Modifier.height(16.dp))
-        SettingsSectionTitle("TRACKING PROTECTION EXCEPTIONS (${settings.perSiteTrackingExceptions.size})")
+        SettingsSectionTitle("Tracking protection exceptions (${settings.perSiteTrackingExceptions.size})")
         if (settings.perSiteTrackingExceptions.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -857,18 +831,13 @@ private fun SettingsClearDataPage(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf("HOUR" to "1 Hour", "24_HOURS" to "24 Hours", "7_DAYS" to "7 Days", "ALL_TIME" to "All Time").forEach { (key, label) ->
                 val sel = selectedTimeRange == key
-                Box(
-                    modifier = Modifier
-                        .heightIn(min = TahoTouchTarget)
-                        .weight(1f)
-                        .clip(TahoPillShape)
-                        .background(if (sel) TahoGold else TahoSurfaceControl)
-                        .clickable { selectedTimeRange = key }
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(label, color = if (sel) TahoPrimaryInk else TahoText, fontFamily = TahoSans, fontSize = 9.5.sp)
-                }
+                TahoChoiceChip(
+                    label = label,
+                    selected = sel,
+                    modifier = Modifier.weight(1f),
+                    description = "$label data-clearing range" + if (sel) ", selected" else "",
+                    onClick = { selectedTimeRange = key },
+                )
             }
         }
 
