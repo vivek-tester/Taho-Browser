@@ -369,7 +369,7 @@ fun TahoTabsOverviewSheet(
                                 Box(
                                     modifier = Modifier
                                         .clip(TahoPillShape)
-                                        .background(TahoGold.copy(alpha = 0.2f))
+                                        .background(TahoGoldWash)
                                         .clickable {
                                             TahoBrowserStateStore.restoreClosedTab(item.id)
                                             onRestoreClosedTab(item.url)
@@ -507,7 +507,7 @@ fun TahoTabsOverviewSheet(
                                 Box(
                                     modifier = Modifier
                                         .clip(TahoPillShape)
-                                        .background(TahoGold.copy(alpha = 0.2f))
+                                        .background(TahoGoldWash)
                                         .clickable {
                                             TahoBrowserStateStore.restoreArchivedTab(item.id)
                                             onRestoreClosedTab(item.url)
@@ -618,33 +618,13 @@ private fun TabGroupChip(
     isSelected: Boolean,
     onClick: () -> Unit,
 ) {
-    Box(
-        modifier = Modifier
-            .height(28.dp)
-            .clip(TahoPillShape)
-            .background(if (isSelected) color.copy(alpha = 0.2f) else TahoSurfaceControl)
-            .border(1.dp, if (isSelected) color else TahoHairline, TahoPillShape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(6.dp)
-                    .clip(CircleShape)
-                    .background(color)
-            )
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = name,
-                color = if (isSelected) color else TahoMuted,
-                fontFamily = TahoSans,
-                fontSize = 9.sp,
-                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-            )
-        }
-    }
+    TahoChoiceChip(
+        label = name,
+        selected = isSelected,
+        semanticColor = color,
+        description = "$name tab group" + if (isSelected) ", selected" else "",
+        onClick = onClick,
+    )
 }
 
 @Composable
@@ -661,7 +641,7 @@ private fun DetailedTabCard(
     onTogglePin: () -> Unit,
     canCloseOthers: Boolean,
 ) {
-    val borderColor = if (tab.selected) TahoGold.copy(alpha = 0.55f) else TahoHairline
+    val borderColor = if (tab.selected) TahoGold else TahoHairline
     val interaction = remember { MutableInteractionSource() }
 
     Column(
@@ -693,7 +673,7 @@ private fun DetailedTabCard(
                         Box(
                             modifier = Modifier
                                 .clip(TahoBadgeShape)
-                                .background(TahoInfo.copy(alpha = 0.18f))
+                                .background(TahoRaised)
                                 .padding(horizontal = 4.dp, vertical = 1.dp)
                         ) {
                             Text("PINNED", color = TahoInfo, fontFamily = TahoSans, fontSize = 7.5.sp)
@@ -704,7 +684,7 @@ private fun DetailedTabCard(
                         Box(
                             modifier = Modifier
                                 .clip(TahoBadgeShape)
-                                .background(TahoGold.copy(alpha = 0.2f))
+                                .background(TahoGoldWash)
                                 .padding(horizontal = 4.dp, vertical = 1.dp)
                         ) {
                             Text("PRIVATE", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 7.5.sp)
@@ -731,19 +711,14 @@ private fun DetailedTabCard(
                 )
             }
 
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(TahoPillShape)
-                    .clickable {
-                        if (isPinned) onTogglePin()
-                        onClose()
-                    }
-                    .semantics { role = Role.Button; contentDescription = "Close tab" },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("×", color = TahoMuted, fontSize = 18.sp)
-            }
+            TahoIconButton(
+                glyph = "×",
+                description = "Close tab",
+                onClick = {
+                    if (isPinned) onTogglePin()
+                    onClose()
+                },
+            )
         }
 
         Spacer(Modifier.height(8.dp))
@@ -782,22 +757,11 @@ private fun TabActionButton(
     color: Color = TahoMuted,
     onClick: () -> Unit,
 ) {
-    Box(
-        modifier = Modifier
-            .clip(TahoPillShape)
-            .background(TahoSurfaceControl)
-            .border(1.dp, TahoHairline, TahoPillShape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 3.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            color = color,
-            fontFamily = TahoSans,
-            fontSize = 8.5.sp,
-            maxLines = 1,
-        )
-    }
+    TahoActionButton(
+        label = label,
+        style = if (color == TahoError) TahoActionStyle.DESTRUCTIVE else TahoActionStyle.MINI,
+        trailingGlyph = null,
+        onClick = onClick,
+    )
 }
 
