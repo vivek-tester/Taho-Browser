@@ -1,14 +1,11 @@
 package app.taho.browser.shell
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,8 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,17 +23,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-@OptIn(ExperimentalLayoutApi::class)
+/**
+ * Overflow menu from TAHO_DESIGN_SYSTEM.md §8.
+ *
+ * The first level stays deliberately short and capture-oriented. Secondary
+ * browser tools live in Settings rather than turning this sheet into a feature
+ * directory.
+ */
 @Composable
 fun TahoBrowserMenuSheet(
     currentLocation: String?,
@@ -62,331 +61,291 @@ fun TahoBrowserMenuSheet(
     onZoomIn: () -> Unit = {},
     onZoomOut: () -> Unit = {},
     onZoomReset: () -> Unit = {},
-    onOpenSettings: (String?) -> Unit, // section tag or null for hub
+    onOpenSettings: (String?) -> Unit,
     onNewTab: () -> Unit,
     onNewPrivateTab: () -> Unit,
     onCloseMenu: () -> Unit,
+    captureCount: Int = 0,
+    onOpenCapture: () -> Unit = {},
+    onClearCapturedCalls: () -> Unit = {},
+    onOpenCaptureSettings: () -> Unit = {},
+    onReload: () -> Unit = {},
 ) {
-    val cleanLocation = currentLocation?.removePrefix("https://")?.removePrefix("http://") ?: "New Tab"
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .navigationBarsPadding()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(horizontal = 20.dp, vertical = 12.dp),
     ) {
-        // Page Info Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(TahoBlockShape)
-                .background(TahoSurfaceRow)
-                .border(1.dp, TahoHairline, TahoBlockShape)
-                .clickable {
-                    onCloseMenu()
-                    onSiteInfo()
-                }
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        BrowserMenuGroupTitle("Capture")
+        BrowserMenuRow(
+            icon = TahoIconName.OPEN_EXTERNAL,
+            label = "Send to Taho",
+            trailing = if (captureCount > 0) "$captureCount new" else null,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(TahoOk.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("🔒", fontSize = 12.sp)
-            }
-            Spacer(Modifier.width(10.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = currentTitle?.takeIf { it.isNotBlank() } ?: cleanLocation,
-                    color = TahoText,
-                    fontFamily = TahoSans,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 11.5.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = cleanLocation,
-                    color = TahoFaint,
-                    fontFamily = TahoSans,
-                    fontSize = 9.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Spacer(Modifier.width(6.dp))
-            Text("ⓘ Details", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 9.5.sp)
+            onCloseMenu()
+            onOpenCapture()
+        }
+        BrowserMenuDivider()
+        BrowserMenuRow(
+            icon = TahoIconName.CLEAR_DATA,
+            label = "Clear captured calls",
+        ) {
+            onCloseMenu()
+            onClearCapturedCalls()
+        }
+        BrowserMenuDivider()
+        BrowserMenuRow(
+            icon = TahoIconName.TUNE,
+            label = "Capture settings",
+        ) {
+            onCloseMenu()
+            onOpenCaptureSettings()
         }
 
-        Spacer(Modifier.height(14.dp))
-
-        // Quick Horizontal Icon Row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+        Spacer(Modifier.height(20.dp))
+        BrowserMenuGroupTitle("Page")
+        BrowserMenuRow(
+            icon = TahoIconName.RELOAD,
+            label = "Reload",
         ) {
-            MenuQuickAction(if (isBookmarked) "★" else "☆", if (isBookmarked) "Bookmarked" else "Bookmark", isBookmarked) {
-                onToggleBookmark()
-            }
-            MenuQuickAction("📖", "Reading", false) {
-                onCloseMenu()
-                onSaveToReadingList()
-            }
-            MenuQuickAction("↗", "Share", false) {
-                onCloseMenu()
-                onShare()
-            }
-            MenuQuickAction("⌕", "Find", false) {
-                onCloseMenu()
-                onFindInPage()
-            }
-            MenuQuickAction(if (isDesktopMode) "🖥✓" else "🖥", "Desktop", isDesktopMode) {
-                onToggleDesktopMode()
-            }
+            onCloseMenu()
+            onReload()
         }
-
-        Spacer(Modifier.height(14.dp))
-
-        // Page Zoom Controls
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(TahoBlockShape)
-                .background(TahoSurfaceRow)
-                .border(1.dp, TahoHairline, TahoBlockShape)
-                .padding(horizontal = 14.dp, vertical = 9.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+        BrowserMenuDivider()
+        BrowserMenuRow(
+            icon = if (isBookmarked) TahoIconName.BOOKMARK else TahoIconName.BOOKMARK_ADD,
+            label = if (isBookmarked) "Remove bookmark" else "Add bookmark",
         ) {
-            Text("Page Zoom", color = TahoText, fontFamily = TahoSans, fontSize = 11.sp)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clip(TahoPillShape)
-                        .background(TahoSurfaceControl)
-                        .clickable(onClick = onZoomOut)
-                        .semantics { role = Role.Button; contentDescription = "Zoom out" },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text("−", color = TahoText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                }
-                Box(
-                    modifier = Modifier
-                        .clip(TahoPillShape)
-                        .background(TahoSurfaceControl)
-                        .clickable(onClick = onZoomReset)
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text("$zoomPercent%", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-                }
-                Box(
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clip(TahoPillShape)
-                        .background(TahoSurfaceControl)
-                        .clickable(onClick = onZoomIn)
-                        .semantics { role = Role.Button; contentDescription = "Zoom in" },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text("+", color = TahoText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                }
-            }
+            onToggleBookmark()
         }
-
-        Spacer(Modifier.height(18.dp))
-
-        // Page Actions Section
-        Text(
-            text = "PAGE ACTIONS",
-            color = TahoFaint,
-            fontFamily = TahoSans,
-            fontSize = 9.5.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.8.sp,
+        BrowserMenuDivider()
+        BrowserMenuRow(
+            icon = TahoIconName.SHARE,
+            label = "Share",
+        ) {
+            onCloseMenu()
+            onShare()
+        }
+        BrowserMenuDivider()
+        BrowserMenuRow(
+            icon = TahoIconName.FIND,
+            label = "Find in page",
+        ) {
+            onCloseMenu()
+            onFindInPage()
+        }
+        BrowserMenuDivider()
+        BrowserMenuRow(
+            icon = TahoIconName.DESKTOP,
+            label = "Desktop site",
+            trailing = if (isDesktopMode) "On" else "Off",
+        ) {
+            onToggleDesktopMode()
+        }
+        BrowserMenuDivider()
+        PageZoomMenuRow(
+            zoomPercent = zoomPercent,
+            onZoomOut = onZoomOut,
+            onZoomReset = onZoomReset,
+            onZoomIn = onZoomIn,
         )
-        Spacer(Modifier.height(8.dp))
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(TahoCardShape)
-                .background(TahoSurfaceRow)
-                .border(1.dp, TahoHairline, TahoCardShape),
+        Spacer(Modifier.height(20.dp))
+        BrowserMenuGroupTitle("Browser")
+        BrowserMenuRow(
+            icon = TahoIconName.BOOKMARK,
+            label = "Bookmarks",
+            trailing = TahoBrowserStateStore.bookmarks.size.toString(),
         ) {
-            MenuItemRow("📑 Reader Mode", "Distraction-free readable view") {
-                onCloseMenu()
-                onReaderMode()
-            }
-            MenuItemDivider()
-            MenuItemRow("文A Translate Page", "Automatic inline translation") {
-                onCloseMenu()
-                onTranslate()
-            }
-            MenuItemDivider()
-            if (installableWebAppName != null) {
-                MenuItemRow(
-                    "⊞ Install Web App",
-                    "Install ${installableWebAppName.take(36)} in Taho's standalone PWA runtime",
-                ) {
-                    onCloseMenu()
-                    onInstallWebApp()
-                }
-            } else {
-                MenuItemRow("⊞ Add Page to Home Screen", "Create a launcher shortcut") {
-                    onCloseMenu()
-                    onAddToHomeScreen()
-                }
-            }
-            MenuItemDivider()
-            MenuItemRow("⎙ Print or Save as PDF", "Export page via Android print engine") {
-                onCloseMenu()
-                onPrintPage()
-            }
-            MenuItemDivider()
-            MenuItemRow("💾 Save Page for Offline Reading", "Store locally for offline use") {
-                onCloseMenu()
-                onSaveOffline()
-            }
+            onCloseMenu()
+            onOpenSettings("BOOKMARKS")
+        }
+        BrowserMenuDivider()
+        BrowserMenuRow(
+            icon = TahoIconName.HISTORY,
+            label = "History",
+        ) {
+            onCloseMenu()
+            onOpenSettings("HISTORY")
+        }
+        BrowserMenuDivider()
+        BrowserMenuRow(
+            icon = TahoIconName.DOWNLOAD,
+            label = "Downloads",
+            trailing = TahoBrowserStateStore.downloads.size.toString(),
+        ) {
+            onCloseMenu()
+            onOpenSettings("DOWNLOADS")
+        }
+        BrowserMenuDivider()
+        BrowserMenuRow(
+            icon = TahoIconName.SETTINGS,
+            label = "Settings",
+        ) {
+            onCloseMenu()
+            onOpenSettings(null)
         }
 
-        Spacer(Modifier.height(18.dp))
-
-        // Browser Management Section
-        Text(
-            text = "BROWSER HUBS",
-            color = TahoFaint,
-            fontFamily = TahoSans,
-            fontSize = 9.5.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.8.sp,
-        )
-        Spacer(Modifier.height(8.dp))
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(TahoCardShape)
-                .background(TahoSurfaceRow)
-                .border(1.dp, TahoHairline, TahoCardShape),
-        ) {
-            MenuItemRow("★ Bookmarks & Folders", "${TahoBrowserStateStore.bookmarks.size} saved links") {
-                onCloseMenu()
-                onOpenSettings("BOOKMARKS")
-            }
-            MenuItemDivider()
-            MenuItemRow("⏱ Browsing History", "Search, filter & restore closed tabs") {
-                onCloseMenu()
-                onOpenSettings("HISTORY")
-            }
-            MenuItemDivider()
-            MenuItemRow("↓ Download Manager", "${TahoBrowserStateStore.downloads.size} files tracked") {
-                onCloseMenu()
-                onOpenSettings("DOWNLOADS")
-            }
-            MenuItemDivider()
-            MenuItemRow("🔑 Password Manager & Autofill", "${TahoBrowserStateStore.savedPasswords.size} passwords stored") {
-                onCloseMenu()
-                onOpenSettings("PASSWORDS")
-            }
-            MenuItemDivider()
-            MenuItemRow("🧩 Extensions & Content Blockers", "${TahoBrowserStateStore.extensions.size} add-ons active") {
-                onCloseMenu()
-                onOpenSettings("EXTENSIONS")
-            }
-            MenuItemDivider()
-            MenuItemRow("⚙ Full Settings Hub", "Preferences, Privacy, Profiles & About") {
-                onCloseMenu()
-                onOpenSettings(null)
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
     }
 }
 
 @Composable
-private fun MenuQuickAction(
-    glyph: String,
+private fun BrowserMenuGroupTitle(text: String) {
+    Text(
+        text = text,
+        color = TahoMuted,
+        fontFamily = TahoSans,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Medium,
+        modifier = Modifier.padding(bottom = 4.dp),
+    )
+}
+
+@Composable
+private fun BrowserMenuRow(
+    icon: TahoIconName,
     label: String,
-    active: Boolean,
+    trailing: String? = null,
     onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    Column(
+    Row(
         modifier = Modifier
-            .width(62.dp)
-            .tahoPressScale(interaction)
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .fillMaxWidth()
+            .heightIn(min = 52.dp)
+            .tahoPressScale(interaction, .96f)
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                onClick = onClick,
+            ),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier
-                .size(46.dp)
-                .clip(RoundedCornerShape(13.dp))
-                .background(if (active) TahoGold.copy(alpha = 0.2f) else TahoSurfaceControl)
-                .border(1.dp, if (active) TahoGoldHi else TahoHairline, RoundedCornerShape(13.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(glyph, color = if (active) TahoGoldHi else TahoText, fontSize = 16.sp)
-        }
-        Spacer(Modifier.height(5.dp))
+        TahoIcon(
+            name = icon,
+            contentDescription = null,
+            tint = TahoMuted,
+            size = 20.dp,
+        )
+        Spacer(Modifier.width(12.dp))
         Text(
             text = label,
-            color = if (active) TahoGoldHi else TahoMuted,
+            modifier = Modifier.weight(1f),
+            color = TahoText,
             fontFamily = TahoSans,
-            fontSize = 9.sp,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Normal,
             maxLines = 1,
         )
+        trailing?.let {
+            Text(
+                text = it,
+                color = TahoMuted,
+                fontFamily = TahoSans,
+                fontSize = 12.sp,
+                maxLines = 1,
+            )
+        }
     }
 }
 
 @Composable
-private fun MenuItemRow(
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
+private fun PageZoomMenuRow(
+    zoomPercent: Int,
+    onZoomOut: () -> Unit,
+    onZoomReset: () -> Unit,
+    onZoomIn: () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .heightIn(min = 52.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        TahoIcon(
+            name = TahoIconName.SEARCH,
+            contentDescription = null,
+            tint = TahoMuted,
+            size = 20.dp,
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(
+            text = "Page zoom",
+            modifier = Modifier.weight(1f),
+            color = TahoText,
+            fontFamily = TahoSans,
+            fontSize = 14.sp,
+        )
+
+        ZoomIconButton(
+            icon = TahoIconName.REMOVE,
+            description = "Zoom out",
+            onClick = onZoomOut,
+        )
+        Box(
+            modifier = Modifier
+                .heightIn(min = 48.dp)
+                .clip(TahoPillShape)
+                .clickable(onClick = onZoomReset)
+                .padding(horizontal = 8.dp),
+            contentAlignment = Alignment.Center,
+        ) {
             Text(
-                text = title,
-                color = TahoText,
+                text = "$zoomPercent%",
+                color = TahoMuted,
                 fontFamily = TahoSans,
-                fontSize = 11.5.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
             )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = subtitle,
-                color = TahoFaint,
-                fontFamily = TahoSans,
-                fontSize = 9.sp,
-            )
         }
-        Text("›", color = TahoFaint, fontSize = 16.sp)
+        ZoomIconButton(
+            icon = TahoIconName.ADD,
+            description = "Zoom in",
+            onClick = onZoomIn,
+        )
     }
 }
 
 @Composable
-private fun MenuItemDivider() {
+private fun ZoomIconButton(
+    icon: TahoIconName,
+    description: String,
+    onClick: () -> Unit,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .tahoPressScale(interaction, .96f)
+            .semantics {
+                role = Role.Button
+                contentDescription = description
+            }
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        TahoIcon(
+            name = icon,
+            contentDescription = null,
+            tint = TahoMuted,
+            size = 20.dp,
+        )
+    }
+}
+
+@Composable
+private fun BrowserMenuDivider() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(1.dp)
-            .background(TahoHairline)
+            .background(TahoLine),
     )
 }
