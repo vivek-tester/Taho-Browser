@@ -893,7 +893,7 @@ private fun M7Response(request: M4CaptureRequestUiState) {
         M7Evidence("Response headers", request.responseHeadersCompleteness)
         M7Evidence("Response body", request.responseBodyCompleteness)
         M7HonestyNote(
-            "Response metadata may be available; response evidence is optional for Browser → Taho handoff.",
+            "Response metadata may be available; response evidence is optional for Browser to Taho handoff.",
         )
     }
 }
@@ -1681,7 +1681,7 @@ internal fun M7PrimaryButton(
         modifier = modifier,
         style = TahoActionStyle.PRIMARY,
         enabled = enabled,
-        trailingGlyph = if (showArrow) "↗" else null,
+        trailingGlyph = null,
         onClick = onClick,
     )
 }
