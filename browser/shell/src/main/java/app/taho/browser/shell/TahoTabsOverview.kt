@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -313,6 +314,9 @@ fun TahoTabsOverviewSheet(
             containerColor = TahoSheet,
             contentColor = TahoText,
             shape = TahoSheetShape,
+        tonalElevation = 0.dp,
+        scrimColor = MaterialTheme.colorScheme.scrim,
+        dragHandle = { TahoGrabHandle() },
         ) {
             Column(
                 modifier = Modifier
@@ -395,6 +399,9 @@ fun TahoTabsOverviewSheet(
             containerColor = TahoSheet,
             contentColor = TahoText,
             shape = TahoSheetShape,
+        tonalElevation = 0.dp,
+        scrimColor = MaterialTheme.colorScheme.scrim,
+        dragHandle = { TahoGrabHandle() },
         ) {
             Column(
                 modifier = Modifier
@@ -451,6 +458,9 @@ fun TahoTabsOverviewSheet(
             containerColor = TahoSheet,
             contentColor = TahoText,
             shape = TahoSheetShape,
+        tonalElevation = 0.dp,
+        scrimColor = MaterialTheme.colorScheme.scrim,
+        dragHandle = { TahoGrabHandle() },
         ) {
             Column(
                 modifier = Modifier
@@ -533,6 +543,9 @@ fun TahoTabsOverviewSheet(
             containerColor = TahoSheet,
             contentColor = TahoText,
             shape = TahoSheetShape,
+        tonalElevation = 0.dp,
+        scrimColor = MaterialTheme.colorScheme.scrim,
+        dragHandle = { TahoGrabHandle() },
         ) {
             Column(
                 modifier = Modifier
