@@ -150,37 +150,6 @@ internal fun TahoActionButton(
  * single outlined icon set; glyph text is never shown.
  */
 @Composable
-internal fun TahoIconButton(
-    glyph: String,
-    description: String,
-    modifier: Modifier = Modifier,
-    emphasized: Boolean = false,
-    destructive: Boolean = false,
-    onClick: () -> Unit,
-) {
-    val icon = when (description.lowercase()) {
-        "close", "dismiss", "cancel" -> TahoIconName.CLOSE
-        "back" -> TahoIconName.BACK
-        "forward" -> TahoIconName.FORWARD
-        "home" -> TahoIconName.HOME
-        "menu" -> TahoIconName.MORE
-        "search" -> TahoIconName.SEARCH
-        "settings" -> TahoIconName.SETTINGS
-        "reload" -> TahoIconName.RELOAD
-        "zoom in" -> TahoIconName.ADD
-        "zoom out" -> TahoIconName.REMOVE
-        else -> TahoIconName.INFO
-    }
-    TahoIconButton(
-        name = icon,
-        contentDescription = description,
-        modifier = modifier,
-        active = emphasized,
-        onClick = onClick,
-    )
-}
-
-@Composable
 internal fun TahoChoiceChip(
     label: String,
     selected: Boolean,
