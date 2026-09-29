@@ -210,7 +210,7 @@ fun TahoSettingsHubSheet(
                     Text(
                         text = "Taho Browser v0.1.0-release",
                         color = TahoFaint,
-                        fontFamily = TahoMono,
+                        fontFamily = TahoSans,
                         fontSize = 9.sp,
                     )
                 }
@@ -348,14 +348,14 @@ private fun SettingsMainIndex(onNavigateSub: (SettingsSubPage) -> Unit) {
                 Spacer(Modifier.width(8.dp))
                 Box(modifier = Modifier.weight(1f)) {
                     if (searchFilter.isEmpty()) {
-                        Text("Search settings…", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp)
+                        Text("Search settings…", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp)
                     }
                     BasicTextField(
                         value = searchFilter,
                         onValueChange = { searchFilter = it },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp),
+                        textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp),
                         cursorBrush = SolidColor(TahoGold),
                     )
                 }
@@ -384,9 +384,9 @@ private fun SettingsMainIndex(onNavigateSub: (SettingsSubPage) -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(title, color = TahoText, fontFamily = TahoMono, fontSize = 11.5.sp, fontWeight = FontWeight.Medium)
+                        Text(title, color = TahoText, fontFamily = TahoSans, fontSize = 11.5.sp, fontWeight = FontWeight.Medium)
                         Spacer(Modifier.height(2.dp))
-                        Text(subtitle, color = TahoFaint, fontFamily = TahoMono, fontSize = 9.sp)
+                        Text(subtitle, color = TahoFaint, fontFamily = TahoSans, fontSize = 9.sp)
                     }
                     Text("›", color = TahoFaint, fontSize = 16.sp)
                 }
@@ -420,7 +420,7 @@ private fun SettingsAppearancePage() {
                         .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, color = if (sel) TahoBg else TahoText, fontFamily = TahoMono, fontSize = 10.sp)
+                    Text(label, color = if (sel) TahoBg else TahoText, fontFamily = TahoSans, fontSize = 10.sp)
                 }
             }
         }
@@ -464,7 +464,7 @@ private fun SettingsAppearancePage() {
                         .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, color = if (sel) TahoBg else TahoText, fontFamily = TahoMono, fontSize = 10.sp)
+                    Text(label, color = if (sel) TahoBg else TahoText, fontFamily = TahoSans, fontSize = 10.sp)
                 }
             }
         }
@@ -483,7 +483,7 @@ private fun SettingsAppearancePage() {
                         .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, color = if (sel) TahoBg else TahoText, fontFamily = TahoMono, fontSize = 10.sp)
+                    Text(label, color = if (sel) TahoBg else TahoText, fontFamily = TahoSans, fontSize = 10.sp)
                 }
             }
         }
@@ -499,7 +499,7 @@ private fun SettingsAppearancePage() {
                     .background(TahoSurfaceControl)
                     .border(1.dp, TahoHairline, TahoBlockShape)
                     .padding(12.dp),
-                textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.5.sp),
+                textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.5.sp),
                 cursorBrush = SolidColor(TahoGold),
             )
         }
@@ -531,7 +531,7 @@ private fun SettingsSearchEnginePage() {
             Text(
                 text = "+ Add Engine",
                 color = TahoGoldHi,
-                fontFamily = TahoMono,
+                fontFamily = TahoSans,
                 fontSize = 10.sp,
                 modifier = Modifier
                     .clickable { showAddDialog = true }
@@ -553,16 +553,16 @@ private fun SettingsSearchEnginePage() {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                    Text(engine.iconGlyph, color = TahoGoldHi, fontFamily = TahoMono, fontSize = 13.sp)
+                    Text(engine.iconGlyph, color = TahoGoldHi, fontFamily = TahoSans, fontSize = 13.sp)
                     Spacer(Modifier.width(10.dp))
                     Column {
-                        Text(engine.name, color = TahoText, fontFamily = TahoMono, fontSize = 11.5.sp)
-                        Text(engine.queryUrl, color = TahoFaint, fontFamily = TahoMono, fontSize = 8.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(engine.name, color = TahoText, fontFamily = TahoSans, fontSize = 11.5.sp)
+                        Text(engine.queryUrl, color = TahoFaint, fontFamily = TahoSans, fontSize = 8.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (sel) {
-                        Text("✓ Active", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                        Text("✓ Active", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                     }
                     if (engines.size > 1 && !sel) {
                         Spacer(Modifier.width(10.dp))
@@ -600,9 +600,9 @@ private fun SettingsSearchEnginePage() {
                         .clip(TahoBlockShape)
                         .background(TahoSurfaceControl)
                         .padding(10.dp),
-                    textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp),
+                    textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp),
                     decorationBox = { innerTextField ->
-                        if (newEngineName.isEmpty()) Text("Engine Name (e.g. SearXNG)", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp)
+                        if (newEngineName.isEmpty()) Text("Engine Name (e.g. SearXNG)", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp)
                         innerTextField()
                     }
                 )
@@ -615,9 +615,9 @@ private fun SettingsSearchEnginePage() {
                         .clip(TahoBlockShape)
                         .background(TahoSurfaceControl)
                         .padding(10.dp),
-                    textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp),
+                    textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp),
                     decorationBox = { innerTextField ->
-                        if (newEngineQueryUrl.isEmpty()) Text("URL with %s (e.g. https://searx.org/search?q=%s)", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp)
+                        if (newEngineQueryUrl.isEmpty()) Text("URL with %s (e.g. https://searx.org/search?q=%s)", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp)
                         innerTextField()
                     }
                 )
@@ -679,7 +679,7 @@ private fun SettingsPrivacySecurityPage() {
                         .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, color = if (sel) TahoBg else TahoText, fontFamily = TahoMono, fontSize = 9.5.sp)
+                    Text(label, color = if (sel) TahoBg else TahoText, fontFamily = TahoSans, fontSize = 9.5.sp)
                 }
             }
         }
@@ -728,7 +728,7 @@ private fun SettingsPrivacySecurityPage() {
                         .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, color = if (sel) TahoBg else TahoText, fontFamily = TahoMono, fontSize = 9.5.sp)
+                    Text(label, color = if (sel) TahoBg else TahoText, fontFamily = TahoSans, fontSize = 9.5.sp)
                 }
             }
         }
@@ -756,7 +756,7 @@ private fun SettingsPrivacySecurityPage() {
                     .border(1.dp, TahoHairline, TahoBlockShape)
                     .padding(12.dp),
             ) {
-                Text("No tracking exceptions active. Zero-trust protection is enforced across all web origins.", color = TahoFaint, fontFamily = TahoMono, fontSize = 10.sp)
+                Text("No tracking exceptions active. Zero-trust protection is enforced across all web origins.", color = TahoFaint, fontFamily = TahoSans, fontSize = 10.sp)
             }
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -772,13 +772,13 @@ private fun SettingsPrivacySecurityPage() {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column {
-                            Text(domain, color = TahoText, fontFamily = TahoMono, fontSize = 11.sp)
-                            Text("Protection bypassed for this origin", color = TahoWarn, fontFamily = TahoMono, fontSize = 8.5.sp)
+                            Text(domain, color = TahoText, fontFamily = TahoSans, fontSize = 11.sp)
+                            Text("Protection bypassed for this origin", color = TahoWarn, fontFamily = TahoSans, fontSize = 8.5.sp)
                         }
                         Text(
                             text = "Remove",
                             color = TahoError,
-                            fontFamily = TahoMono,
+                            fontFamily = TahoSans,
                             fontSize = 9.5.sp,
                             modifier = Modifier
                                 .clickable { TahoBrowserStateStore.toggleTrackingException(domain) }
@@ -827,7 +827,7 @@ private fun SettingsClearDataPage(
                         .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, color = if (sel) TahoBg else TahoText, fontFamily = TahoMono, fontSize = 9.5.sp)
+                    Text(label, color = if (sel) TahoBg else TahoText, fontFamily = TahoSans, fontSize = 9.5.sp)
                 }
             }
         }
@@ -853,7 +853,7 @@ private fun SettingsClearDataPage(
                     .padding(12.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("✓ Browsing data cleared successfully", color = TahoOk, fontFamily = TahoMono, fontSize = 11.sp)
+                Text("✓ Browsing data cleared successfully", color = TahoOk, fontFamily = TahoSans, fontSize = 11.sp)
             }
             Spacer(Modifier.height(10.dp))
         }
@@ -869,7 +869,7 @@ private fun SettingsClearDataPage(
                 Text(
                     "Browser engine data could not be fully cleared.",
                     color = TahoError,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 11.sp,
                 )
             }
@@ -955,14 +955,14 @@ private fun SettingsBookmarksPage(
                 Spacer(Modifier.width(8.dp))
                 Box(modifier = Modifier.weight(1f)) {
                     if (bookmarkSearch.isEmpty()) {
-                        Text("Search saved pages…", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp)
+                        Text("Search saved pages…", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp)
                     }
                     BasicTextField(
                         value = bookmarkSearch,
                         onValueChange = { bookmarkSearch = it },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp),
+                        textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp),
                         cursorBrush = SolidColor(TahoGold),
                     )
                 }
@@ -990,7 +990,7 @@ private fun SettingsBookmarksPage(
                         .padding(vertical = 7.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, color = if (isSel) TahoBg else TahoText, fontFamily = TahoMono, fontSize = 9.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal)
+                    Text(label, color = if (isSel) TahoBg else TahoText, fontFamily = TahoSans, fontSize = 9.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal)
                 }
             }
         }
@@ -1018,7 +1018,7 @@ private fun SettingsBookmarksPage(
                             .clickable { selectedFolder = null }
                             .padding(horizontal = 7.dp, vertical = 3.dp),
                     ) {
-                        Text("All", color = if (allSel) TahoGoldHi else TahoMuted, fontFamily = TahoMono, fontSize = 8.5.sp)
+                        Text("All", color = if (allSel) TahoGoldHi else TahoMuted, fontFamily = TahoSans, fontSize = 8.5.sp)
                     }
                     folders.forEach { f ->
                         val fSel = selectedFolder == f.id
@@ -1030,7 +1030,7 @@ private fun SettingsBookmarksPage(
                                 .clickable { selectedFolder = f.id }
                                 .padding(horizontal = 7.dp, vertical = 3.dp),
                         ) {
-                            Text("📁 undefined", color = if (fSel) TahoGoldHi else TahoMuted, fontFamily = TahoMono, fontSize = 8.5.sp)
+                            Text("📁 undefined", color = if (fSel) TahoGoldHi else TahoMuted, fontFamily = TahoSans, fontSize = 8.5.sp)
                         }
                     }
                     Box(
@@ -1041,7 +1041,7 @@ private fun SettingsBookmarksPage(
                             .clickable { showAddFolderDialog = true }
                             .padding(horizontal = 6.dp, vertical = 3.dp),
                     ) {
-                        Text("+ Folder", color = TahoFaint, fontFamily = TahoMono, fontSize = 8.5.sp)
+                        Text("+ Folder", color = TahoFaint, fontFamily = TahoSans, fontSize = 8.5.sp)
                     }
                 }
 
@@ -1049,7 +1049,7 @@ private fun SettingsBookmarksPage(
                 Text(
                     text = "+ Add",
                     color = TahoGoldHi,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier
@@ -1074,13 +1074,13 @@ private fun SettingsBookmarksPage(
                         onValueChange = { newFolderName = it },
                         modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
                         singleLine = true,
-                        textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp),
+                        textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp),
                         decorationBox = { inner ->
-                            if (newFolderName.isEmpty()) Text("New Folder Name…", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp)
+                            if (newFolderName.isEmpty()) Text("New Folder Name…", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp)
                             inner()
                         }
                     )
-                    Text("Save", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 10.sp, modifier = Modifier.clickable {
+                    Text("Save", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 10.sp, modifier = Modifier.clickable {
                         if (newFolderName.isNotBlank()) {
                             TahoBrowserStateStore.addBookmarkFolder(newFolderName.trim())
                             newFolderName = ""
@@ -1107,9 +1107,9 @@ private fun SettingsBookmarksPage(
                         value = newBookmarkTitle,
                         onValueChange = { newBookmarkTitle = it },
                         modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp),
-                        textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp),
+                        textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp),
                         decorationBox = { inner ->
-                            if (newBookmarkTitle.isEmpty()) Text("Page Title", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp)
+                            if (newBookmarkTitle.isEmpty()) Text("Page Title", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp)
                             inner()
                         }
                     )
@@ -1118,9 +1118,9 @@ private fun SettingsBookmarksPage(
                         value = newBookmarkUrl,
                         onValueChange = { newBookmarkUrl = it },
                         modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp),
-                        textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp),
+                        textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp),
                         decorationBox = { inner ->
-                            if (newBookmarkUrl.isEmpty()) Text("https://example.com", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp)
+                            if (newBookmarkUrl.isEmpty()) Text("https://example.com", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp)
                             inner()
                         }
                     )
@@ -1129,9 +1129,9 @@ private fun SettingsBookmarksPage(
                         value = newBookmarkFolder,
                         onValueChange = { newBookmarkFolder = it },
                         modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp),
-                        textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp),
+                        textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp),
                         decorationBox = { inner ->
-                            if (newBookmarkFolder.isEmpty()) Text("Folder (Optional)", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp)
+                            if (newBookmarkFolder.isEmpty()) Text("Folder (Optional)", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp)
                             inner()
                         }
                     )
@@ -1162,7 +1162,7 @@ private fun SettingsBookmarksPage(
                     modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceRow).padding(16.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("No bookmarks found", color = TahoFaint, fontFamily = TahoMono, fontSize = 10.sp)
+                    Text("No bookmarks found", color = TahoFaint, fontFamily = TahoSans, fontSize = 10.sp)
                 }
             } else {
                 LazyColumn(
@@ -1183,7 +1183,7 @@ private fun SettingsBookmarksPage(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(item.title, color = TahoText, fontFamily = TahoMono, fontSize = 11.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(item.title, color = TahoText, fontFamily = TahoSans, fontSize = 11.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     item.folderId
                                         ?.let { folderId -> TahoBrowserStateStore.bookmarkFolders.firstOrNull { it.id == folderId } }
                                         ?.let { f ->
@@ -1194,11 +1194,11 @@ private fun SettingsBookmarksPage(
                                                 .background(TahoSurfaceControl)
                                                 .padding(horizontal = 5.dp, vertical = 1.dp)
                                         ) {
-                                            Text(f.name, color = TahoGoldHi, fontFamily = TahoMono, fontSize = 7.5.sp)
+                                            Text(f.name, color = TahoGoldHi, fontFamily = TahoSans, fontSize = 7.5.sp)
                                         }
                                     }
                                 }
-                                Text(item.url, color = TahoFaint, fontFamily = TahoMono, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(item.url, color = TahoFaint, fontFamily = TahoSans, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                             Text("×", color = TahoMuted, fontSize = 16.sp, modifier = Modifier.clickable { TahoBrowserStateStore.removeBookmark(item.id) }.padding(6.dp))
                         }
@@ -1211,7 +1211,7 @@ private fun SettingsBookmarksPage(
                     modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceRow).padding(16.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("No reading list items", color = TahoFaint, fontFamily = TahoMono, fontSize = 10.sp)
+                    Text("No reading list items", color = TahoFaint, fontFamily = TahoSans, fontSize = 10.sp)
                 }
             } else {
                 LazyColumn(
@@ -1231,11 +1231,11 @@ private fun SettingsBookmarksPage(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(item.title, color = if (item.isRead) TahoMuted else TahoText, fontFamily = TahoMono, fontSize = 11.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(if (item.isRead) "✓ Read" else "Unread · Cached offline", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 9.sp)
+                                Text(item.title, color = if (item.isRead) TahoMuted else TahoText, fontFamily = TahoSans, fontSize = 11.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(if (item.isRead) "✓ Read" else "Unread · Cached offline", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 9.sp)
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(if (item.isRead) "Unmark" else "Mark Read", color = TahoMuted, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable { TahoBrowserStateStore.toggleReadingListRead(item.id) }.padding(4.dp))
+                                Text(if (item.isRead) "Unmark" else "Mark Read", color = TahoMuted, fontFamily = TahoSans, fontSize = 9.sp, modifier = Modifier.clickable { TahoBrowserStateStore.toggleReadingListRead(item.id) }.padding(4.dp))
                                 Text("×", color = TahoMuted, fontSize = 16.sp, modifier = Modifier.clickable { TahoBrowserStateStore.removeReadingListItem(item.id) }.padding(4.dp))
                             }
                         }
@@ -1249,7 +1249,7 @@ private fun SettingsBookmarksPage(
                     modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceRow).padding(16.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("No offline saved pages", color = TahoFaint, fontFamily = TahoMono, fontSize = 10.sp)
+                    Text("No offline saved pages", color = TahoFaint, fontFamily = TahoSans, fontSize = 10.sp)
                 }
             } else {
                 LazyColumn(
@@ -1269,11 +1269,11 @@ private fun SettingsBookmarksPage(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(page.title, color = TahoText, fontFamily = TahoMono, fontSize = 11.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(page.title, color = TahoText, fontFamily = TahoSans, fontSize = 11.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text(
                                     "${page.url} · ${page.sizeBytes / 1024} KB PDF snapshot",
                                     color = TahoFaint,
-                                    fontFamily = TahoMono,
+                                    fontFamily = TahoSans,
                                     fontSize = 8.5.sp,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
@@ -1322,7 +1322,7 @@ private fun SettingsHistoryPage(onNavigate: (String) -> Unit) {
                         Text(
                             "Search browsing history…",
                             color = TahoFaint,
-                            fontFamily = TahoMono,
+                            fontFamily = TahoSans,
                             fontSize = 11.sp,
                         )
                     }
@@ -1331,7 +1331,7 @@ private fun SettingsHistoryPage(onNavigate: (String) -> Unit) {
                         onValueChange = { search = it },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp),
+                        textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp),
                         cursorBrush = SolidColor(TahoGold),
                     )
                 }
@@ -1355,8 +1355,8 @@ private fun SettingsHistoryPage(onNavigate: (String) -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("${history.size} visits recorded", color = TahoFaint, fontFamily = TahoMono, fontSize = 9.5.sp)
-            Text("Clear All", color = TahoError, fontFamily = TahoMono, fontSize = 9.5.sp, modifier = Modifier.clickable { TahoBrowserStateStore.clearAllHistory() })
+            Text("${history.size} visits recorded", color = TahoFaint, fontFamily = TahoSans, fontSize = 9.5.sp)
+            Text("Clear All", color = TahoError, fontFamily = TahoSans, fontSize = 9.5.sp, modifier = Modifier.clickable { TahoBrowserStateStore.clearAllHistory() })
         }
 
         Spacer(Modifier.height(10.dp))
@@ -1378,8 +1378,8 @@ private fun SettingsHistoryPage(onNavigate: (String) -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(entry.title, color = TahoText, fontFamily = TahoMono, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(entry.url, color = TahoFaint, fontFamily = TahoMono, fontSize = 8.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(entry.title, color = TahoText, fontFamily = TahoSans, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(entry.url, color = TahoFaint, fontFamily = TahoSans, fontSize = 8.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Text("×", color = TahoMuted, fontSize = 16.sp, modifier = Modifier.clickable { TahoBrowserStateStore.removeHistoryEntry(entry.id) }.padding(6.dp))
                 }
@@ -1419,7 +1419,7 @@ private fun SettingsDownloadsPage(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(dl.fileName, color = TahoText, fontFamily = TahoMono, fontSize = 11.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    Text(dl.fileName, color = TahoText, fontFamily = TahoSans, fontSize = 11.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     Box(
                         modifier = Modifier
                             .clip(TahoBadgeShape)
@@ -1436,7 +1436,7 @@ private fun SettingsDownloadsPage(
                             TahoDownloadStatus.DOWNLOADING -> TahoGoldHi
                             TahoDownloadStatus.PAUSED -> TahoWarn
                             else -> TahoError
-                        }, fontFamily = TahoMono, fontSize = 8.5.sp)
+                        }, fontFamily = TahoSans, fontSize = 8.5.sp)
                     }
                 }
 
@@ -1473,20 +1473,20 @@ private fun SettingsDownloadsPage(
                             "${dl.bytesDownloaded / 1024} KB downloaded"
                         },
                         color = TahoFaint,
-                        fontFamily = TahoMono,
+                        fontFamily = TahoSans,
                         fontSize = 9.sp,
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (dl.status == TahoDownloadStatus.DOWNLOADING || dl.status == TahoDownloadStatus.PAUSED) {
-                            Text(if (dl.status == TahoDownloadStatus.DOWNLOADING) "Pause" else "Resume", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable { onPauseResume(dl.id) })
-                            Text("Cancel", color = TahoError, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable { onCancel(dl.id) })
+                            Text(if (dl.status == TahoDownloadStatus.DOWNLOADING) "Pause" else "Resume", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 9.sp, modifier = Modifier.clickable { onPauseResume(dl.id) })
+                            Text("Cancel", color = TahoError, fontFamily = TahoSans, fontSize = 9.sp, modifier = Modifier.clickable { onCancel(dl.id) })
                         } else if (dl.status == TahoDownloadStatus.FAILED) {
-                            Text("Retry", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable { onRetry(dl) })
+                            Text("Retry", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 9.sp, modifier = Modifier.clickable { onRetry(dl) })
                         }
                         if (dl.status == TahoDownloadStatus.COMPLETED && dl.localPath != null) {
-                            Text("Open", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable { onOpen(dl) })
+                            Text("Open", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 9.sp, modifier = Modifier.clickable { onOpen(dl) })
                         }
-                        Text("Delete", color = TahoFaint, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable { onDelete(dl) })
+                        Text("Delete", color = TahoFaint, fontFamily = TahoSans, fontSize = 9.sp, modifier = Modifier.clickable { onDelete(dl) })
                     }
                 }
             }
@@ -1537,7 +1537,7 @@ private fun SettingsPasswordsPage(
                     .border(1.dp, TahoHairline, TahoBlockShape)
                     .padding(10.dp),
             ) {
-                Text(message, color = TahoMuted, fontFamily = TahoMono, fontSize = 9.5.sp)
+                Text(message, color = TahoMuted, fontFamily = TahoSans, fontSize = 9.5.sp)
             }
             Spacer(Modifier.height(10.dp))
         }
@@ -1556,14 +1556,14 @@ private fun SettingsPasswordsPage(
                 Spacer(Modifier.width(8.dp))
                 Box(modifier = Modifier.weight(1f)) {
                     if (search.isEmpty()) {
-                        Text("Search logins & credentials…", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp)
+                        Text("Search logins & credentials…", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp)
                     }
                     BasicTextField(
                         value = search,
                         onValueChange = { search = it },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp),
+                        textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp),
                         cursorBrush = SolidColor(TahoGold),
                     )
                 }
@@ -1580,12 +1580,12 @@ private fun SettingsPasswordsPage(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("${passwords.size} credentials stored", color = TahoFaint, fontFamily = TahoMono, fontSize = 9.5.sp)
+            Text("${passwords.size} credentials stored", color = TahoFaint, fontFamily = TahoSans, fontSize = 9.5.sp)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("+ Generate", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 9.5.sp, modifier = Modifier.clickable {
+                Text("+ Generate", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 9.5.sp, modifier = Modifier.clickable {
                     generatedPassword = TahoBrowserStateStore.generateStrongPassword(18)
                 })
-                Text("+ Add Login", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clickable {
+                Text("+ Add Login", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clickable {
                     showAddDialog = true
                 })
             }
@@ -1603,10 +1603,10 @@ private fun SettingsPasswordsPage(
             ) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Column {
-                        Text("GENERATED SECURE PASSWORD", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 8.5.sp)
-                        Text(generatedPassword, color = TahoText, fontFamily = TahoMono, fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                        Text("GENERATED SECURE PASSWORD", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 8.5.sp)
+                        Text(generatedPassword, color = TahoText, fontFamily = TahoSans, fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
                     }
-                    Text("Done", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 10.sp, modifier = Modifier.clickable { generatedPassword = "" })
+                    Text("Done", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 10.sp, modifier = Modifier.clickable { generatedPassword = "" })
                 }
             }
         }
@@ -1624,7 +1624,7 @@ private fun SettingsPasswordsPage(
                 Text(
                     "⚠️ Security Audit: ${reusedGroups.values.sumOf { it.size }} accounts share identical passwords. Reusing passwords increases compromise risk across breaches.",
                     color = TahoWarn,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 9.sp,
                 )
             }
@@ -1646,9 +1646,9 @@ private fun SettingsPasswordsPage(
                     value = newDomain,
                     onValueChange = { newDomain = it },
                     modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp),
-                    textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp),
+                    textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp),
                     decorationBox = { inner ->
-                        if (newDomain.isEmpty()) Text("Domain / Website (e.g. github.com)", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp)
+                        if (newDomain.isEmpty()) Text("Domain / Website (e.g. github.com)", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp)
                         inner()
                     }
                 )
@@ -1657,9 +1657,9 @@ private fun SettingsPasswordsPage(
                     value = newUsername,
                     onValueChange = { newUsername = it },
                     modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp),
-                    textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp),
+                    textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp),
                     decorationBox = { inner ->
-                        if (newUsername.isEmpty()) Text("Username / Email", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp)
+                        if (newUsername.isEmpty()) Text("Username / Email", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp)
                         inner()
                     }
                 )
@@ -1669,14 +1669,14 @@ private fun SettingsPasswordsPage(
                         value = newPassword,
                         onValueChange = { newPassword = it },
                         modifier = Modifier.weight(1f).clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp),
-                        textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp),
+                        textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp),
                         decorationBox = { inner ->
-                            if (newPassword.isEmpty()) Text("Password", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp)
+                            if (newPassword.isEmpty()) Text("Password", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp)
                             inner()
                         }
                     )
                     Spacer(Modifier.width(6.dp))
-                    Text("Gen", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 10.sp, modifier = Modifier.clickable {
+                    Text("Gen", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 10.sp, modifier = Modifier.clickable {
                         newPassword = TahoBrowserStateStore.generateStrongPassword(18)
                     }.padding(4.dp))
                 }
@@ -1710,14 +1710,14 @@ private fun SettingsPasswordsPage(
                     value = editUsername,
                     onValueChange = { editUsername = it },
                     modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp),
-                    textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp),
+                    textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp),
                 )
                 Spacer(Modifier.height(6.dp))
                 BasicTextField(
                     value = editPassword,
                     onValueChange = { editPassword = it },
                     modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp),
-                    textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp),
+                    textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp),
                 )
                 Spacer(Modifier.height(10.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1747,30 +1747,30 @@ private fun SettingsPasswordsPage(
                         .padding(14.dp),
                 ) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(pw.domain, color = TahoText, fontFamily = TahoMono, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text(pw.domain, color = TahoText, fontFamily = TahoSans, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             if (pw.isCompromised) {
-                                Text("⚠️ COMPROMISED", color = TahoError, fontFamily = TahoMono, fontSize = 8.sp)
+                                Text("⚠️ COMPROMISED", color = TahoError, fontFamily = TahoSans, fontSize = 8.sp)
                             } else if (pw.isWeak) {
-                                Text("⚠️ WEAK", color = TahoWarn, fontFamily = TahoMono, fontSize = 8.sp)
+                                Text("⚠️ WEAK", color = TahoWarn, fontFamily = TahoSans, fontSize = 8.sp)
                             }
                             if (isReused) {
-                                Text("⚠️ REUSED", color = TahoWarn, fontFamily = TahoMono, fontSize = 8.sp)
+                                Text("⚠️ REUSED", color = TahoWarn, fontFamily = TahoSans, fontSize = 8.sp)
                             }
                         }
                     }
                     Spacer(Modifier.height(4.dp))
-                    Text("User: ${pw.username}", color = TahoMuted, fontFamily = TahoMono, fontSize = 10.sp)
+                    Text("User: ${pw.username}", color = TahoMuted, fontFamily = TahoSans, fontSize = 10.sp)
                     Spacer(Modifier.height(4.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = if (isRevealed) pw.password else "••••••••••••",
                             color = if (isRevealed) TahoGoldHi else TahoFaint,
-                            fontFamily = TahoMono,
+                            fontFamily = TahoSans,
                             fontSize = 11.sp,
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(if (isRevealed) "Hide" else "Reveal", color = TahoMuted, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable {
+                            Text(if (isRevealed) "Hide" else "Reveal", color = TahoMuted, fontFamily = TahoSans, fontSize = 9.sp, modifier = Modifier.clickable {
                                 if (isRevealed) {
                                     revealedId = null
                                 } else if (TahoBrowserStateStore.settings.biometricLockForPasswords) {
@@ -1784,7 +1784,7 @@ private fun SettingsPasswordsPage(
                             Text(
                                 if (pw.isCompromised) "Breached" else "Check Breach",
                                 color = if (pw.isCompromised) TahoError else TahoMuted,
-                                fontFamily = TahoMono,
+                                fontFamily = TahoSans,
                                 fontSize = 9.sp,
                                 modifier = Modifier.clickable {
                                     breachStatus = "Checking ${pw.domain}…"
@@ -1806,12 +1806,12 @@ private fun SettingsPasswordsPage(
                                 },
                             )
                             Spacer(Modifier.width(10.dp))
-                            Text("Edit", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable {
+                            Text("Edit", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 9.sp, modifier = Modifier.clickable {
                                 editingCredentialId = pw.id
                                 editUsername = pw.username
                                 editPassword = pw.password
                             })
-                            Text("Delete", color = TahoError, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable {
+                            Text("Delete", color = TahoError, fontFamily = TahoSans, fontSize = 9.sp, modifier = Modifier.clickable {
                                 TahoBrowserStateStore.removeSavedPassword(pw.id)
                             })
                         }
@@ -1865,7 +1865,7 @@ private fun SettingsAutofillPage() {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             SettingsSectionTitle("SAVED ADDRESSES (${addresses.size})")
-            Text("+ Add Address", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 9.5.sp, modifier = Modifier.clickable { showAddAddress = true })
+            Text("+ Add Address", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 9.5.sp, modifier = Modifier.clickable { showAddAddress = true })
         }
 
         if (showAddAddress) {
@@ -1880,16 +1880,16 @@ private fun SettingsAutofillPage() {
             ) {
                 Text("Add Address", color = TahoGoldHi, fontFamily = TahoDisplay, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(6.dp))
-                BasicTextField(value = addrLabel, onValueChange = { addrLabel = it }, modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp), decorationBox = { if (addrLabel.isEmpty()) Text("Label (e.g. Home, Office)", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp); it() })
+                BasicTextField(value = addrLabel, onValueChange = { addrLabel = it }, modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp), decorationBox = { if (addrLabel.isEmpty()) Text("Label (e.g. Home, Office)", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp); it() })
                 Spacer(Modifier.height(6.dp))
-                BasicTextField(value = addrFullName, onValueChange = { addrFullName = it }, modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp), decorationBox = { if (addrFullName.isEmpty()) Text("Full Name", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp); it() })
+                BasicTextField(value = addrFullName, onValueChange = { addrFullName = it }, modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp), decorationBox = { if (addrFullName.isEmpty()) Text("Full Name", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp); it() })
                 Spacer(Modifier.height(6.dp))
-                BasicTextField(value = addrStreet, onValueChange = { addrStreet = it }, modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp), decorationBox = { if (addrStreet.isEmpty()) Text("Street Address", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp); it() })
+                BasicTextField(value = addrStreet, onValueChange = { addrStreet = it }, modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp), decorationBox = { if (addrStreet.isEmpty()) Text("Street Address", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp); it() })
                 Spacer(Modifier.height(6.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    BasicTextField(value = addrCity, onValueChange = { addrCity = it }, modifier = Modifier.weight(1f).clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp), decorationBox = { if (addrCity.isEmpty()) Text("City", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp); it() })
-                    BasicTextField(value = addrState, onValueChange = { addrState = it }, modifier = Modifier.weight(0.5f).clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp), decorationBox = { if (addrState.isEmpty()) Text("State", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp); it() })
-                    BasicTextField(value = addrZip, onValueChange = { addrZip = it }, modifier = Modifier.weight(0.6f).clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp), decorationBox = { if (addrZip.isEmpty()) Text("Zip", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp); it() })
+                    BasicTextField(value = addrCity, onValueChange = { addrCity = it }, modifier = Modifier.weight(1f).clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp), decorationBox = { if (addrCity.isEmpty()) Text("City", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp); it() })
+                    BasicTextField(value = addrState, onValueChange = { addrState = it }, modifier = Modifier.weight(0.5f).clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp), decorationBox = { if (addrState.isEmpty()) Text("State", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp); it() })
+                    BasicTextField(value = addrZip, onValueChange = { addrZip = it }, modifier = Modifier.weight(0.6f).clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp), decorationBox = { if (addrZip.isEmpty()) Text("Zip", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp); it() })
                 }
                 Spacer(Modifier.height(10.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1923,10 +1923,10 @@ private fun SettingsAutofillPage() {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(addr.label, color = TahoGoldHi, fontFamily = TahoMono, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                    Text(addr.label, color = TahoGoldHi, fontFamily = TahoSans, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(2.dp))
-                    Text(addr.fullName, color = TahoText, fontFamily = TahoMono, fontSize = 11.sp)
-                    Text("${addr.street}, ${addr.city}, ${addr.state} ${addr.zipCode}", color = TahoMuted, fontFamily = TahoMono, fontSize = 9.sp)
+                    Text(addr.fullName, color = TahoText, fontFamily = TahoSans, fontSize = 11.sp)
+                    Text("${addr.street}, ${addr.city}, ${addr.state} ${addr.zipCode}", color = TahoMuted, fontFamily = TahoSans, fontSize = 9.sp)
                 }
                 Text("×", color = TahoMuted, fontSize = 16.sp, modifier = Modifier.clickable {
                     TahoBrowserStateStore.removeSavedAddress(addr.id)
@@ -1942,7 +1942,7 @@ private fun SettingsAutofillPage() {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             SettingsSectionTitle("SAVED PAYMENT METHODS (${payments.size})")
-            Text("+ Add Card", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 9.5.sp, modifier = Modifier.clickable { showAddPayment = true })
+            Text("+ Add Card", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 9.5.sp, modifier = Modifier.clickable { showAddPayment = true })
         }
 
         if (showAddPayment) {
@@ -1957,13 +1957,13 @@ private fun SettingsAutofillPage() {
             ) {
                 Text("Add Payment Card", color = TahoGoldHi, fontFamily = TahoDisplay, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(6.dp))
-                BasicTextField(value = payHolder, onValueChange = { payHolder = it }, modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp), decorationBox = { if (payHolder.isEmpty()) Text("Cardholder Name", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp); it() })
+                BasicTextField(value = payHolder, onValueChange = { payHolder = it }, modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp), decorationBox = { if (payHolder.isEmpty()) Text("Cardholder Name", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp); it() })
                 Spacer(Modifier.height(6.dp))
-                BasicTextField(value = payNumber, onValueChange = { payNumber = it }, modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp), decorationBox = { if (payNumber.isEmpty()) Text("Card Number", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp); it() })
+                BasicTextField(value = payNumber, onValueChange = { payNumber = it }, modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp), decorationBox = { if (payNumber.isEmpty()) Text("Card Number", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp); it() })
                 Spacer(Modifier.height(6.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    BasicTextField(value = payExpiry, onValueChange = { payExpiry = it }, modifier = Modifier.weight(1f).clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp), decorationBox = { if (payExpiry.isEmpty()) Text("MM/YY", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp); it() })
-                    BasicTextField(value = payType, onValueChange = { payType = it }, modifier = Modifier.weight(1f).clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp), decorationBox = { if (payType.isEmpty()) Text("Card Type (Visa/MC)", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp); it() })
+                    BasicTextField(value = payExpiry, onValueChange = { payExpiry = it }, modifier = Modifier.weight(1f).clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp), decorationBox = { if (payExpiry.isEmpty()) Text("MM/YY", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp); it() })
+                    BasicTextField(value = payType, onValueChange = { payType = it }, modifier = Modifier.weight(1f).clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp), textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp), decorationBox = { if (payType.isEmpty()) Text("Card Type (Visa/MC)", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp); it() })
                 }
                 Spacer(Modifier.height(10.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1995,8 +1995,8 @@ private fun SettingsAutofillPage() {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(pay.cardHolder, color = TahoText, fontFamily = TahoMono, fontSize = 11.sp)
-                    Text("${pay.cardType} · ${TahoBrowserStateStore.maskedPaymentNumber(pay)} (Exp: ${pay.cardExpiry})", color = TahoMuted, fontFamily = TahoMono, fontSize = 9.sp)
+                    Text(pay.cardHolder, color = TahoText, fontFamily = TahoSans, fontSize = 11.sp)
+                    Text("${pay.cardType} · ${TahoBrowserStateStore.maskedPaymentNumber(pay)} (Exp: ${pay.cardExpiry})", color = TahoMuted, fontFamily = TahoSans, fontSize = 9.sp)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("💳", fontSize = 14.sp)
@@ -2045,17 +2045,17 @@ private fun SettingsProfilesSyncPage(
                     Text(profile.avatarGlyph, fontSize = 16.sp)
                     Spacer(Modifier.width(10.dp))
                     Column {
-                        Text(profile.name, color = TahoText, fontFamily = TahoMono, fontSize = 11.5.sp)
+                        Text(profile.name, color = TahoText, fontFamily = TahoSans, fontSize = 11.5.sp)
                         Text(
                             if (profile.isGuest) "Guest profile" else "Local profile metadata",
                             color = TahoFaint,
-                            fontFamily = TahoMono,
+                            fontFamily = TahoSans,
                             fontSize = 8.5.sp,
                         )
                     }
                 }
                 if (profile.isActive) {
-                    Text("✓ Active", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                    Text("✓ Active", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
             Spacer(Modifier.height(6.dp))
@@ -2076,7 +2076,7 @@ private fun SettingsProfilesSyncPage(
                     .border(1.dp, TahoHairline, TahoBlockShape)
                     .padding(horizontal = 10.dp, vertical = 8.dp),
                 singleLine = true,
-                textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 10.sp),
+                textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 10.sp),
                 cursorBrush = SolidColor(TahoGold),
                 decorationBox = { inner ->
                     Box {
@@ -2084,7 +2084,7 @@ private fun SettingsProfilesSyncPage(
                             Text(
                                 "New local profile name",
                                 color = TahoFaint,
-                                fontFamily = TahoMono,
+                                fontFamily = TahoSans,
                                 fontSize = 9.5.sp,
                             )
                         }
@@ -2103,7 +2103,7 @@ private fun SettingsProfilesSyncPage(
         Text(
             "Normal profiles isolate Taho history/passwords and Gecko site storage. Guest is ephemeral and is never restored after app restart.",
             color = TahoFaint,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 8.5.sp,
         )
 
@@ -2128,7 +2128,7 @@ private fun SettingsProfilesSyncPage(
                 Text(
                     "Bookmarks, history, passwords, open tabs, settings and device-to-device tab sending remain local until a real authenticated sync backend is connected.",
                     color = TahoMuted,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 9.5.sp,
                 )
             }
@@ -2149,10 +2149,10 @@ private fun SettingsProfilesSyncPage(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column {
-                        Text(dev.name, color = TahoText, fontFamily = TahoMono, fontSize = 11.sp)
-                        Text("Type: ${dev.deviceType}", color = TahoFaint, fontFamily = TahoMono, fontSize = 9.sp)
+                        Text(dev.name, color = TahoText, fontFamily = TahoSans, fontSize = 11.sp)
+                        Text("Type: ${dev.deviceType}", color = TahoFaint, fontFamily = TahoSans, fontSize = 9.sp)
                     }
-                    Text("Read only", color = TahoFaint, fontFamily = TahoMono, fontSize = 9.sp)
+                    Text("Read only", color = TahoFaint, fontFamily = TahoSans, fontSize = 9.sp)
                 }
                 Spacer(Modifier.height(6.dp))
             }
@@ -2194,7 +2194,7 @@ private fun SettingsExtensionsPage(
         Text(
             "Installed extensions below come directly from GeckoView. New packages are validated and must be Mozilla-signed before Gecko installs them.",
             color = TahoMuted,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 9.5.sp,
         )
         Spacer(Modifier.height(10.dp))
@@ -2234,7 +2234,7 @@ private fun SettingsExtensionsPage(
                 Text(
                     "Results come from addons.mozilla.org. Gecko still verifies the signed XPI and shows its permission request before installation.",
                     color = TahoFaint,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 8.5.sp,
                 )
                 Spacer(Modifier.height(8.dp))
@@ -2254,7 +2254,7 @@ private fun SettingsExtensionsPage(
                         singleLine = true,
                         textStyle = TextStyle(
                             color = TahoText,
-                            fontFamily = TahoMono,
+                            fontFamily = TahoSans,
                             fontSize = 10.sp,
                         ),
                         cursorBrush = SolidColor(TahoGold),
@@ -2264,7 +2264,7 @@ private fun SettingsExtensionsPage(
                                     Text(
                                         "Search public Android extensions…",
                                         color = TahoFaint,
-                                        fontFamily = TahoMono,
+                                        fontFamily = TahoSans,
                                         fontSize = 9.5.sp,
                                     )
                                 }
@@ -2293,7 +2293,7 @@ private fun SettingsExtensionsPage(
                     Text(
                         error,
                         color = TahoError,
-                        fontFamily = TahoMono,
+                        fontFamily = TahoSans,
                         fontSize = 8.5.sp,
                     )
                 }
@@ -2303,7 +2303,7 @@ private fun SettingsExtensionsPage(
                     Text(
                         "Search to load public extensions.",
                         color = TahoFaint,
-                        fontFamily = TahoMono,
+                        fontFamily = TahoSans,
                         fontSize = 8.5.sp,
                     )
                 }
@@ -2326,14 +2326,14 @@ private fun SettingsExtensionsPage(
                                 Text(
                                     item.name,
                                     color = TahoText,
-                                    fontFamily = TahoMono,
+                                    fontFamily = TahoSans,
                                     fontSize = 10.5.sp,
                                     fontWeight = FontWeight.SemiBold,
                                 )
                                 Text(
                                     "v" + item.version + " · " + item.author,
                                     color = TahoFaint,
-                                    fontFamily = TahoMono,
+                                    fontFamily = TahoSans,
                                     fontSize = 8.sp,
                                 )
                             }
@@ -2346,7 +2346,7 @@ private fun SettingsExtensionsPage(
                             Text(
                                 item.summary,
                                 color = TahoMuted,
-                                fontFamily = TahoMono,
+                                fontFamily = TahoSans,
                                 fontSize = 8.5.sp,
                                 maxLines = 3,
                                 overflow = TextOverflow.Ellipsis,
@@ -2361,7 +2361,7 @@ private fun SettingsExtensionsPage(
                             Text(
                                 metadata,
                                 color = TahoFaint,
-                                fontFamily = TahoMono,
+                                fontFamily = TahoSans,
                                 fontSize = 8.sp,
                             )
                         }
@@ -2383,7 +2383,7 @@ private fun SettingsExtensionsPage(
             singleLine = true,
             textStyle = TextStyle(
                 color = TahoText,
-                fontFamily = TahoMono,
+                fontFamily = TahoSans,
                 fontSize = 10.sp,
             ),
             cursorBrush = SolidColor(TahoGold),
@@ -2393,7 +2393,7 @@ private fun SettingsExtensionsPage(
                         Text(
                             "https://…/addon.xpi",
                             color = TahoFaint,
-                            fontFamily = TahoMono,
+                            fontFamily = TahoSans,
                             fontSize = 10.sp,
                         )
                     }
@@ -2425,7 +2425,7 @@ private fun SettingsExtensionsPage(
                 Text(
                     "No user-visible Gecko extensions are installed.",
                     color = TahoFaint,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 10.sp,
                 )
             }
@@ -2449,14 +2449,14 @@ private fun SettingsExtensionsPage(
                         Text(
                             ext.name,
                             color = TahoText,
-                            fontFamily = TahoMono,
+                            fontFamily = TahoSans,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
                         Text(
                             "v${ext.version} by ${ext.author}",
                             color = TahoFaint,
-                            fontFamily = TahoMono,
+                            fontFamily = TahoSans,
                             fontSize = 8.5.sp,
                         )
                     }
@@ -2470,7 +2470,7 @@ private fun SettingsExtensionsPage(
                         Text(
                             if (ext.isEnabled) "ACTIVE" else "DISABLED",
                             color = if (ext.isEnabled) TahoBg else TahoFaint,
-                            fontFamily = TahoMono,
+                            fontFamily = TahoSans,
                             fontSize = 8.5.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -2482,7 +2482,7 @@ private fun SettingsExtensionsPage(
                     Text(
                         ext.description,
                         color = TahoMuted,
-                        fontFamily = TahoMono,
+                        fontFamily = TahoSans,
                         fontSize = 9.5.sp,
                     )
                 }
@@ -2492,7 +2492,7 @@ private fun SettingsExtensionsPage(
                     Text(
                         "Permissions: " + ext.permissions.take(6).joinToString(", "),
                         color = TahoFaint,
-                        fontFamily = TahoMono,
+                        fontFamily = TahoSans,
                         fontSize = 8.5.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -2507,7 +2507,7 @@ private fun SettingsExtensionsPage(
                     Text(
                         if (ext.allowedInPrivate) "Private: Allowed" else "Private: Blocked",
                         color = TahoGoldHi,
-                        fontFamily = TahoMono,
+                        fontFamily = TahoSans,
                         fontSize = 8.5.sp,
                         modifier = Modifier.clickable {
                             onSetPrivate(ext.id, !ext.allowedInPrivate)
@@ -2516,14 +2516,14 @@ private fun SettingsExtensionsPage(
                     Text(
                         "Check Update",
                         color = TahoMuted,
-                        fontFamily = TahoMono,
+                        fontFamily = TahoSans,
                         fontSize = 8.5.sp,
                         modifier = Modifier.clickable { onUpdate(ext.id) },
                     )
                     Text(
                         "Uninstall",
                         color = TahoError,
-                        fontFamily = TahoMono,
+                        fontFamily = TahoSans,
                         fontSize = 8.5.sp,
                         modifier = Modifier.clickable { onUninstall(ext.id) },
                     )
@@ -2546,7 +2546,7 @@ private fun SettingsExtensionsPage(
                 Text(
                     "No Taho web apps installed. Install is offered only when Gecko validates a Web App Manifest for the current page.",
                     color = TahoFaint,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 10.sp,
                 )
             }
@@ -2566,14 +2566,14 @@ private fun SettingsExtensionsPage(
                         Text(
                             pwa.name,
                             color = TahoText,
-                            fontFamily = TahoMono,
+                            fontFamily = TahoSans,
                             fontSize = 11.5.sp,
                             fontWeight = FontWeight.Medium,
                         )
                         Text(
                             pwa.url,
                             color = TahoFaint,
-                            fontFamily = TahoMono,
+                            fontFamily = TahoSans,
                             fontSize = 8.5.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -2582,7 +2582,7 @@ private fun SettingsExtensionsPage(
                     Text(
                         "Installed",
                         color = TahoOk,
-                        fontFamily = TahoMono,
+                        fontFamily = TahoSans,
                         fontSize = 9.sp,
                     )
                 }
@@ -2648,7 +2648,7 @@ private fun SettingsLanguagesPage() {
                 .background(TahoSurfaceControl)
                 .padding(12.dp),
         ) {
-            Text(settings.browserLanguage, color = TahoText, fontFamily = TahoMono, fontSize = 11.sp)
+            Text(settings.browserLanguage, color = TahoText, fontFamily = TahoSans, fontSize = 11.sp)
         }
 
         Spacer(Modifier.height(16.dp))
@@ -2660,7 +2660,7 @@ private fun SettingsLanguagesPage() {
                 .background(TahoSurfaceControl)
                 .padding(12.dp),
         ) {
-            Text(settings.preferredWebLanguage, color = TahoText, fontFamily = TahoMono, fontSize = 11.sp)
+            Text(settings.preferredWebLanguage, color = TahoText, fontFamily = TahoSans, fontSize = 11.sp)
         }
 
         Spacer(Modifier.height(16.dp))
@@ -2697,7 +2697,7 @@ private fun SettingsDefaultBrowserPage() {
                 Text(
                     "Choose Taho as Android's web browser and control which verified links may open directly in it.",
                     color = TahoMuted,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 10.sp,
                 )
                 Spacer(Modifier.height(14.dp))
@@ -2781,11 +2781,11 @@ private fun SettingsPerformanceMediaPage() {
                     Text(
                         text = label,
                         color = if (selected) TahoGoldHi else TahoText,
-                        fontFamily = TahoMono,
+                        fontFamily = TahoSans,
                         fontSize = 10.sp,
                     )
                     if (selected) {
-                        Text("✓", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 10.sp)
+                        Text("✓", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 10.sp)
                     }
                 }
             }
@@ -2801,7 +2801,7 @@ private fun SettingsPerformanceMediaPage() {
                 singleLine = true,
                 textStyle = TextStyle(
                     color = TahoText,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 10.5.sp,
                 ),
                 cursorBrush = SolidColor(TahoGold),
@@ -2817,7 +2817,7 @@ private fun SettingsPerformanceMediaPage() {
                             Text(
                                 "https://example.com",
                                 color = TahoFaint,
-                                fontFamily = TahoMono,
+                                fontFamily = TahoSans,
                                 fontSize = 10.5.sp,
                             )
                         }
@@ -2856,7 +2856,7 @@ private fun SettingsPerformanceMediaPage() {
                     Text(
                         text = label,
                         color = if (selected) TahoBg else TahoText,
-                        fontFamily = TahoMono,
+                        fontFamily = TahoSans,
                         fontSize = 9.5.sp,
                     )
                 }
@@ -2865,7 +2865,7 @@ private fun SettingsPerformanceMediaPage() {
         Text(
             text = "Pinned tabs are excluded from automatic cleanup.",
             color = TahoFaint,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 8.5.sp,
             modifier = Modifier.padding(top = 6.dp),
         )
@@ -2950,7 +2950,7 @@ private fun SettingsStorageUsagePage() {
         Text(
             "These numbers are read from Taho's app-private files. Capture storage is managed by its own Room/file layer and is not merged into this browser subtotal.",
             color = TahoFaint,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 9.5.sp,
         )
 
@@ -2967,7 +2967,7 @@ private fun SettingsStorageUsagePage() {
             Text(
                 "Exact cache, cookie, IndexedDB, service-worker and per-origin byte totals are not exposed through the current GeckoView storage APIs used by Taho. They are therefore shown as unavailable rather than estimated.",
                 color = TahoMuted,
-                fontFamily = TahoMono,
+                fontFamily = TahoSans,
                 fontSize = 9.5.sp,
             )
         }
@@ -3019,7 +3019,7 @@ private fun SettingsDiagnosticsPage() {
         Text(
             "No crash-report upload backend is connected in this build. The preference is stored locally only.",
             color = TahoFaint,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 9.5.sp,
         )
         SettingsToggleRow(
@@ -3043,7 +3043,7 @@ private fun SettingsDiagnosticsPage() {
                 Text(
                     "Clear All",
                     color = TahoError,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 9.5.sp,
                     modifier = Modifier.clickable {
                         TahoBrowserStateStore.clearWebsiteNotifications()
@@ -3064,7 +3064,7 @@ private fun SettingsDiagnosticsPage() {
                 Text(
                     "No website notifications are recorded by the Browser UI adapter.",
                     color = TahoFaint,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 10.sp,
                 )
             }
@@ -3085,14 +3085,14 @@ private fun SettingsDiagnosticsPage() {
                             Text(
                                 item.title,
                                 color = TahoText,
-                                fontFamily = TahoMono,
+                                fontFamily = TahoSans,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold,
                             )
                             Text(
                                 "${item.origin} · ${item.message}",
                                 color = TahoFaint,
-                                fontFamily = TahoMono,
+                                fontFamily = TahoSans,
                                 fontSize = 8.5.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -3279,7 +3279,7 @@ private fun SettingsBackupExportPage(
         Text(
             "Includes Taho-owned settings, bookmarks, history, passwords, addresses, payment cards, local profiles, downloads metadata/files, offline snapshots, collections, PWAs and browser UI records. Gecko-owned cookies, cache and IndexedDB are not copied.",
             color = TahoMuted,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 9.5.sp,
         )
         Spacer(Modifier.height(9.dp))
@@ -3294,7 +3294,7 @@ private fun SettingsBackupExportPage(
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
-            textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp),
+            textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp),
             cursorBrush = SolidColor(TahoGold),
             decorationBox = { inner ->
                 Box {
@@ -3302,7 +3302,7 @@ private fun SettingsBackupExportPage(
                         Text(
                             "Backup passphrase (minimum 10 characters)",
                             color = TahoFaint,
-                            fontFamily = TahoMono,
+                            fontFamily = TahoSans,
                             fontSize = 10.5.sp,
                         )
                     }
@@ -3356,7 +3356,7 @@ private fun SettingsBackupExportPage(
         Text(
             "Choose the destination with Android's system document picker. Taho never fabricates an export success.",
             color = TahoMuted,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 10.sp,
         )
         Spacer(Modifier.height(14.dp))
@@ -3378,7 +3378,7 @@ private fun SettingsBackupExportPage(
                     Text(
                         message,
                         color = TahoText,
-                        fontFamily = TahoMono,
+                        fontFamily = TahoSans,
                         fontSize = 10.5.sp,
                         modifier = Modifier.weight(1f),
                     )
@@ -3451,9 +3451,9 @@ private fun SettingsCollectionsPage() {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             SettingsSectionTitle("BROWSER COLLECTIONS (${collections.size})")
-            Text("+ Add Collection", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 9.5.sp, modifier = Modifier.clickable { showAddDialog = true })
+            Text("+ Add Collection", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 9.5.sp, modifier = Modifier.clickable { showAddDialog = true })
         }
-        Text("Group related research links, papers, and capture sessions into persistent workspaces.", color = TahoMuted, fontFamily = TahoMono, fontSize = 10.sp)
+        Text("Group related research links, papers, and capture sessions into persistent workspaces.", color = TahoMuted, fontFamily = TahoSans, fontSize = 10.sp)
         Spacer(Modifier.height(14.dp))
 
         if (showAddDialog) {
@@ -3471,16 +3471,16 @@ private fun SettingsCollectionsPage() {
                     value = colName,
                     onValueChange = { colName = it },
                     modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp),
-                    textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp),
-                    decorationBox = { if (colName.isEmpty()) Text("Collection Name", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp); it() }
+                    textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp),
+                    decorationBox = { if (colName.isEmpty()) Text("Collection Name", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp); it() }
                 )
                 Spacer(Modifier.height(6.dp))
                 BasicTextField(
                     value = colDesc,
                     onValueChange = { colDesc = it },
                     modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceControl).padding(8.dp),
-                    textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp),
-                    decorationBox = { if (colDesc.isEmpty()) Text("Description (Optional)", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp); it() }
+                    textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp),
+                    decorationBox = { if (colDesc.isEmpty()) Text("Description (Optional)", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp); it() }
                 )
                 Spacer(Modifier.height(10.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -3501,7 +3501,7 @@ private fun SettingsCollectionsPage() {
                 modifier = Modifier.fillMaxWidth().clip(TahoBlockShape).background(TahoSurfaceRow).padding(16.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("No collections created yet.", color = TahoFaint, fontFamily = TahoMono, fontSize = 10.sp)
+                Text("No collections created yet.", color = TahoFaint, fontFamily = TahoSans, fontSize = 10.sp)
             }
         } else {
             collections.forEach { col ->
@@ -3516,8 +3516,8 @@ private fun SettingsCollectionsPage() {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(col.name, color = TahoText, fontFamily = TahoMono, fontSize = 11.5.sp, fontWeight = FontWeight.Medium)
-                        Text("${col.linkCount} links · ${col.description}", color = TahoFaint, fontFamily = TahoMono, fontSize = 8.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(col.name, color = TahoText, fontFamily = TahoSans, fontSize = 11.5.sp, fontWeight = FontWeight.Medium)
+                        Text("${col.linkCount} links · ${col.description}", color = TahoFaint, fontFamily = TahoSans, fontSize = 8.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Text("×", color = TahoMuted, fontSize = 16.sp, modifier = Modifier.clickable {
                         TahoBrowserStateStore.removeCollection(col.id)
@@ -3544,7 +3544,7 @@ private fun SettingsOnboardingPage(onFinish: () -> Unit) {
             1 -> {
                 Text("Welcome to Taho Browser", color = TahoText, fontFamily = TahoDisplay, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(6.dp))
-                Text("Engineered for builders, security researchers, and privacy purists.", color = TahoMuted, fontFamily = TahoMono, fontSize = 11.sp)
+                Text("Engineered for builders, security researchers, and privacy purists.", color = TahoMuted, fontFamily = TahoSans, fontSize = 11.sp)
                 Spacer(Modifier.height(20.dp))
                 OnboardingFeature("⬡", "AMOLED Pitch Black Chrome", "Zero eye strain, battery-efficient true OLED blacks.")
                 OnboardingFeature("🛡", "Strict Zero-Trust Defense", "Trackers, fingerprinting, and cryptominers blocked by default.")
@@ -3562,7 +3562,7 @@ private fun SettingsOnboardingPage(onFinish: () -> Unit) {
             3 -> {
                 Text("You're Ready to Browse", color = TahoText, fontFamily = TahoDisplay, fontSize = 18.sp)
                 Spacer(Modifier.height(6.dp))
-                Text("All systems are verified and calibrated.", color = TahoMuted, fontFamily = TahoMono, fontSize = 11.sp)
+                Text("All systems are verified and calibrated.", color = TahoMuted, fontFamily = TahoSans, fontSize = 11.sp)
                 Spacer(Modifier.height(24.dp))
                 M7PrimaryButton("Start Browsing", modifier = Modifier.fillMaxWidth()) {
                     TahoBrowserStateStore.updateSettings { it.copy(hasCompletedOnboarding = true) }
@@ -3579,8 +3579,8 @@ private fun OnboardingFeature(icon: String, title: String, desc: String) {
         Text(icon, fontSize = 18.sp)
         Spacer(Modifier.width(12.dp))
         Column {
-            Text(title, color = TahoText, fontFamily = TahoMono, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
-            Text(desc, color = TahoFaint, fontFamily = TahoMono, fontSize = 9.sp)
+            Text(title, color = TahoText, fontFamily = TahoSans, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
+            Text(desc, color = TahoFaint, fontFamily = TahoSans, fontSize = 9.sp)
         }
     }
 }
@@ -3614,9 +3614,9 @@ private fun SettingsWhatsNewPage() {
                     .border(1.dp, TahoHairline, TahoBlockShape)
                     .padding(12.dp),
             ) {
-                Text(title, color = TahoText, fontFamily = TahoMono, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                Text(title, color = TahoText, fontFamily = TahoSans, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(2.dp))
-                Text(desc, color = TahoMuted, fontFamily = TahoMono, fontSize = 9.sp)
+                Text(desc, color = TahoMuted, fontFamily = TahoSans, fontSize = 9.sp)
             }
             Spacer(Modifier.height(6.dp))
         }
@@ -3692,7 +3692,7 @@ private fun SettingsAboutPage(
             Text(
                 text = message,
                 color = if (status.updateAvailable) TahoGoldHi else TahoFaint,
-                fontFamily = TahoMono,
+                fontFamily = TahoSans,
                 fontSize = 9.5.sp,
             )
             if (status.updateAvailable && status.releaseUrl != null) {
@@ -3727,7 +3727,7 @@ private fun SettingsSectionTitle(title: String) {
     Text(
         text = title,
         color = TahoFaint,
-        fontFamily = TahoMono,
+        fontFamily = TahoSans,
         fontSize = 9.sp,
         fontWeight = FontWeight.SemiBold,
         letterSpacing = 0.8.sp,
@@ -3747,8 +3747,8 @@ private fun SettingsToggleRow(title: String, desc: String, checked: Boolean, onT
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, color = TahoText, fontFamily = TahoMono, fontSize = 11.sp)
-            Text(desc, color = TahoFaint, fontFamily = TahoMono, fontSize = 8.5.sp)
+            Text(title, color = TahoText, fontFamily = TahoSans, fontSize = 11.sp)
+            Text(desc, color = TahoFaint, fontFamily = TahoSans, fontSize = 8.5.sp)
         }
         Spacer(Modifier.width(8.dp))
         Box(
@@ -3757,7 +3757,7 @@ private fun SettingsToggleRow(title: String, desc: String, checked: Boolean, onT
                 .background(if (checked) TahoGold else TahoSurfaceControl)
                 .padding(horizontal = 9.dp, vertical = 4.dp),
         ) {
-            Text(if (checked) "ON" else "OFF", color = if (checked) TahoBg else TahoFaint, fontFamily = TahoMono, fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
+            Text(if (checked) "ON" else "OFF", color = if (checked) TahoBg else TahoFaint, fontFamily = TahoSans, fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -3785,9 +3785,9 @@ private fun SettingsCheckboxRow(title: String, count: String, checked: Boolean, 
                 if (checked) Text("✓", color = TahoBg, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.width(10.dp))
-            Text(title, color = TahoText, fontFamily = TahoMono, fontSize = 11.sp)
+            Text(title, color = TahoText, fontFamily = TahoSans, fontSize = 11.sp)
         }
-        Text(count, color = TahoFaint, fontFamily = TahoMono, fontSize = 9.sp)
+        Text(count, color = TahoFaint, fontFamily = TahoSans, fontSize = 9.sp)
     }
 }
 
@@ -3795,8 +3795,8 @@ private fun SettingsCheckboxRow(title: String, count: String, checked: Boolean, 
 private fun StorageBarRow(label: String, sizeStr: String, fraction: Float, color: Color) {
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(label, color = TahoText, fontFamily = TahoMono, fontSize = 10.sp)
-            Text(sizeStr, color = TahoMuted, fontFamily = TahoMono, fontSize = 10.sp)
+            Text(label, color = TahoText, fontFamily = TahoSans, fontSize = 10.sp)
+            Text(sizeStr, color = TahoMuted, fontFamily = TahoSans, fontSize = 10.sp)
         }
         Spacer(Modifier.height(4.dp))
         Box(
@@ -3823,8 +3823,8 @@ private fun DiagItem(key: String, value: String) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(key, color = TahoFaint, fontFamily = TahoMono, fontSize = 9.5.sp)
-        Text(value, color = TahoText, fontFamily = TahoMono, fontSize = 9.5.sp)
+        Text(key, color = TahoFaint, fontFamily = TahoSans, fontSize = 9.5.sp)
+        Text(value, color = TahoText, fontFamily = TahoSans, fontSize = 9.5.sp)
     }
 }
 
@@ -3844,7 +3844,7 @@ private fun SettingsLinkRow(label: String, url: String) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, color = TahoText, fontFamily = TahoMono, fontSize = 11.sp)
+        Text(label, color = TahoText, fontFamily = TahoSans, fontSize = 11.sp)
         Text("↗", color = TahoGoldHi, fontSize = 13.sp)
     }
     Spacer(Modifier.height(6.dp))
