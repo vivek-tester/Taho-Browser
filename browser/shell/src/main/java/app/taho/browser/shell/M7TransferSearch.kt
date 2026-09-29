@@ -107,7 +107,7 @@ internal fun M7TransferProgressOverlay(
             Text(
                 text = "taho.request-transfer · v1 · local intent",
                 color = TahoFaint,
-                fontFamily = TahoMono,
+                fontFamily = TahoSans,
                 fontSize = 10.sp,
             )
         }
@@ -201,7 +201,7 @@ internal fun M7CaptureSearchField(
             singleLine = true,
             textStyle = androidx.compose.ui.text.TextStyle(
                 color = TahoText,
-                fontFamily = TahoMono,
+                fontFamily = TahoSans,
                 fontSize = 10.5.sp,
             ),
             cursorBrush = androidx.compose.ui.graphics.SolidColor(TahoGold),
@@ -217,7 +217,7 @@ internal fun M7CaptureSearchField(
                             Text(
                                 text = "Search captured requests",
                                 color = TahoFaint,
-                                fontFamily = TahoMono,
+                                fontFamily = TahoSans,
                                 fontSize = 10.5.sp,
                             )
                         }
