@@ -104,7 +104,7 @@ fun TahoBrowserMenuSheet(
                 Text(
                     text = currentTitle?.takeIf { it.isNotBlank() } ?: cleanLocation,
                     color = TahoText,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontWeight = FontWeight.Medium,
                     fontSize = 11.5.sp,
                     maxLines = 1,
@@ -113,14 +113,14 @@ fun TahoBrowserMenuSheet(
                 Text(
                     text = cleanLocation,
                     color = TahoFaint,
-                    fontFamily = TahoMono,
+                    fontFamily = TahoSans,
                     fontSize = 9.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
             Spacer(Modifier.width(6.dp))
-            Text("ⓘ Details", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 9.5.sp)
+            Text("ⓘ Details", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 9.5.sp)
         }
 
         Spacer(Modifier.height(14.dp))
@@ -163,7 +163,7 @@ fun TahoBrowserMenuSheet(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Page Zoom", color = TahoText, fontFamily = TahoMono, fontSize = 11.sp)
+            Text("Page Zoom", color = TahoText, fontFamily = TahoSans, fontSize = 11.sp)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(
                     modifier = Modifier
@@ -184,7 +184,7 @@ fun TahoBrowserMenuSheet(
                         .padding(horizontal = 10.dp, vertical = 4.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("$zoomPercent%", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                    Text("$zoomPercent%", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                 }
                 Box(
                     modifier = Modifier
@@ -206,7 +206,7 @@ fun TahoBrowserMenuSheet(
         Text(
             text = "PAGE ACTIONS",
             color = TahoFaint,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 9.5.sp,
             fontWeight = FontWeight.SemiBold,
             letterSpacing = 0.8.sp,
@@ -262,7 +262,7 @@ fun TahoBrowserMenuSheet(
         Text(
             text = "BROWSER HUBS",
             color = TahoFaint,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 9.5.sp,
             fontWeight = FontWeight.SemiBold,
             letterSpacing = 0.8.sp,
@@ -340,7 +340,7 @@ private fun MenuQuickAction(
         Text(
             text = label,
             color = if (active) TahoGoldHi else TahoMuted,
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 9.sp,
             maxLines = 1,
         )
@@ -365,7 +365,7 @@ private fun MenuItemRow(
             Text(
                 text = title,
                 color = TahoText,
-                fontFamily = TahoMono,
+                fontFamily = TahoSans,
                 fontSize = 11.5.sp,
                 fontWeight = FontWeight.Medium,
             )
@@ -373,7 +373,7 @@ private fun MenuItemRow(
             Text(
                 text = subtitle,
                 color = TahoFaint,
-                fontFamily = TahoMono,
+                fontFamily = TahoSans,
                 fontSize = 9.sp,
             )
         }
