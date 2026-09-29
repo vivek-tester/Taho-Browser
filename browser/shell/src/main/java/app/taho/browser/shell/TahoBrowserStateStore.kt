@@ -16,7 +16,7 @@ object TahoBrowserStateStore {
 
     var searchEngines by mutableStateOf(
         listOf(
-            SearchEngineItem("duckduckgo", "DuckDuckGo", "https://duckduckgo.com/?q=%s", "⌕", isDefault = true),
+            SearchEngineItem("duckduckgo", "DuckDuckGo", "https://duckduckgo.com/?q=%s", "", isDefault = true),
             SearchEngineItem("google", "Google", "https://www.google.com/search?q=%s", "G"),
             SearchEngineItem("brave", "Brave Search", "https://search.brave.com/search?q=%s", "B"),
             SearchEngineItem("bing", "Bing", "https://www.bing.com/search?q=%s", "b"),
@@ -186,7 +186,7 @@ object TahoBrowserStateStore {
         persistence = null
         settings = BrowserSettingsState()
         searchEngines = listOf(
-            SearchEngineItem("duckduckgo", "DuckDuckGo", "https://duckduckgo.com/?q=%s", "⌕", isDefault = true),
+            SearchEngineItem("duckduckgo", "DuckDuckGo", "https://duckduckgo.com/?q=%s", "", isDefault = true),
             SearchEngineItem("google", "Google", "https://www.google.com/search?q=%s", "G"),
             SearchEngineItem("brave", "Brave Search", "https://search.brave.com/search?q=%s", "B"),
             SearchEngineItem("bing", "Bing", "https://www.bing.com/search?q=%s", "b"),
@@ -502,7 +502,7 @@ object TahoBrowserStateStore {
             items + BrowserProfileUi(
                 id = GUEST_PROFILE_ID,
                 name = "Guest",
-                avatarGlyph = "◐",
+                avatarGlyph = "",
                 isGuest = true,
                 isActive = false,
                 syncEnabled = false,
@@ -514,7 +514,7 @@ object TahoBrowserStateStore {
             BrowserProfileUi(
                 id = PERSONAL_PROFILE_ID,
                 name = "Personal",
-                avatarGlyph = "👤",
+                avatarGlyph = "",
                 isActive = true,
                 syncEnabled = false,
                 syncedDevicesCount = 0,
@@ -522,7 +522,7 @@ object TahoBrowserStateStore {
             BrowserProfileUi(
                 id = GUEST_PROFILE_ID,
                 name = "Guest",
-                avatarGlyph = "◐",
+                avatarGlyph = "",
                 isGuest = true,
                 isActive = false,
                 syncEnabled = false,
@@ -625,12 +625,12 @@ object TahoBrowserStateStore {
     }
 
     // --- Search Engines ---
-    fun addSearchEngine(name: String, queryUrl: String, iconGlyph: String = "⌕") {
+    fun addSearchEngine(name: String, queryUrl: String, iconGlyph: String = "") {
         searchEngines = searchEngines + SearchEngineItem(
             id = UUID.randomUUID().toString(),
             name = name,
             queryUrl = if (queryUrl.contains("%s")) queryUrl else "$queryUrl?q=%s",
-            iconGlyph = iconGlyph.take(2).ifBlank { "⌕" },
+            iconGlyph = iconGlyph.take(2),
         )
     }
 
