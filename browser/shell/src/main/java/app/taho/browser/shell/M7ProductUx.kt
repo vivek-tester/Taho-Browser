@@ -998,24 +998,16 @@ internal fun M7SendConfirmationSheet(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(TahoNoteShape)
-                    .semantics { role = Role.Button; contentDescription = "Close Send to Taho confirmation" }
-                    .clickable(onClick = onCancel),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("×", color = TahoMuted, fontSize = 18.sp)
-            }
+            TahoIconButton(
+                name = TahoIconName.CLOSE,
+                contentDescription = "Close Send to Taho confirmation",
+                onClick = onCancel,
+            )
         }
         Spacer(Modifier.height(14.dp))
 
-        M7TransferLine("✓", "URL · Method · Query — included", TahoOk)
+        M7TransferLine("URL, method and query included", TahoOk)
         M7TransferLine(
-            if (request.requestBodyCompleteness == M4CompletenessUi.COMPLETE ||
-                request.requestBodyCompleteness == M4CompletenessUi.NOT_APPLICABLE
-            ) "✓" else "△",
             when (request.requestBodyCompleteness) {
                 M4CompletenessUi.NOT_APPLICABLE -> "Request body — not applicable"
                 M4CompletenessUi.COMPLETE -> "Request body — included"
@@ -1027,9 +1019,9 @@ internal fun M7SendConfirmationSheet(
                 request.requestBodyCompleteness == M4CompletenessUi.NOT_APPLICABLE
             ) TahoOk else TahoWarn,
         )
-        M7TransferLine("✓", "Non-sensitive headers — normalized", TahoOk)
+        M7TransferLine("Non-sensitive headers normalized", TahoOk)
         if (request.sensitiveCount > 0) {
-            M7TransferLine("⛨", "Authorization and other detected secrets — protected below", TahoWarn)
+            M7TransferLine("Authorization and other detected secrets protected below", TahoWarn)
         }
 
         if (request.fromPrivateSession) {
@@ -1312,15 +1304,11 @@ internal fun M7TechnicalWorkspaceView(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(TahoNoteShape)
-                    .clickable(onClick = onClose),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("✕", color = TahoMuted, fontSize = 20.sp)
-            }
+            TahoIconButton(
+                name = TahoIconName.CLOSE,
+                contentDescription = "Close technical workspace",
+                onClick = onClose,
+            )
         }
         Spacer(Modifier.height(12.dp))
 
@@ -1329,7 +1317,7 @@ internal fun M7TechnicalWorkspaceView(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             M7SecondaryButton("Copy cURL", Modifier.weight(1f), onCopyCurl)
-            M7SecondaryButton("Export / Share", Modifier.weight(1f), onShare)
+            M7SecondaryButton("Share", Modifier.weight(1f), onShare)
         }
         Spacer(Modifier.height(14.dp))
 
@@ -1583,7 +1571,7 @@ private fun M7HonestyNote(text: String, warning: Boolean = false) {
 }
 
 @Composable
-private fun M7TransferLine(glyph: String, copy: String, color: Color) {
+private fun M7TransferLine(copy: String, color: Color) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
