@@ -81,7 +81,7 @@ fun TahoFindInPageBar(
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 6.dp)
             .clip(TahoPillShape)
-            .background(Color(0xE618181D))
+            .background(TahoRaised)
             .border(1.dp, TahoHairlineStrong, TahoPillShape)
             .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
@@ -657,47 +657,51 @@ private fun PermissionItemToggle(
     state: String,
     onStateChange: (String) -> Unit,
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(icon, fontSize = 12.sp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = TahoCompactTouchTarget),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(icon, fontSize = 14.sp)
             Spacer(Modifier.width(10.dp))
-            Text(label, color = TahoText, fontFamily = TahoSans, fontSize = 11.sp)
+            Text(
+                label,
+                color = TahoText,
+                fontFamily = TahoSans,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+            )
         }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            listOf("ALLOW", "BLOCK", "ASK").forEach { opt ->
-                val active = state == opt
-                val col = when (opt) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            listOf("ALLOW", "BLOCK", "ASK").forEach { option ->
+                val active = state == option
+                val semantic = when (option) {
                     "ALLOW" -> TahoOk
                     "BLOCK" -> TahoError
                     else -> TahoMuted
                 }
-                Box(
-                    modifier = Modifier
-                        .clip(TahoPillShape)
-                        .background(if (active) col.copy(alpha = 0.2f) else TahoSurfaceControl)
-                        .border(1.dp, if (active) col else TahoHairline, TahoPillShape)
-                        .clickable { onStateChange(opt) }
-                        .padding(horizontal = 8.dp, vertical = 3.dp),
-                ) {
-                    Text(
-                        text = opt,
-                        color = if (active) col else TahoFaint,
-                        fontFamily = TahoSans,
-                        fontSize = 8.5.sp,
-                        fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
-                    )
-                }
+                TahoChoiceChip(
+                    label = option,
+                    selected = active,
+                    modifier = Modifier.weight(1f),
+                    semanticColor = semantic,
+                    description = "$label permission, $option" + if (active) ", selected" else "",
+                    onClick = { onStateChange(option) },
+                )
             }
         }
     }
 }
+
 
 // --- 4. Reader Mode View ---
 @OptIn(ExperimentalMaterial3Api::class)
@@ -933,7 +937,7 @@ fun TahoTranslationBar(
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 6.dp)
             .clip(TahoPillShape)
-            .background(Color(0xE618181D))
+            .background(TahoRaised)
             .border(1.dp, TahoHairlineStrong, TahoPillShape)
             .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
