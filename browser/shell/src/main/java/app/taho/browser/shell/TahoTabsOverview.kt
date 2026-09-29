@@ -725,8 +725,8 @@ private fun DetailedTabCard(
             }
 
             TahoIconButton(
-                glyph = "×",
-                description = "Close tab",
+                name = TahoIconName.CLOSE,
+                contentDescription = "Close tab",
                 onClick = {
                     if (isPinned) onTogglePin()
                     onClose()
@@ -745,20 +745,22 @@ private fun DetailedTabCard(
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (!tab.isPrivate) {
                     TabActionButton(
-                        label = if (isPinned) "📌 Unpin" else "📌 Pin",
+                        label = if (isPinned) "Unpin" else "Pin",
+                        icon = TahoIconName.PIN,
                         color = if (isPinned) TahoInfo else TahoMuted,
                         onClick = onTogglePin,
                     )
                 }
-                TabActionButton(label = "⧉ Duplicate", onClick = onDuplicate)
+                TabActionButton(label = "Duplicate", icon = TahoIconName.COPY, onClick = onDuplicate)
                 TabActionButton(
-                    label = if (group != null) "📁 ${group.name.take(10)}" else "📁 Group",
-                    onClick = onMoveToGroup
+                    label = if (group != null) group.name.take(10) else "Group",
+                    icon = TahoIconName.FOLDER,
+                    onClick = onMoveToGroup,
                 )
-                TabActionButton(label = "📥 Archive", onClick = onArchive)
+                TabActionButton(label = "Archive", icon = TahoIconName.ARCHIVE, onClick = onArchive)
             }
             if (canCloseOthers) {
-                TabActionButton(label = "Close Others", color = TahoError, onClick = onCloseOthers)
+                TabActionButton(label = "Close others", icon = TahoIconName.CLOSE, color = TahoError, onClick = onCloseOthers)
             }
         }
     }
@@ -767,14 +769,38 @@ private fun DetailedTabCard(
 @Composable
 private fun TabActionButton(
     label: String,
+    icon: TahoIconName? = null,
     color: Color = TahoMuted,
     onClick: () -> Unit,
 ) {
-    TahoActionButton(
-        label = label,
-        style = if (color == TahoError) TahoActionStyle.DESTRUCTIVE else TahoActionStyle.MINI,
-        trailingGlyph = null,
-        onClick = onClick,
-    )
+    val destructive = color == TahoError
+    Row(
+        modifier = Modifier
+            .heightIn(min = TahoCompactTouchTarget)
+            .clip(TahoPillShape)
+            .background(if (destructive) TahoDeleteWash else TahoRaised)
+            .border(1.dp, if (destructive) TahoError else TahoLine, TahoPillShape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        icon?.let {
+            TahoIcon(
+                name = it,
+                contentDescription = null,
+                tint = color,
+                size = 16.dp,
+            )
+        }
+        Text(
+            text = label,
+            color = color,
+            fontFamily = TahoSans,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+        )
+    }
 }
 
