@@ -94,18 +94,9 @@ fun TahoStartPage(
         ?: TahoBrowserStateStore.searchEngines.first()
 
     val bgModifier = when (settings.startPageBackground) {
-        "CARBON_GRID" -> Modifier.background(Color(0xFF0A0A0C))
-        "DEEP_NAVY" -> Modifier.background(
-            Brush.verticalGradient(
-                colors = listOf(Color(0xFF040812), Color(0xFF08101E), Color(0xFF020408))
-            )
-        )
-        "GOLD_RADIAL" -> Modifier.background(
-            Brush.radialGradient(
-                colors = listOf(Color(0xFF1E170A), Color(0xFF080705), Color(0xFF000000)),
-                radius = 1200f
-            )
-        )
+        "CARBON_GRID" -> Modifier.background(TahoBg)
+        "DEEP_NAVY" -> Modifier.background(TahoSheet)
+        "GOLD_RADIAL" -> Modifier.background(TahoGoldWash)
         else -> Modifier.background(TahoBg)
     }
 
@@ -117,7 +108,7 @@ fun TahoStartPage(
         if (settings.startPageBackground == "CARBON_GRID") {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val step = 32.dp.toPx()
-                val lineCol = Color.White.copy(alpha = 0.025f)
+                val lineCol = TahoLine
                 var x = 0f
                 while (x < size.width) {
                     drawLine(lineCol, Offset(x, 0f), Offset(x, size.height), strokeWidth = 1f)
@@ -239,8 +230,8 @@ fun TahoStartPage(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(TahoCardShape)
-                        .background(Color(0xFF141009))
-                        .border(1.dp, TahoGold.copy(alpha = 0.35f), TahoCardShape)
+                        .background(TahoGoldWash)
+                        .border(1.dp, TahoGold, TahoCardShape)
                         .padding(16.dp),
                 ) {
                     Column {
@@ -274,7 +265,7 @@ fun TahoStartPage(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(TahoPillShape)
-                        .background(Color(0xFF121216))
+                        .background(TahoRaised)
                         .border(1.dp, TahoHairlineStrong, TahoPillShape)
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                 ) {
@@ -537,7 +528,7 @@ fun TahoStartPage(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(TahoCardShape)
-                        .background(Color(0xFF0D0D12))
+                        .background(TahoSheet)
                         .border(1.dp, TahoHairline, TahoCardShape)
                         .padding(14.dp),
                 ) {
@@ -747,21 +738,16 @@ fun TahoStartPage(
 }
 
 @Composable
-private fun StartHeaderIcon(glyph: String, description: String, onClick: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    Box(
-        modifier = Modifier
-            .size(38.dp)
-            .tahoPressScale(interaction)
-            .clip(RoundedCornerShape(10.dp))
-            .background(TahoSurfaceControl)
-            .border(1.dp, TahoHairline, RoundedCornerShape(10.dp))
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
-            .semantics { role = Role.Button; contentDescription = description },
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(glyph, color = TahoMuted, fontSize = 14.sp)
-    }
+private fun StartHeaderIcon(
+    glyph: String,
+    description: String,
+    onClick: () -> Unit,
+) {
+    TahoIconButton(
+        glyph = glyph,
+        description = description,
+        onClick = onClick,
+    )
 }
 
 @Composable
@@ -783,8 +769,8 @@ private fun StartShortcutTile(
             modifier = Modifier
                 .size(52.dp)
                 .clip(RoundedCornerShape(14.dp))
-                .background(Color(0xFF141418))
-                .border(1.dp, if (item.isPinned) TahoGold.copy(alpha = 0.45f) else TahoHairline, RoundedCornerShape(14.dp)),
+                .background(TahoRaised)
+                .border(1.dp, if (item.isPinned) TahoGold else TahoHairline, RoundedCornerShape(14.dp)),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -819,32 +805,16 @@ private fun StartShortcutTile(
 }
 
 @Composable
-private fun StartWidgetToggle(label: String, checked: Boolean, onToggle: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(TahoBlockShape)
-            .clickable(onClick = onToggle)
-            .padding(vertical = 10.dp, horizontal = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, color = TahoText, fontFamily = TahoSans, fontSize = 11.sp)
-        Box(
-            modifier = Modifier
-                .clip(TahoPillShape)
-                .background(if (checked) TahoGold else TahoSurfaceControl)
-                .padding(horizontal = 9.dp, vertical = 4.dp)
-        ) {
-            Text(
-                text = if (checked) "ON" else "OFF",
-                color = if (checked) TahoBg else TahoFaint,
-                fontFamily = TahoSans,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
-    }
+private fun StartWidgetToggle(
+    label: String,
+    checked: Boolean,
+    onToggle: () -> Unit,
+) {
+    TahoToggleRow(
+        title = label,
+        checked = checked,
+        onToggle = onToggle,
+    )
 }
 
 @Composable
