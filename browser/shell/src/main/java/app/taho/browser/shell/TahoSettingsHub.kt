@@ -155,77 +155,65 @@ fun TahoSettingsHubSheet(
             .navigationBarsPadding()
             .padding(horizontal = 20.dp, vertical = 14.dp),
     ) {
-        // Navigation Header with Back button if in subpage
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 52.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (currentSubPage != SettingsSubPage.MAIN) {
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(CircleShape)
-                            .background(TahoSurfaceControl)
-                            .clickable { currentSubPage = SettingsSubPage.MAIN },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text("‹", color = TahoGoldHi, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    }
-                    Spacer(Modifier.width(10.dp))
-                }
-                Column {
-                    Text(
-                        text = when (currentSubPage) {
-                            SettingsSubPage.MAIN -> "Settings Hub"
-                            SettingsSubPage.APPEARANCE -> "Appearance & Theme"
-                            SettingsSubPage.SEARCH_ENGINE -> "Search Engines"
-                            SettingsSubPage.PRIVACY_SECURITY -> "Privacy & Protection"
-                            SettingsSubPage.CLEAR_DATA -> "Clear Browsing Data"
-                            SettingsSubPage.BOOKMARKS -> "Bookmarks & Reading"
-                            SettingsSubPage.HISTORY -> "Browsing History"
-                            SettingsSubPage.DOWNLOADS -> "Download Manager"
-                            SettingsSubPage.PASSWORDS -> "Password Vault"
-                            SettingsSubPage.AUTOFILL -> "Autofill & Payments"
-                            SettingsSubPage.PROFILES_SYNC -> "Profiles & Sync"
-                            SettingsSubPage.EXTENSIONS -> "Extensions & Add-Ons"
-                            SettingsSubPage.ACCESSIBILITY -> "Accessibility"
-                            SettingsSubPage.LANGUAGES -> "Languages & Region"
-                            SettingsSubPage.DEFAULT_BROWSER -> "Default Browser"
-                            SettingsSubPage.PERFORMANCE_MEDIA -> "Performance & Media"
-                            SettingsSubPage.STORAGE_USAGE -> "Storage Usage"
-                            SettingsSubPage.DIAGNOSTICS -> "Diagnostics & Reset"
-                            SettingsSubPage.BACKUP_EXPORT -> "Backup & Restore"
-                            SettingsSubPage.COLLECTIONS -> "Collections"
-                            SettingsSubPage.ONBOARDING -> "Browser Setup"
-                            SettingsSubPage.WHATS_NEW -> "What's New"
-                            SettingsSubPage.ABOUT -> "About Taho Browser"
-                        },
-                        color = TahoText,
-                        fontFamily = TahoDisplay,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 17.sp,
-                    )
-                    Text(
-                        text = "Taho Browser v0.1.0-release",
-                        color = TahoFaint,
-                        fontFamily = TahoSans,
-                        fontSize = 9.sp,
-                    )
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(TahoSurfaceControl)
-                    .clickable(onClick = onDismiss),
-                contentAlignment = Alignment.Center,
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("×", color = TahoMuted, fontSize = 16.sp)
+                if (currentSubPage != SettingsSubPage.MAIN) {
+                    TahoIconButton(
+                        name = TahoIconName.BACK,
+                        contentDescription = "Back to settings",
+                        onClick = { currentSubPage = SettingsSubPage.MAIN },
+                    )
+                    Spacer(Modifier.width(4.dp))
+                }
+                Text(
+                    text = when (currentSubPage) {
+                        SettingsSubPage.MAIN -> "Settings"
+                        SettingsSubPage.APPEARANCE -> "Appearance"
+                        SettingsSubPage.SEARCH_ENGINE -> "Search engines"
+                        SettingsSubPage.PRIVACY_SECURITY -> "Privacy and protection"
+                        SettingsSubPage.CLEAR_DATA -> "Clear browsing data"
+                        SettingsSubPage.BOOKMARKS -> "Bookmarks and reading"
+                        SettingsSubPage.HISTORY -> "Browsing history"
+                        SettingsSubPage.DOWNLOADS -> "Downloads"
+                        SettingsSubPage.PASSWORDS -> "Password vault"
+                        SettingsSubPage.AUTOFILL -> "Autofill and payments"
+                        SettingsSubPage.PROFILES_SYNC -> "Profiles and sync"
+                        SettingsSubPage.EXTENSIONS -> "Extensions"
+                        SettingsSubPage.ACCESSIBILITY -> "Accessibility"
+                        SettingsSubPage.LANGUAGES -> "Languages and translation"
+                        SettingsSubPage.DEFAULT_BROWSER -> "Default browser"
+                        SettingsSubPage.PERFORMANCE_MEDIA -> "Performance and media"
+                        SettingsSubPage.STORAGE_USAGE -> "Storage usage"
+                        SettingsSubPage.DIAGNOSTICS -> "Diagnostics and reset"
+                        SettingsSubPage.BACKUP_EXPORT -> "Backup and restore"
+                        SettingsSubPage.COLLECTIONS -> "Collections"
+                        SettingsSubPage.ONBOARDING -> "Browser setup"
+                        SettingsSubPage.WHATS_NEW -> "What's new"
+                        SettingsSubPage.ABOUT -> "About Taho Browser"
+                    },
+                    color = TahoText,
+                    fontFamily = TahoSans,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 20.sp,
+                    lineHeight = 26.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
+            TahoIconButton(
+                name = TahoIconName.CLOSE,
+                contentDescription = "Close settings",
+                onClick = onDismiss,
+            )
         }
 
         Spacer(Modifier.height(14.dp))
@@ -300,96 +288,135 @@ fun TahoSettingsHubSheet(
 // MAIN INDEX
 // -------------------------------------------------------------
 @Composable
+private data class SettingsIndexItem(
+    val icon: TahoIconName,
+    val title: String,
+    val page: SettingsSubPage,
+)
+
+@Composable
 private fun SettingsMainIndex(onNavigateSub: (SettingsSubPage) -> Unit) {
     var searchFilter by rememberSaveable { mutableStateOf("") }
 
-    val categories = listOf(
-        Triple("🎨 Appearance & Theme", "OLED Dark mode, accent colors, toolbar layout", SettingsSubPage.APPEARANCE),
-        Triple("🔍 Search Engines", "Default search, suggestions & autocomplete", SettingsSubPage.SEARCH_ENGINE),
-        Triple("🛡 Privacy & Tracking Protection", "Strict tracker blocking, HTTPS-Only, Secure DNS", SettingsSubPage.PRIVACY_SECURITY),
-        Triple("🗑 Clear Browsing Data", "Wipe cache, cookies, history, saved logins", SettingsSubPage.CLEAR_DATA),
-        Triple("★ Bookmarks & Reading List", "Organize favorites, folders, save for later", SettingsSubPage.BOOKMARKS),
-        Triple("⏱ Browsing History", "Timelines, search history, recently closed tabs", SettingsSubPage.HISTORY),
-        Triple("↓ Download Manager", "Active transfers, history, pause & resume", SettingsSubPage.DOWNLOADS),
-        Triple("🔑 Password Manager & Vault", "Saved logins, security audit & password generator", SettingsSubPage.PASSWORDS),
-        Triple("📝 Autofill & Payment Methods", "Saved addresses, contact cards & secure credit cards", SettingsSubPage.AUTOFILL),
-        Triple("👥 Profiles & Cross-Device Sync", "Multi-profile, guest mode, device syncing", SettingsSubPage.PROFILES_SYNC),
-        Triple("🧩 Extensions & Add-Ons", "uBlock Origin, privacy shields & content blockers", SettingsSubPage.EXTENSIONS),
-        Triple("♿ Accessibility", "Reduced motion, high contrast, font scaling", SettingsSubPage.ACCESSIBILITY),
-        Triple("🌐 Languages & Translation", "Interface language, web content & auto-translate", SettingsSubPage.LANGUAGES),
-        Triple("⚡ Performance & Media", "Memory saver, background audio, hardware accel", SettingsSubPage.PERFORMANCE_MEDIA),
-        Triple("📱 Default Browser Settings", "Set Taho as default web handler & link dispatch", SettingsSubPage.DEFAULT_BROWSER),
-        Triple("💾 Storage Usage", "Cache analysis, site data storage & cookies", SettingsSubPage.STORAGE_USAGE),
-        Triple("📦 Backup & Data Export", "Import/Export bookmarks, passwords & settings", SettingsSubPage.BACKUP_EXPORT),
-        Triple("📁 Collections", "Foldered saved sites & research sessions", SettingsSubPage.COLLECTIONS),
-        Triple("🔧 Diagnostics & Reset", "Engine specs, GPU info & reset browser", SettingsSubPage.DIAGNOSTICS),
-        Triple("🚀 Browser Onboarding", "First-run welcome & guided configuration", SettingsSubPage.ONBOARDING),
-        Triple("✨ What's New", "Release notes and latest architecture upgrades", SettingsSubPage.WHATS_NEW),
-        Triple("ⓘ About Taho Browser", "Version, open source licenses & privacy policy", SettingsSubPage.ABOUT),
+    val items = listOf(
+        SettingsIndexItem(TahoIconName.PALETTE, "Appearance", SettingsSubPage.APPEARANCE),
+        SettingsIndexItem(TahoIconName.SEARCH, "Search engines", SettingsSubPage.SEARCH_ENGINE),
+        SettingsIndexItem(TahoIconName.SECURITY, "Privacy and protection", SettingsSubPage.PRIVACY_SECURITY),
+        SettingsIndexItem(TahoIconName.CLEAR_DATA, "Clear browsing data", SettingsSubPage.CLEAR_DATA),
+        SettingsIndexItem(TahoIconName.BOOKMARK, "Bookmarks and reading", SettingsSubPage.BOOKMARKS),
+        SettingsIndexItem(TahoIconName.HISTORY, "Browsing history", SettingsSubPage.HISTORY),
+        SettingsIndexItem(TahoIconName.DOWNLOAD, "Downloads", SettingsSubPage.DOWNLOADS),
+        SettingsIndexItem(TahoIconName.PASSWORD, "Password vault", SettingsSubPage.PASSWORDS),
+        SettingsIndexItem(TahoIconName.CREDIT_CARD, "Autofill and payments", SettingsSubPage.AUTOFILL),
+        SettingsIndexItem(TahoIconName.PERSON, "Profiles and sync", SettingsSubPage.PROFILES_SYNC),
+        SettingsIndexItem(TahoIconName.EXTENSION, "Extensions", SettingsSubPage.EXTENSIONS),
+        SettingsIndexItem(TahoIconName.ACCESSIBILITY, "Accessibility", SettingsSubPage.ACCESSIBILITY),
+        SettingsIndexItem(TahoIconName.LANGUAGE, "Languages and translation", SettingsSubPage.LANGUAGES),
+        SettingsIndexItem(TahoIconName.DESKTOP, "Default browser", SettingsSubPage.DEFAULT_BROWSER),
+        SettingsIndexItem(TahoIconName.TUNE, "Performance and media", SettingsSubPage.PERFORMANCE_MEDIA),
+        SettingsIndexItem(TahoIconName.STORAGE, "Storage usage", SettingsSubPage.STORAGE_USAGE),
+        SettingsIndexItem(TahoIconName.BACKUP, "Backup and restore", SettingsSubPage.BACKUP_EXPORT),
+        SettingsIndexItem(TahoIconName.FOLDER, "Collections", SettingsSubPage.COLLECTIONS),
+        SettingsIndexItem(TahoIconName.DIAGNOSTICS, "Diagnostics and reset", SettingsSubPage.DIAGNOSTICS),
+        SettingsIndexItem(TahoIconName.ROCKET, "Browser setup", SettingsSubPage.ONBOARDING),
+        SettingsIndexItem(TahoIconName.UPDATE, "What's new", SettingsSubPage.WHATS_NEW),
+        SettingsIndexItem(TahoIconName.INFO, "About Taho Browser", SettingsSubPage.ABOUT),
     )
 
-    val filtered = categories.filter {
-        searchFilter.isBlank() ||
-            it.first.contains(searchFilter, ignoreCase = true) ||
-            it.second.contains(searchFilter, ignoreCase = true)
+    val filtered = items.filter {
+        searchFilter.isBlank() || it.title.contains(searchFilter, ignoreCase = true)
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .height(48.dp)
                 .clip(TahoPillShape)
-                .background(TahoSurfaceControl)
-                .border(1.dp, TahoHairline, TahoPillShape)
-                .padding(horizontal = 14.dp, vertical = 8.dp),
+                .background(TahoSheet)
+                .border(1.dp, TahoLine, TahoPillShape)
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("⌕", color = TahoFaint, fontSize = 13.sp)
-                Spacer(Modifier.width(8.dp))
-                Box(modifier = Modifier.weight(1f)) {
-                    if (searchFilter.isEmpty()) {
-                        Text("Search settings…", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.sp)
-                    }
-                    BasicTextField(
-                        value = searchFilter,
-                        onValueChange = { searchFilter = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        textStyle = TextStyle(color = TahoText, fontFamily = TahoSans, fontSize = 11.sp),
-                        cursorBrush = SolidColor(TahoGold),
+            TahoIcon(
+                name = TahoIconName.SEARCH,
+                contentDescription = null,
+                tint = TahoMuted,
+                size = 20.dp,
+            )
+            Spacer(Modifier.width(8.dp))
+            Box(modifier = Modifier.weight(1f)) {
+                if (searchFilter.isEmpty()) {
+                    Text(
+                        text = "Search settings",
+                        color = TahoFaint,
+                        fontFamily = TahoSans,
+                        fontSize = 14.sp,
                     )
                 }
-                if (searchFilter.isNotEmpty()) {
-                    Text("×", color = TahoMuted, fontSize = 14.sp, modifier = Modifier.clickable { searchFilter = "" })
-                }
+                BasicTextField(
+                    value = searchFilter,
+                    onValueChange = { searchFilter = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    textStyle = TextStyle(
+                        color = TahoText,
+                        fontFamily = TahoSans,
+                        fontSize = 14.sp,
+                    ),
+                    cursorBrush = SolidColor(TahoGold),
+                )
+            }
+            if (searchFilter.isNotEmpty()) {
+                TahoIconButton(
+                    name = TahoIconName.CLOSE,
+                    contentDescription = "Clear settings search",
+                    onClick = { searchFilter = "" },
+                )
             }
         }
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(12.dp))
 
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            items(filtered) { (title, subtitle, page) ->
+        LazyColumn(modifier = Modifier.fillMaxWidth()) {
+            items(filtered) { item ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(TahoBlockShape)
-                        .background(TahoSurfaceRow)
-                        .border(1.dp, TahoHairline, TahoBlockShape)
-                        .clickable { onNavigateSub(page) }
-                        .padding(horizontal = 14.dp, vertical = 11.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                        .heightIn(min = 52.dp)
+                        .clickable { onNavigateSub(item.page) }
+                        .padding(horizontal = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(title, color = TahoText, fontFamily = TahoSans, fontSize = 11.5.sp, fontWeight = FontWeight.Medium)
-                        Spacer(Modifier.height(2.dp))
-                        Text(subtitle, color = TahoFaint, fontFamily = TahoSans, fontSize = 9.sp)
-                    }
-                    Text("›", color = TahoFaint, fontSize = 16.sp)
+                    TahoIcon(
+                        name = item.icon,
+                        contentDescription = null,
+                        tint = TahoMuted,
+                        size = 20.dp,
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = item.title,
+                        modifier = Modifier.weight(1f),
+                        color = TahoText,
+                        fontFamily = TahoSans,
+                        fontSize = 14.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    TahoIcon(
+                        name = TahoIconName.CHEVRON_RIGHT,
+                        contentDescription = null,
+                        tint = TahoMuted,
+                        size = 20.dp,
+                    )
                 }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(TahoLine),
+                )
             }
         }
     }
