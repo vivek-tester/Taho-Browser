@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -62,16 +63,16 @@ internal fun TahoActionButton(
         TahoActionStyle.SECONDARY,
         TahoActionStyle.MINI,
         -> TahoSurfaceControl
-        TahoActionStyle.DESTRUCTIVE -> TahoError.copy(alpha = .10f)
+        TahoActionStyle.DESTRUCTIVE -> TahoDeleteWash
     }
     val border = when (style) {
         TahoActionStyle.PRIMARY -> Color.Transparent
-        TahoActionStyle.DESTRUCTIVE -> TahoError.copy(alpha = .42f)
+        TahoActionStyle.DESTRUCTIVE -> TahoError
         else -> TahoHairline
     }
     val foreground = when {
         !enabled -> TahoFaint
-        style == TahoActionStyle.PRIMARY -> TahoBg
+        style == TahoActionStyle.PRIMARY -> TahoPrimaryInk
         style == TahoActionStyle.DESTRUCTIVE -> TahoError
         style == TahoActionStyle.MINI -> TahoMuted
         else -> TahoText
@@ -120,8 +121,7 @@ internal fun TahoActionButton(
                 text = label,
                 modifier = if (trailingGlyph != null) Modifier.weight(1f) else Modifier,
                 color = foreground,
-                fontFamily =
-                    if (style == TahoActionStyle.MINI) TahoMono else TahoBody,
+                fontFamily = TahoSans,
                 fontWeight =
                     if (style == TahoActionStyle.MINI) FontWeight.Normal else FontWeight.SemiBold,
                 fontSize =
@@ -137,7 +137,7 @@ internal fun TahoActionButton(
                         .clip(CircleShape)
                         .background(
                             if (style == TahoActionStyle.PRIMARY) {
-                                Color.Black.copy(alpha = .15f)
+                                TahoPrimaryInk
                             } else {
                                 TahoSurfaceRowHover
                             },
@@ -177,16 +177,16 @@ internal fun TahoIconButton(
             .clip(TahoNoteShape)
             .background(
                 when {
-                    destructive -> TahoError.copy(alpha = .08f)
-                    emphasized -> TahoGold.copy(alpha = .10f)
+                    destructive -> TahoDeleteWash
+                    emphasized -> TahoGoldWash
                     else -> TahoSurfaceControl
                 },
             )
             .border(
                 1.dp,
                 when {
-                    destructive -> TahoError.copy(alpha = .32f)
-                    emphasized -> TahoGold.copy(alpha = .35f)
+                    destructive -> TahoError
+                    emphasized -> TahoGold
                     else -> TahoHairline
                 },
                 TahoNoteShape,
@@ -225,12 +225,12 @@ internal fun TahoChoiceChip(
             .heightIn(min = TahoCompactTouchTarget)
             .clip(TahoPillShape)
             .background(
-                if (selected) semanticColor.copy(alpha = .13f)
+                if (selected && semanticColor == TahoGold) TahoGoldWash
                 else TahoSurfaceControl,
             )
             .border(
                 1.dp,
-                if (selected) semanticColor.copy(alpha = .45f)
+                if (selected) semanticColor
                 else TahoHairline,
                 TahoPillShape,
             )
@@ -250,7 +250,7 @@ internal fun TahoChoiceChip(
                 selected -> semanticColor
                 else -> TahoMuted
             },
-            fontFamily = TahoMono,
+            fontFamily = TahoSans,
             fontSize = 9.5.sp,
             maxLines = 1,
         )
@@ -266,7 +266,7 @@ internal fun TahoSectionLabel(
         text = text.uppercase(),
         modifier = modifier.padding(bottom = 6.dp),
         color = TahoFaint,
-        fontFamily = TahoMono,
+        fontFamily = TahoSans,
         fontSize = 9.sp,
         fontWeight = FontWeight.SemiBold,
         letterSpacing = 1.6.sp,
@@ -314,10 +314,10 @@ internal fun TahoToggleRow(
         Box(
             modifier = Modifier
                 .clip(TahoPillShape)
-                .background(if (checked) TahoGold.copy(alpha = .16f) else TahoSurfaceControl)
+                .background(if (checked) TahoGoldWash else TahoSurfaceControl)
                 .border(
                     1.dp,
-                    if (checked) TahoGold.copy(alpha = .45f) else TahoHairline,
+                    if (checked) TahoGold else TahoHairline,
                     TahoPillShape,
                 )
                 .padding(horizontal = 9.dp, vertical = 5.dp),
@@ -325,7 +325,7 @@ internal fun TahoToggleRow(
             Text(
                 text = if (checked) "ON" else "OFF",
                 color = if (checked) TahoGoldHi else TahoFaint,
-                fontFamily = TahoMono,
+                fontFamily = TahoSans,
                 fontSize = 8.5.sp,
                 fontWeight = FontWeight.SemiBold,
             )
