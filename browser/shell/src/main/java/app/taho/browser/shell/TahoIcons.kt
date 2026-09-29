@@ -238,6 +238,7 @@ internal fun TahoIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     active: Boolean = false,
+    destructive: Boolean = false,
     enabled: Boolean = true,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -260,7 +261,11 @@ internal fun TahoIconButton(
         TahoIcon(
             name = name,
             contentDescription = null,
-            tint = if (active) TahoText else TahoMuted,
+            tint = when {
+                destructive -> TahoError
+                active -> TahoText
+                else -> TahoMuted
+            },
         )
     }
 }
