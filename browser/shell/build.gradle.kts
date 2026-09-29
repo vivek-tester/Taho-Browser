@@ -22,5 +22,6 @@ dependencies {
     implementation("androidx.compose.ui:ui:1.9.1")
     implementation("androidx.compose.foundation:foundation:1.9.1")
     implementation("androidx.compose.material3:material3:1.3.2")
+    implementation("androidx.compose.material:material-icons-extended:1.9.1")
     testImplementation(kotlin("test"))
 }
