@@ -280,6 +280,54 @@ internal fun TahoToggleRow(
 }
 
 @Composable
+internal fun TahoInlineAction(
+    label: String,
+    modifier: Modifier = Modifier,
+    icon: TahoIconName? = null,
+    color: Color = TahoGoldHi,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    Row(
+        modifier = modifier
+            .heightIn(min = TahoCompactTouchTarget)
+            .tahoPressScale(interaction, target = .97f)
+            .semantics {
+                role = Role.Button
+                contentDescription = label
+            }
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                enabled = enabled,
+                onClick = onClick,
+            )
+            .padding(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        icon?.let {
+            TahoIcon(
+                name = it,
+                contentDescription = null,
+                tint = if (enabled) color else TahoFaint,
+                size = 16.dp,
+            )
+        }
+        Text(
+            text = label,
+            color = if (enabled) color else TahoFaint,
+            fontFamily = TahoSans,
+            fontWeight = FontWeight.Medium,
+            fontSize = 12.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
 internal fun TahoLinkRow(
     label: String,
     supportingText: String? = null,
