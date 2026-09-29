@@ -93,14 +93,14 @@ fun TahoFindInPageBar(
             TahoIcon(
                 name = TahoIconName.SEARCH,
                 contentDescription = null,
-                tint = TahoGoldHi,
+                tint = TahoMuted,
                 size = 18.dp,
             )
             Spacer(Modifier.width(8.dp))
 
             Box(modifier = Modifier.weight(1f)) {
                 if (query.isEmpty()) {
-                    Text("Find in page…", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.5.sp)
+                    Text("Find in page", color = TahoFaint, fontFamily = TahoSans, fontSize = 11.5.sp)
                 }
                 BasicTextField(
                     value = query,
@@ -198,7 +198,7 @@ fun TahoShareQrSheet(
             Box(
                 modifier = Modifier
                     .size(190.dp)
-                    .clip(RoundedCornerShape(18.dp))
+                    .clip(TahoCardShape)
                     .background(Color.White)
                     .padding(14.dp),
                 contentAlignment = Alignment.Center,
@@ -222,7 +222,7 @@ fun TahoShareQrSheet(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 M7SecondaryButton(
-                    label = if (copied) "✓ Copied" else "Copy URL",
+                    label = if (copied) "Copied" else "Copy URL",
                     modifier = Modifier.weight(1f),
                 ) {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -249,7 +249,7 @@ fun TahoShareQrSheet(
             Spacer(Modifier.height(10.dp))
 
             M7SecondaryButton(
-                label = "Open in External App ↗",
+                label = "Open in external app",
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 runCatching {
@@ -351,21 +351,27 @@ fun TahoSiteInfoSheet(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(if (isSecure && !hasMixedContent) TahoOk.copy(alpha = 0.15f) else TahoWarn.copy(alpha = 0.15f)),
+                        .size(48.dp)
+                        .clip(TahoCardShape)
+                        .background(TahoRaised)
+                        .border(1.dp, TahoLine, TahoCardShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(if (isSecure && !hasMixedContent) "🔒" else "⚠️", fontSize = 16.sp)
+                    TahoIcon(
+                        name = if (isSecure && !hasMixedContent) TahoIconName.LOCK else TahoIconName.WARNING,
+                        contentDescription = null,
+                        tint = TahoMuted,
+                        size = 20.dp,
+                    )
                 }
                 Spacer(Modifier.width(12.dp))
                 Column {
-                    Text(
+                    DataText(
                         text = host,
                         color = TahoText,
-                        fontFamily = TahoDisplay,
-                        fontWeight = FontWeight.SemiBold,
                         fontSize = 15.sp,
+                        lineHeight = 22.sp,
+                        maxLines = 1,
                     )
                     Text(
                         text = when {
@@ -396,13 +402,12 @@ fun TahoSiteInfoSheet(
             ) {
                 Column {
                     Text(
-                        text = "CERTIFICATE DETAILS",
+                        text = "Certificate details",
                         color = TahoGoldHi,
                         fontFamily = TahoSans,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 9.sp,
-                        letterSpacing = 0.8.sp,
-                    )
+                                            )
                     Spacer(Modifier.height(8.dp))
                     SiteDetailRow("Host", securityInfo?.host?.takeIf { it.isNotBlank() } ?: host)
                     SiteDetailRow(
@@ -431,13 +436,12 @@ fun TahoSiteInfoSheet(
 
             // Per-Site Permissions Dashboard
             Text(
-                text = "PER-SITE PERMISSIONS",
+                text = "Site permissions",
                 color = TahoMuted,
                 fontFamily = TahoSans,
                 fontSize = 9.5.sp,
                 fontWeight = FontWeight.SemiBold,
-                letterSpacing = 0.8.sp,
-            )
+                            )
             Spacer(Modifier.height(8.dp))
 
             Column(
@@ -448,15 +452,15 @@ fun TahoSiteInfoSheet(
                     .border(1.dp, TahoHairline, TahoCardShape),
             ) {
                 listOf(
-                    "Location" to "📍",
-                    "Camera" to "📷",
-                    "Microphone" to "🎙",
-                    "Notification" to "🔔",
-                    "Clipboard" to "📋",
-                    "Storage" to "💾",
-                    "Pop-ups" to "🗖",
-                    "Autoplay" to "▶",
-                    "Background Activity" to "⚡",
+                    "Location" to TahoIconName.LINK,
+                    "Camera" to TahoIconName.CAMERA,
+                    "Microphone" to TahoIconName.MICROPHONE,
+                    "Notification" to TahoIconName.NOTIFICATIONS,
+                    "Clipboard" to TahoIconName.COPY,
+                    "Storage" to TahoIconName.STORAGE,
+                    "Pop-ups" to TahoIconName.OPEN_EXTERNAL,
+                    "Autoplay" to TahoIconName.FORWARD,
+                    "Background Activity" to TahoIconName.TUNE,
                 ).forEachIndexed { idx, (perm, icon) ->
                     val current = perms.find { it.permission == perm }?.state ?: "ASK"
                     PermissionItemToggle(
@@ -477,13 +481,12 @@ fun TahoSiteInfoSheet(
 
             // Per-Site Protections & Preferences
             Text(
-                text = "PER-SITE PREFERENCES",
+                text = "Site preferences",
                 color = TahoMuted,
                 fontFamily = TahoSans,
                 fontSize = 9.5.sp,
                 fontWeight = FontWeight.SemiBold,
-                letterSpacing = 0.8.sp,
-            )
+                            )
             Spacer(Modifier.height(8.dp))
 
             Box(
@@ -507,8 +510,8 @@ fun TahoSiteInfoSheet(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Request Desktop Site", color = TahoText, fontFamily = TahoSans, fontSize = 11.sp)
-                        Text(if (isDesktop) "ON" else "OFF", color = if (isDesktop) TahoGoldHi else TahoFaint, fontFamily = TahoSans, fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                        Text("Request desktop site", color = TahoText, fontFamily = TahoSans, fontSize = 11.sp)
+                        Text(if (isDesktop) "On" else "Off", color = if (isDesktop) TahoGoldHi else TahoFaint, fontFamily = TahoSans, fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
                     }
 
                     Spacer(Modifier.height(8.dp))
@@ -523,8 +526,8 @@ fun TahoSiteInfoSheet(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Tracking Protection Exception", color = TahoText, fontFamily = TahoSans, fontSize = 11.sp)
-                        Text(if (isTrackingExcepted) "ALLOWED" else "STRICT", color = if (isTrackingExcepted) TahoWarn else TahoOk, fontFamily = TahoSans, fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                        Text("Tracking protection exception", color = TahoText, fontFamily = TahoSans, fontSize = 11.sp)
+                        Text(if (isTrackingExcepted) "Allowed" else "Strict", color = if (isTrackingExcepted) TahoWarn else TahoOk, fontFamily = TahoSans, fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
                     }
 
                     Spacer(Modifier.height(8.dp))
@@ -536,15 +539,23 @@ fun TahoSiteInfoSheet(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Per-Site Zoom Level", color = TahoText, fontFamily = TahoSans, fontSize = 11.sp)
+                        Text("Page zoom", color = TahoText, fontFamily = TahoSans, fontSize = 11.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text("−", color = TahoText, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable {
-                                if (zoom > 50) TahoBrowserStateStore.setZoomForOrigin(host, zoom - 10)
-                            }.padding(4.dp))
-                            Text("$zoom%", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 10.sp)
-                            Text("+", color = TahoText, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable {
-                                if (zoom < 300) TahoBrowserStateStore.setZoomForOrigin(host, zoom + 10)
-                            }.padding(4.dp))
+                            TahoIconButton(
+                                name = TahoIconName.REMOVE,
+                                contentDescription = "Zoom out",
+                                onClick = {
+                                    if (zoom > 50) TahoBrowserStateStore.setZoomForOrigin(host, zoom - 10)
+                                },
+                            )
+                            Text("$zoom%", color = TahoMuted, fontFamily = TahoSans, fontSize = 13.sp)
+                            TahoIconButton(
+                                name = TahoIconName.ADD,
+                                contentDescription = "Zoom in",
+                                onClick = {
+                                    if (zoom < 300) TahoBrowserStateStore.setZoomForOrigin(host, zoom + 10)
+                                },
+                            )
                         }
                     }
                 }
@@ -554,13 +565,12 @@ fun TahoSiteInfoSheet(
 
             // Cookies & Storage Data for Site
             Text(
-                text = "COOKIES & SITE STORAGE",
+                text = "Cookies and site storage",
                 color = TahoMuted,
                 fontFamily = TahoSans,
                 fontSize = 9.5.sp,
                 fontWeight = FontWeight.SemiBold,
-                letterSpacing = 0.8.sp,
-            )
+                            )
             Spacer(Modifier.height(8.dp))
 
             Box(
@@ -643,20 +653,37 @@ fun TahoSiteInfoSheet(
 
 @Composable
 private fun SiteDetailRow(key: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 3.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(key, color = TahoFaint, fontFamily = TahoSans, fontSize = 9.5.sp)
-        Text(value, color = TahoText, fontFamily = TahoSans, fontSize = 9.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = key,
+                modifier = Modifier.weight(.42f),
+                color = TahoMuted,
+                fontFamily = TahoSans,
+                fontSize = 13.sp,
+            )
+            DataText(
+                text = value,
+                modifier = Modifier.weight(.58f),
+                color = TahoText,
+                fontSize = 12.5.sp,
+                lineHeight = 18.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        TahoDivider()
     }
 }
 
 @Composable
 private fun PermissionItemToggle(
-    icon: String,
+    icon: TahoIconName,
     label: String,
     state: String,
     onStateChange: (String) -> Unit,
@@ -672,7 +699,12 @@ private fun PermissionItemToggle(
                 .heightIn(min = TahoCompactTouchTarget),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(icon, fontSize = 14.sp)
+            TahoIcon(
+                name = icon,
+                contentDescription = null,
+                tint = TahoMuted,
+                size = 20.dp,
+            )
             Spacer(Modifier.width(10.dp))
             Text(
                 label,
@@ -686,11 +718,11 @@ private fun PermissionItemToggle(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            listOf("ALLOW", "BLOCK", "ASK").forEach { option ->
+            listOf("Allow", "Block", "Ask").forEach { option ->
                 val active = state == option
                 val semantic = when (option) {
-                    "ALLOW" -> TahoOk
-                    "BLOCK" -> TahoError
+                    "Allow" -> TahoOk
+                    "Block" -> TahoError
                     else -> TahoMuted
                 }
                 TahoChoiceChip(
@@ -760,7 +792,11 @@ fun TahoReaderModeView(
                         .clickable(onClick = onClose)
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                 ) {
-                    Text("← Exit Reader", color = TahoText, fontFamily = TahoSans, fontSize = 10.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TahoIcon(TahoIconName.BACK, contentDescription = null, tint = TahoMuted, size = 20.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Exit reader", color = TahoText, fontFamily = TahoSans, fontSize = 13.sp)
+                    }
                 }
 
                 Box(
@@ -772,7 +808,11 @@ fun TahoReaderModeView(
                         .clickable { showAppearanceDrawer = true }
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                 ) {
-                    Text("Aa Appearance", color = TahoGoldHi, fontFamily = TahoSans, fontSize = 10.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TahoIcon(TahoIconName.PALETTE, contentDescription = null, tint = TahoMuted, size = 20.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Appearance", color = TahoText, fontFamily = TahoSans, fontSize = 13.sp)
+                    }
                 }
             }
 
@@ -807,14 +847,14 @@ fun TahoReaderModeView(
             Spacer(Modifier.height(24.dp))
 
             val fontFam = when (readerSettings.fontFamily) {
-                "Mono" -> TahoMono
+                "Mono" -> TahoBody
                 "Sans" -> TahoBody
                 else -> FontFamily.Serif
             }
 
             when {
                 isLoading -> Text(
-                    text = "Extracting readable content…",
+                    text = "Extracting readable content",
                     color = TahoMuted,
                     fontFamily = TahoBody,
                     fontSize = readerSettings.fontSizeSp.sp,
@@ -861,14 +901,14 @@ fun TahoReaderModeView(
                         .navigationBarsPadding()
                         .padding(horizontal = 20.dp, vertical = 16.dp),
                 ) {
-                    Text("Reading Appearance", color = TahoText, fontFamily = TahoDisplay, fontSize = 17.sp)
+                    Text("Reading appearance", color = TahoText, fontFamily = TahoDisplay, fontSize = 17.sp)
                     Spacer(Modifier.height(14.dp))
 
                     Text("Theme", color = TahoMuted, fontFamily = TahoSans, fontSize = 10.sp)
                     Spacer(Modifier.height(6.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(
-                            TahoReaderTheme.OLED_BLACK to "OLED Black",
+                            TahoReaderTheme.OLED_BLACK to "OLED black",
                             TahoReaderTheme.SEPIA to "Sepia",
                             TahoReaderTheme.LIGHT to "Light",
                         ).forEach { (t, label) ->
@@ -891,7 +931,7 @@ fun TahoReaderModeView(
                     }
 
                     Spacer(Modifier.height(16.dp))
-                    Text("Font Size: ${readerSettings.fontSizeSp} sp", color = TahoMuted, fontFamily = TahoSans, fontSize = 10.sp)
+                    Text("Font size: ${readerSettings.fontSizeSp} sp", color = TahoMuted, fontFamily = TahoSans, fontSize = 10.sp)
                     Slider(
                         value = readerSettings.fontSizeSp.toFloat(),
                         onValueChange = {
@@ -959,9 +999,14 @@ fun TahoTranslationBar(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("文A", color = TahoGoldHi, fontSize = 13.sp, fontFamily = TahoSans)
+                TahoIcon(
+                    name = TahoIconName.TRANSLATE,
+                    contentDescription = null,
+                    tint = TahoMuted,
+                    size = 20.dp,
+                )
                 Spacer(Modifier.width(8.dp))
-                Text("$sourceLang → $targetLang", color = TahoText, fontFamily = TahoSans, fontSize = 10.5.sp)
+                Text("$sourceLang to $targetLang", color = TahoText, fontFamily = TahoSans, fontSize = 13.sp)
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -974,7 +1019,7 @@ fun TahoTranslationBar(
                         .padding(horizontal = 12.dp, vertical = 5.dp),
                 ) {
                     Text(
-                        if (isTranslating) "Working…" else if (translated) "Translated" else "Translate",
+                        if (isTranslating) "Working" else if (translated) "Translated" else "Translate",
                         color = TahoBg,
                         fontFamily = TahoSans,
                         fontSize = 9.sp,
