@@ -218,8 +218,8 @@ fun TahoStartPage(
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StartHeaderIcon("⚙", "Settings", onOpenSettings)
-                    StartHeaderIcon("✦", "Customize", { showCustomizeSheet = true })
+                    StartHeaderIcon(TahoIconName.SETTINGS, "Settings", onOpenSettings)
+                    StartHeaderIcon(TahoIconName.TUNE, "Customize", { showCustomizeSheet = true })
                 }
             }
 
@@ -746,13 +746,13 @@ fun TahoStartPage(
 
 @Composable
 private fun StartHeaderIcon(
-    glyph: String,
+    icon: TahoIconName,
     description: String,
     onClick: () -> Unit,
 ) {
     TahoIconButton(
-        glyph = glyph,
-        description = description,
+        name = icon,
+        contentDescription = description,
         onClick = onClick,
     )
 }
