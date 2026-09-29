@@ -95,9 +95,8 @@ fun TahoStartPage(
         ?: TahoBrowserStateStore.searchEngines.first()
 
     val bgModifier = when (settings.startPageBackground) {
-        "CARBON_GRID" -> Modifier.background(TahoBg)
         "DEEP_NAVY" -> Modifier.background(TahoSheet)
-        "GOLD_RADIAL" -> Modifier.background(TahoGoldWash)
+        "GOLD_RADIAL" -> Modifier.background(TahoRaised)
         else -> Modifier.background(TahoBg)
     }
 
@@ -106,22 +105,7 @@ fun TahoStartPage(
             .fillMaxSize()
             .then(bgModifier)
     ) {
-        if (settings.startPageBackground == "CARBON_GRID") {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val step = 32.dp.toPx()
-                val lineCol = TahoLine
-                var x = 0f
-                while (x < size.width) {
-                    drawLine(lineCol, Offset(x, 0f), Offset(x, size.height), strokeWidth = 1f)
-                    x += step
-                }
-                var y = 0f
-                while (y < size.height) {
-                    drawLine(lineCol, Offset(0f, y), Offset(size.width, y), strokeWidth = 1f)
-                    y += step
-                }
-            }
-        }
+
 
         if (isPrivate && settings.biometricLockForPrivateTabs && !privateUnlocked) {
             Column(
@@ -134,32 +118,39 @@ fun TahoStartPage(
                 Box(
                     modifier = Modifier
                         .size(64.dp)
-                        .clip(CircleShape)
-                        .background(TahoGold.copy(alpha = 0.15f))
-                        .border(1.dp, TahoGold, CircleShape),
+                        .clip(TahoCardShape)
+                        .background(TahoRaised)
+                        .border(1.dp, TahoLine, TahoCardShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("🔒", fontSize = 28.sp)
+                    TahoIcon(
+                        name = TahoIconName.LOCK,
+                        contentDescription = null,
+                        tint = TahoMuted,
+                        size = 20.dp,
+                    )
                 }
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    text = "Private Browsing Locked",
+                    text = "Private browsing locked",
                     color = TahoText,
                     fontFamily = TahoDisplay,
-                    fontSize = 18.sp,
+                    fontSize = 20.sp,
+                    lineHeight = 26.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = "Biometric authentication is required to access ephemeral private sessions.",
+                    text = "Unlock this private session with your device credential.",
                     color = TahoMuted,
                     fontFamily = TahoSans,
-                    fontSize = 10.5.sp,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(24.dp))
                 M7PrimaryButton(
-                    label = "Unlock Session",
+                    label = "Unlock session",
                     showArrow = true,
                     onClick = { privateUnlocked = true },
                 )
@@ -182,37 +173,22 @@ fun TahoStartPage(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(TahoGold.copy(alpha = 0.15f))
-                            .border(1.dp, TahoGold.copy(alpha = 0.35f), RoundedCornerShape(10.dp)),
-                        contentAlignment = Alignment.Center,
-                    ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (isPrivate) "Taho private" else "Taho Browser",
+                        color = TahoText,
+                        fontFamily = TahoSans,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 20.sp,
+                        lineHeight = 26.sp,
+                    )
+                    if (isPrivate) {
                         Text(
-                            text = if (isPrivate) "◐" else "⬡",
-                            color = TahoGoldHi,
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    Column {
-                        Text(
-                            text = if (isPrivate) "TAHO PRIVATE" else "TAHO BROWSER",
-                            color = TahoText,
-                            fontFamily = TahoDisplay,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 15.sp,
-                            letterSpacing = 1.2.sp,
-                        )
-                        Text(
-                            text = if (isPrivate) "Encrypted Ephemeral Engine" else "Zero-Trust Engineering Chrome",
-                            color = if (isPrivate) TahoGoldHi else TahoFaint,
+                            text = "Private browsing",
+                            color = TahoMuted,
                             fontFamily = TahoSans,
-                            fontSize = 9.sp,
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
                         )
                     }
                 }
@@ -231,25 +207,30 @@ fun TahoStartPage(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(TahoCardShape)
-                        .background(TahoGoldWash)
-                        .border(1.dp, TahoGold, TahoCardShape)
+                        .background(TahoRaised)
+                        .border(1.dp, TahoLine, TahoCardShape)
                         .padding(16.dp),
                 ) {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("🛡", fontSize = 16.sp)
+                            TahoIcon(
+                                name = TahoIconName.SECURITY,
+                                contentDescription = null,
+                                tint = TahoMuted,
+                                size = 16.dp,
+                            )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                text = "Strict Private Isolation Active",
-                                color = TahoGoldHi,
-                                fontFamily = TahoDisplay,
+                                text = "Private browsing",
+                                color = TahoText,
+                                fontFamily = TahoSans,
                                 fontWeight = FontWeight.Medium,
                                 fontSize = 13.sp,
                             )
                         }
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            text = "History, cookies, and cache are memory-only and immediately wiped when this tab closes. Biometric protection is enabled for credential vaults.",
+                            text = "History, cookies, and cache from this private tab are not kept after it closes.",
                             color = TahoMuted,
                             fontFamily = TahoSans,
                             fontSize = 10.sp,
@@ -274,11 +255,11 @@ fun TahoStartPage(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            text = searchEngine.iconGlyph,
-                            color = TahoGoldHi,
-                            fontSize = 14.sp,
-                            fontFamily = TahoSans,
+                        TahoIcon(
+                            name = TahoIconName.SEARCH,
+                            contentDescription = null,
+                            tint = TahoMuted,
+                            size = 20.dp,
                         )
                         Spacer(Modifier.width(10.dp))
                         Box(modifier = Modifier.weight(1f)) {
@@ -319,11 +300,11 @@ fun TahoStartPage(
                         }
                         if (searchQuery.isNotEmpty()) {
                             Text(
-                                text = "Go ↗",
-                                color = TahoGoldHi,
+                                text = "Go",
+                                color = TahoText,
                                 fontFamily = TahoSans,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 13.sp,
                                 modifier = Modifier
                                     .clickable {
                                         val q = searchQuery.trim()
@@ -352,18 +333,17 @@ fun TahoStartPage(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "SHORTCUTS & TOP SITES",
+                        text = "Shortcuts and top sites",
                         color = TahoMuted,
                         fontFamily = TahoSans,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 10.sp,
-                        letterSpacing = 0.8.sp,
-                    )
+                                            )
                     Text(
                         text = "+ Add",
-                        color = TahoGoldHi,
+                        color = TahoText,
                         fontFamily = TahoSans,
-                        fontSize = 10.sp,
+                        fontSize = 13.sp,
                         modifier = Modifier
                             .clickable { showAddShortcutDialog = true }
                             .padding(4.dp)
@@ -398,13 +378,12 @@ fun TahoStartPage(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "CONTINUE BROWSING",
+                        text = "Continue browsing",
                         color = TahoMuted,
                         fontFamily = TahoSans,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 10.sp,
-                        letterSpacing = 0.8.sp,
-                    )
+                                            )
                     Text(
                         text = "${recentTabs.size} open",
                         color = TahoFaint,
@@ -468,8 +447,7 @@ fun TahoStartPage(
                         fontFamily = TahoSans,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 10.sp,
-                        letterSpacing = 0.8.sp,
-                    )
+                                            )
                     Text(
                         text = "Clear",
                         color = TahoFaint,
@@ -497,7 +475,7 @@ fun TahoStartPage(
                                 .padding(horizontal = 14.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text("⏱", fontSize = 12.sp, color = TahoFaint)
+                            TahoIcon(TahoIconName.HISTORY, contentDescription = null, tint = TahoMuted, size = 16.dp)
                             Spacer(Modifier.width(10.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
@@ -592,7 +570,7 @@ fun TahoStartPage(
                     .padding(horizontal = 20.dp, vertical = 16.dp),
             ) {
                 Text(
-                    text = "Customize Start Page",
+                    text = "Customize start page",
                     color = TahoText,
                     fontFamily = TahoDisplay,
                     fontWeight = FontWeight.Medium,
@@ -600,13 +578,13 @@ fun TahoStartPage(
                 )
                 Spacer(Modifier.height(14.dp))
 
-                Text("Background Style", color = TahoMuted, fontFamily = TahoSans, fontSize = 10.sp)
+                Text("Background style", color = TahoMuted, fontFamily = TahoSans, fontSize = 10.sp)
                 Spacer(Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    listOf("AMOLED_BLACK" to "AMOLED", "CARBON_GRID" to "Carbon", "DEEP_NAVY" to "Navy", "GOLD_RADIAL" to "Gold").forEach { (key, label) ->
+                    listOf("AMOLED_BLACK" to "Black", "CARBON_GRID" to "Dark", "DEEP_NAVY" to "Surface", "GOLD_RADIAL" to "Raised").forEach { (key, label) ->
                         val selected = settings.startPageBackground == key
                         Box(
                             modifier = Modifier
@@ -634,16 +612,16 @@ fun TahoStartPage(
                 Text("Widgets", color = TahoMuted, fontFamily = TahoSans, fontSize = 10.sp)
                 Spacer(Modifier.height(8.dp))
 
-                StartWidgetToggle("Search Bar", settings.showQuickSearchOnStartPage) {
+                StartWidgetToggle("Search bar", settings.showQuickSearchOnStartPage) {
                     TahoBrowserStateStore.updateSettings { it.copy(showQuickSearchOnStartPage = !it.showQuickSearchOnStartPage) }
                 }
-                StartWidgetToggle("Top Sites & Shortcuts", settings.showTopSitesOnStartPage) {
+                StartWidgetToggle("Top sites and shortcuts", settings.showTopSitesOnStartPage) {
                     TahoBrowserStateStore.updateSettings { it.copy(showTopSitesOnStartPage = !it.showTopSitesOnStartPage) }
                 }
-                StartWidgetToggle("Continue Browsing Tabs", settings.showRecentTabsOnStartPage) {
+                StartWidgetToggle("Continue browsing tabs", settings.showRecentTabsOnStartPage) {
                     TahoBrowserStateStore.updateSettings { it.copy(showRecentTabsOnStartPage = !it.showRecentTabsOnStartPage) }
                 }
-                StartWidgetToggle("Privacy Shield Monitor", settings.showPrivacyStatsOnStartPage) {
+                StartWidgetToggle("Privacy status", settings.showPrivacyStatsOnStartPage) {
                     TahoBrowserStateStore.updateSettings { it.copy(showPrivacyStatsOnStartPage = !it.showPrivacyStatsOnStartPage) }
                 }
 
@@ -775,26 +753,27 @@ private fun StartShortcutTile(
         Box(
             modifier = Modifier
                 .size(52.dp)
-                .clip(RoundedCornerShape(14.dp))
+                .clip(TahoCardShape)
                 .background(TahoRaised)
-                .border(1.dp, if (item.isPinned) TahoGold else TahoHairline, RoundedCornerShape(14.dp)),
+                .border(1.dp, if (item.isPinned) TahoGold else TahoHairline, TahoCardShape),
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = item.iconGlyph,
-                color = if (item.isPinned) TahoGoldHi else TahoText,
+                text = item.title.take(1).uppercase(),
+                color = TahoText,
                 fontFamily = TahoSans,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 13.sp,
+                fontSize = 14.sp,
             )
             if (item.isPinned) {
-                Box(
+                TahoIcon(
+                    name = TahoIconName.PIN,
+                    contentDescription = null,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(3.dp)
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .background(TahoGold)
+                        .padding(4.dp),
+                    tint = TahoText,
+                    size = 16.dp,
                 )
             }
         }
@@ -803,7 +782,7 @@ private fun StartShortcutTile(
             text = item.title,
             color = TahoMuted,
             fontFamily = TahoSans,
-            fontSize = 9.5.sp,
+            fontSize = 12.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
