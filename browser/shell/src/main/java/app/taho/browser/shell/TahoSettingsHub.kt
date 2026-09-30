@@ -334,7 +334,7 @@ private fun SettingsAppearancePage() {
     ) {
         SettingsSectionTitle("THEME MODE")
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(TahoThemeMode.DARK to "Dark (OLED)", TahoThemeMode.LIGHT to "Light", TahoThemeMode.SYSTEM to "System").forEach { (m, label) ->
+            listOf(TahoThemeMode.DARK to "Dark", TahoThemeMode.LIGHT to "Light", TahoThemeMode.AMOLED to "AMOLED").forEach { (m, label) ->
                 val sel = settings.themeMode == m
                 Box(
                     modifier = Modifier
@@ -352,29 +352,13 @@ private fun SettingsAppearancePage() {
         }
 
         Spacer(Modifier.height(18.dp))
-        SettingsSectionTitle("BROWSER ACCENT COLOR")
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(
-                0xFFE2B44A to "Taho Gold",
-                0xFF4FBFA3 to "Cyan Cyber",
-                0xFF5FBF8A to "Emerald",
-                0xFFE06A5A to "Coral",
-                0xFFC9B2F0 to "Lavender",
-            ).forEach { (hex, name) ->
-                val sel = settings.accentColorHex == hex
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(Color(hex))
-                        .border(2.dp, if (sel) Color.White else Color.Transparent, CircleShape)
-                        .clickable { TahoBrowserStateStore.updateSettings { it.copy(accentColorHex = hex) } },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (sel) Text("✓", color = Color.Black, fontSize = 14.sp)
-                }
-            }
-        }
+        SettingsSectionTitle("COLOR SYSTEM")
+        Text(
+            text = "Monochrome accents follow the selected theme automatically.",
+            color = TahoMuted,
+            fontFamily = TahoMono,
+            fontSize = 10.sp,
+        )
 
         Spacer(Modifier.height(18.dp))
         SettingsSectionTitle("TOOLBAR & ADDRESS BAR POSITION")
