@@ -60,11 +60,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.net.URLEncoder
 
-private val MockupChrome = Color(0xFF0A0D11)
-private val MockupChromeElevated = Color(0xFF12171D)
-private val MockupControl = Color(0xFF1B222A)
-private val MockupBorder = Color.White.copy(alpha = 0.12f)
-private val MockupBlue = Color(0xFF2F8CFF)
+private val MockupChrome: Color get() = TahoBg
+private val MockupChromeElevated: Color get() = TahoSheet
+private val MockupControl: Color get() = TahoSurfaceControl
+private val MockupBorder: Color get() = TahoHairlineStrong
+private val MockupAccent: Color get() = TahoText
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -102,28 +102,8 @@ internal fun TahoMockupStartPage(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color(0xFF0B2237),
-                        Color(0xFF2B3545),
-                        Color(0xFF101820),
-                        Color(0xFF06101A),
-                    ),
-                ),
-            ),
+            .background(TahoBg),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        listOf(Color.White.copy(alpha = 0.08f), Color.Transparent),
-                        radius = 1100f,
-                    ),
-                ),
-        )
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -136,7 +116,7 @@ internal fun TahoMockupStartPage(
             Spacer(Modifier.height(64.dp))
             Text(
                 text = if (isPrivate) "Taho Private" else "Taho",
-                color = Color.White,
+                color = TahoText,
                 fontFamily = TahoDisplay,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = if (isPrivate) 38.sp else 48.sp,
@@ -145,7 +125,7 @@ internal fun TahoMockupStartPage(
             Spacer(Modifier.height(4.dp))
             Text(
                 text = if (isPrivate) "Browse privately" else "Browse Freely",
-                color = Color.White.copy(alpha = 0.78f),
+                color = TahoText.copy(alpha = 0.78f),
                 fontFamily = TahoBody,
                 fontSize = 15.sp,
             )
@@ -155,8 +135,8 @@ internal fun TahoMockupStartPage(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(28.dp))
-                    .background(Color(0xFFF6F7FA))
-                    .border(1.dp, Color.White.copy(alpha = 0.6f), RoundedCornerShape(28.dp)),
+                    .background(TahoSheet)
+                    .border(1.dp, TahoText.copy(alpha = 0.6f), RoundedCornerShape(28.dp)),
             ) {
                 Row(
                     modifier = Modifier
@@ -167,7 +147,7 @@ internal fun TahoMockupStartPage(
                 ) {
                     Text(
                         text = "G",
-                        color = Color(0xFF4285F4),
+                        color = TahoText,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
                     )
@@ -176,7 +156,7 @@ internal fun TahoMockupStartPage(
                         if (query.isEmpty()) {
                             Text(
                                 "Search or enter address",
-                                color = Color(0xFF4F5661),
+                                color = TahoMuted,
                                 fontFamily = TahoBody,
                                 fontSize = 14.sp,
                             )
@@ -187,11 +167,11 @@ internal fun TahoMockupStartPage(
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
                             textStyle = TextStyle(
-                                color = Color(0xFF161A20),
+                                color = TahoText,
                                 fontFamily = TahoBody,
                                 fontSize = 14.sp,
                             ),
-                            cursorBrush = SolidColor(MockupBlue),
+                            cursorBrush = SolidColor(MockupAccent),
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
                             keyboardActions = KeyboardActions(
                                 onGo = {
@@ -203,7 +183,7 @@ internal fun TahoMockupStartPage(
                     Spacer(Modifier.width(10.dp))
                     Text(
                         text = "●",
-                        color = Color(0xFF46505C),
+                        color = TahoMuted,
                         fontSize = 12.sp,
                         modifier = Modifier
                             .size(32.dp)
@@ -255,13 +235,13 @@ internal fun TahoMockupStartPage(
                                 modifier = Modifier
                                     .size(50.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xCC151B22))
-                                    .border(1.dp, Color.White.copy(alpha = 0.08f), CircleShape),
+                                    .background(TahoSurfaceControl)
+                                    .border(1.dp, TahoText.copy(alpha = 0.08f), CircleShape),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(
                                     text = item.title.take(1).uppercase(),
-                                    color = Color.White,
+                                    color = TahoText,
                                     fontFamily = TahoDisplay,
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 17.sp,
@@ -270,7 +250,7 @@ internal fun TahoMockupStartPage(
                             Spacer(Modifier.height(7.dp))
                             Text(
                                 text = item.title,
-                                color = Color.White.copy(alpha = 0.9f),
+                                color = TahoText.copy(alpha = 0.9f),
                                 fontFamily = TahoBody,
                                 fontSize = 11.sp,
                                 maxLines = 1,
@@ -285,7 +265,7 @@ internal fun TahoMockupStartPage(
                 Spacer(Modifier.height(34.dp))
                 Text(
                     text = "Recent tabs",
-                    color = Color.White.copy(alpha = 0.72f),
+                    color = TahoText.copy(alpha = 0.72f),
                     fontFamily = TahoBody,
                     fontWeight = FontWeight.Medium,
                     fontSize = 12.sp,
@@ -300,21 +280,21 @@ internal fun TahoMockupStartPage(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(Color(0x9910171F))
+                                .background(TahoSurfaceRow)
                                 .clickable { onSelectTab(tab.id) }
                                 .padding(horizontal = 14.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
                                 text = tab.title?.takeIf { it.isNotBlank() } ?: "Tab",
-                                color = Color.White,
+                                color = TahoText,
                                 fontFamily = TahoBody,
                                 fontSize = 13.sp,
                                 modifier = Modifier.weight(1f),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
-                            Text("›", color = Color.White.copy(alpha = 0.6f), fontSize = 20.sp)
+                            Text("›", color = TahoText.copy(alpha = 0.6f), fontSize = 20.sp)
                         }
                         Spacer(Modifier.height(8.dp))
                     }
@@ -336,12 +316,12 @@ private fun MockupSearchSuggestion(
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("⌕", color = Color(0xFF5B6470), fontSize = 15.sp)
+        Text("⌕", color = TahoMuted, fontSize = 15.sp)
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                color = Color(0xFF171B20),
+                color = TahoText,
                 fontFamily = TahoBody,
                 fontSize = 13.sp,
                 maxLines = 1,
@@ -349,14 +329,14 @@ private fun MockupSearchSuggestion(
             )
             Text(
                 text = url,
-                color = Color(0xFF6B737E),
+                color = TahoMuted,
                 fontFamily = TahoMono,
                 fontSize = 10.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Text("↗", color = Color(0xFF6B737E), fontSize = 13.sp)
+        Text("↗", color = TahoMuted, fontSize = 13.sp)
     }
 }
 
@@ -404,7 +384,7 @@ internal fun TahoMockupToolbar(
                 modifier = Modifier
                     .fillMaxWidth(0.35f)
                     .height(2.dp)
-                    .background(MockupBlue),
+                    .background(MockupAccent),
             )
             Spacer(Modifier.height(4.dp))
         }
@@ -428,7 +408,7 @@ internal fun TahoMockupToolbar(
             ) {
                 Text(
                     text = if (isPrivate) "◐" else if (value.startsWith("https://")) "▣" else "⌕",
-                    color = if (isPrivate) Color(0xFFB58BFF) else Color.White.copy(alpha = 0.72f),
+                    color = if (isPrivate) TahoText else TahoText.copy(alpha = 0.72f),
                     fontSize = 13.sp,
                     modifier = Modifier.clickable(onClick = onLeadingClick),
                 )
@@ -438,7 +418,7 @@ internal fun TahoMockupToolbar(
                         if (draft.isEmpty()) {
                             Text(
                                 "Search or enter address",
-                                color = Color.White.copy(alpha = 0.46f),
+                                color = TahoText.copy(alpha = 0.46f),
                                 fontFamily = TahoBody,
                                 fontSize = 13.sp,
                             )
@@ -451,11 +431,11 @@ internal fun TahoMockupToolbar(
                                 .focusRequester(focusRequester),
                             singleLine = true,
                             textStyle = TextStyle(
-                                color = Color.White,
+                                color = TahoText,
                                 fontFamily = TahoBody,
                                 fontSize = 13.sp,
                             ),
-                            cursorBrush = SolidColor(MockupBlue),
+                            cursorBrush = SolidColor(MockupAccent),
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
                             keyboardActions = KeyboardActions(onGo = { onSubmit() }),
                         )
@@ -463,7 +443,7 @@ internal fun TahoMockupToolbar(
                 } else {
                     Text(
                         text = compactMockupUrl(value),
-                        color = Color.White,
+                        color = TahoText,
                         fontFamily = TahoBody,
                         fontSize = 13.sp,
                         maxLines = 1,
@@ -508,12 +488,12 @@ internal fun TahoMockupToolbar(
                             .padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("⌕", color = Color.White.copy(alpha = 0.5f))
+                        Text("⌕", color = TahoText.copy(alpha = 0.5f))
                         Spacer(Modifier.width(10.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 title,
-                                color = Color.White,
+                                color = TahoText,
                                 fontFamily = TahoBody,
                                 fontSize = 12.sp,
                                 maxLines = 1,
@@ -521,7 +501,7 @@ internal fun TahoMockupToolbar(
                             )
                             Text(
                                 compactMockupUrl(url),
-                                color = Color.White.copy(alpha = 0.5f),
+                                color = TahoText.copy(alpha = 0.5f),
                                 fontFamily = TahoMono,
                                 fontSize = 9.sp,
                                 maxLines = 1,
@@ -537,11 +517,11 @@ internal fun TahoMockupToolbar(
                         .padding(horizontal = 12.dp, vertical = 11.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("↗", color = MockupBlue)
+                    Text("↗", color = MockupAccent)
                     Spacer(Modifier.width(10.dp))
                     Text(
                         "Search for “$q”",
-                        color = Color.White,
+                        color = TahoText,
                         fontFamily = TahoBody,
                         fontSize = 12.sp,
                     )
@@ -570,7 +550,7 @@ private fun MockupSquareButton(
     ) {
         Text(
             glyph,
-            color = Color.White.copy(alpha = 0.9f),
+            color = TahoText.copy(alpha = 0.9f),
             fontSize = 19.sp,
             fontWeight = FontWeight.Medium,
         )
@@ -596,12 +576,12 @@ private fun MockupTabButton(
             modifier = Modifier
                 .size(24.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .border(1.5.dp, Color.White.copy(alpha = 0.86f), RoundedCornerShape(6.dp)),
+                .border(1.5.dp, TahoText.copy(alpha = 0.86f), RoundedCornerShape(6.dp)),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = count.coerceAtLeast(1).toString(),
-                color = Color.White,
+                color = TahoText,
                 fontFamily = TahoMono,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -627,12 +607,12 @@ private fun TahoMockupMenuButton(onClick: () -> Unit) {
             modifier = Modifier
                 .size(28.dp)
                 .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.08f)),
+                .background(TahoText.copy(alpha = 0.08f)),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = "T",
-                color = Color.White,
+                color = TahoText,
                 fontFamily = TahoDisplay,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 15.sp,
@@ -706,11 +686,11 @@ internal fun TahoMockupBrowserMenuSheet(
                 .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("▣", color = Color.White.copy(alpha = 0.72f), fontSize = 16.sp)
+            Text("▣", color = TahoText.copy(alpha = 0.72f), fontSize = 16.sp)
             Spacer(Modifier.width(14.dp))
             Text(
                 "Desktop site",
-                color = Color.White,
+                color = TahoText,
                 fontFamily = TahoBody,
                 fontSize = 14.sp,
                 modifier = Modifier.weight(1f),
@@ -764,7 +744,7 @@ private fun MockupMenuRow(
     ) {
         Text(
             glyph,
-            color = Color.White.copy(alpha = 0.76f),
+            color = TahoText.copy(alpha = 0.76f),
             fontSize = 16.sp,
             modifier = Modifier.width(26.dp),
             textAlign = TextAlign.Center,
@@ -772,13 +752,13 @@ private fun MockupMenuRow(
         Spacer(Modifier.width(10.dp))
         Text(
             label,
-            color = Color.White,
+            color = TahoText,
             fontFamily = TahoBody,
             fontSize = 14.sp,
             modifier = Modifier.weight(1f),
         )
         if (trailing != null) {
-            Text(trailing, color = Color.White.copy(alpha = 0.45f), fontSize = 18.sp)
+            Text(trailing, color = TahoText.copy(alpha = 0.45f), fontSize = 18.sp)
         }
     }
 }
@@ -790,7 +770,7 @@ private fun MockupMenuDivider() {
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp)
             .height(1.dp)
-            .background(Color.White.copy(alpha = 0.08f)),
+            .background(TahoText.copy(alpha = 0.08f)),
     )
 }
 
@@ -845,7 +825,7 @@ internal fun TahoMockupDeveloperToolsSheet(
         ) {
             Text(
                 "Developer tools",
-                color = Color.White,
+                color = TahoText,
                 fontFamily = TahoDisplay,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 18.sp,
@@ -853,7 +833,7 @@ internal fun TahoMockupDeveloperToolsSheet(
             )
             Text(
                 "×",
-                color = Color.White,
+                color = TahoText,
                 fontSize = 22.sp,
                 modifier = Modifier
                     .size(44.dp)
@@ -874,13 +854,13 @@ internal fun TahoMockupDeveloperToolsSheet(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     "Enable Developer tools",
-                    color = Color.White,
+                    color = TahoText,
                     fontFamily = TahoBody,
                     fontSize = 14.sp,
                 )
                 Text(
                     "Desktop-grade panels adapted for touch",
-                    color = Color.White.copy(alpha = 0.48f),
+                    color = TahoText.copy(alpha = 0.48f),
                     fontFamily = TahoBody,
                     fontSize = 11.sp,
                 )
@@ -901,10 +881,10 @@ internal fun TahoMockupDeveloperToolsSheet(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(18.dp))
-                        .background(if (active) MockupBlue else MockupChromeElevated)
+                        .background(if (active) MockupAccent else MockupChromeElevated)
                         .border(
                             1.dp,
-                            if (active) MockupBlue else MockupBorder,
+                            if (active) MockupAccent else MockupBorder,
                             RoundedCornerShape(18.dp),
                         )
                         .clickable { mode = item }
@@ -912,7 +892,7 @@ internal fun TahoMockupDeveloperToolsSheet(
                 ) {
                     Text(
                         item.title,
-                        color = Color.White,
+                        color = TahoText,
                         fontFamily = TahoBody,
                         fontSize = 11.sp,
                     )
@@ -938,7 +918,7 @@ internal fun TahoMockupDeveloperToolsSheet(
                 ) {
                     Text(
                         panel.title,
-                        color = if (active) Color.White else Color.White.copy(alpha = 0.5f),
+                        color = if (active) TahoText else TahoText.copy(alpha = 0.5f),
                         fontFamily = TahoBody,
                         fontSize = 11.sp,
                     )
@@ -947,7 +927,7 @@ internal fun TahoMockupDeveloperToolsSheet(
                         modifier = Modifier
                             .width(28.dp)
                             .height(2.dp)
-                            .background(if (active) MockupBlue else Color.Transparent),
+                            .background(if (active) MockupAccent else Color.Transparent),
                     )
                 }
             }
@@ -958,7 +938,7 @@ internal fun TahoMockupDeveloperToolsSheet(
                 .fillMaxWidth()
                 .weight(1f)
                 .clip(RoundedCornerShape(14.dp))
-                .background(Color(0xFF070A0E))
+                .background(TahoBg)
                 .border(1.dp, MockupBorder, RoundedCornerShape(14.dp)),
         ) {
             if (!enabled) {
@@ -969,14 +949,14 @@ internal fun TahoMockupDeveloperToolsSheet(
                 ) {
                     Text(
                         "Developer tools are disabled",
-                        color = Color.White,
+                        color = TahoText,
                         fontFamily = TahoDisplay,
                         fontSize = 16.sp,
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
                         "Enable the switch above to inspect this tab.",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = TahoText.copy(alpha = 0.5f),
                         fontFamily = TahoBody,
                         fontSize = 12.sp,
                     )
@@ -1010,7 +990,7 @@ private fun MockupDevToolsPanelContent(
             ) {
                 Text(
                     panel.title,
-                    color = Color.White,
+                    color = TahoText,
                     fontFamily = TahoDisplay,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp,
@@ -1018,21 +998,21 @@ private fun MockupDevToolsPanelContent(
                 Spacer(Modifier.height(6.dp))
                 Text(
                     "Layout: ${mode.title}",
-                    color = MockupBlue,
+                    color = MockupAccent,
                     fontFamily = TahoMono,
                     fontSize = 10.sp,
                 )
                 Spacer(Modifier.height(18.dp))
                 Text(
                     desktopPanelDescription(panel),
-                    color = Color.White.copy(alpha = 0.72f),
+                    color = TahoText.copy(alpha = 0.72f),
                     fontFamily = TahoBody,
                     fontSize = 12.sp,
                 )
                 Spacer(Modifier.height(16.dp))
                 Text(
                     "UI shell is wired. Engine transport for this panel is the next implementation layer; no placeholder inspection data is being fabricated.",
-                    color = Color.White.copy(alpha = 0.42f),
+                    color = TahoText.copy(alpha = 0.42f),
                     fontFamily = TahoBody,
                     fontSize = 11.sp,
                     lineHeight = 16.sp,
@@ -1055,14 +1035,14 @@ private fun MockupElementsPanel() {
         ) {
             Text(
                 "DOM",
-                color = Color.White.copy(alpha = 0.55f),
+                color = TahoText.copy(alpha = 0.55f),
                 fontFamily = TahoMono,
                 fontSize = 10.sp,
             )
             Spacer(Modifier.height(12.dp))
             Text(
                 "<html>\n  <head>…</head>\n  <body>\n    Inspector transport not connected\n  </body>\n</html>",
-                color = Color(0xFF8CC8FF),
+                color = TahoText,
                 fontFamily = TahoMono,
                 fontSize = 10.sp,
                 lineHeight = 16.sp,
@@ -1072,7 +1052,7 @@ private fun MockupElementsPanel() {
             modifier = Modifier
                 .width(1.dp)
                 .fillMaxHeight()
-                .background(Color.White.copy(alpha = 0.08f)),
+                .background(TahoText.copy(alpha = 0.08f)),
         )
         Column(
             modifier = Modifier
@@ -1082,14 +1062,14 @@ private fun MockupElementsPanel() {
         ) {
             Text(
                 "Styles  Computed  Layout",
-                color = Color.White.copy(alpha = 0.7f),
+                color = TahoText.copy(alpha = 0.7f),
                 fontFamily = TahoMono,
                 fontSize = 9.sp,
             )
             Spacer(Modifier.height(12.dp))
             Text(
                 "Select an element to inspect CSS.",
-                color = Color.White.copy(alpha = 0.4f),
+                color = TahoText.copy(alpha = 0.4f),
                 fontFamily = TahoBody,
                 fontSize = 11.sp,
             )
@@ -1112,22 +1092,22 @@ private fun MockupConsolePanel() {
                 .padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("⌕ Filter", color = Color.White.copy(alpha = 0.45f), fontFamily = TahoMono, fontSize = 10.sp)
+            Text("⌕ Filter", color = TahoText.copy(alpha = 0.45f), fontFamily = TahoMono, fontSize = 10.sp)
             Spacer(Modifier.weight(1f))
-            Text("Default levels ▾", color = Color.White.copy(alpha = 0.6f), fontFamily = TahoMono, fontSize = 10.sp)
+            Text("Default levels ▾", color = TahoText.copy(alpha = 0.6f), fontFamily = TahoMono, fontSize = 10.sp)
         }
         Spacer(Modifier.height(12.dp))
         Text(
             "Console transport not connected yet.",
-            color = Color.White.copy(alpha = 0.52f),
+            color = TahoText.copy(alpha = 0.52f),
             fontFamily = TahoMono,
             fontSize = 10.sp,
         )
         Spacer(Modifier.weight(1f))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("›", color = MockupBlue, fontFamily = TahoMono, fontSize = 15.sp)
+            Text("›", color = MockupAccent, fontFamily = TahoMono, fontSize = 15.sp)
             Spacer(Modifier.width(8.dp))
-            Text("Run JavaScript in this page", color = Color.White.copy(alpha = 0.34f), fontFamily = TahoMono, fontSize = 10.sp)
+            Text("Run JavaScript in this page", color = TahoText.copy(alpha = 0.34f), fontFamily = TahoMono, fontSize = 10.sp)
         }
     }
 }
@@ -1145,13 +1125,13 @@ private fun MockupNetworkPanel(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("●", color = Color(0xFFFF5252), fontSize = 12.sp)
+            Text("●", color = TahoText, fontSize = 12.sp)
             Spacer(Modifier.width(10.dp))
-            Text("Filter", color = Color.White.copy(alpha = 0.5f), fontFamily = TahoMono, fontSize = 10.sp)
+            Text("Filter", color = TahoText.copy(alpha = 0.5f), fontFamily = TahoMono, fontSize = 10.sp)
             Spacer(Modifier.weight(1f))
             Text(
                 "${captureRequests.size} requests",
-                color = Color.White.copy(alpha = 0.45f),
+                color = TahoText.copy(alpha = 0.45f),
                 fontFamily = TahoMono,
                 fontSize = 10.sp,
             )
@@ -1163,9 +1143,9 @@ private fun MockupNetworkPanel(
                 .background(MockupChromeElevated)
                 .padding(horizontal = 8.dp, vertical = 7.dp),
         ) {
-            Text("Name", color = Color.White.copy(alpha = 0.6f), fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.weight(1.7f))
-            Text("Status", color = Color.White.copy(alpha = 0.6f), fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.weight(0.7f))
-            Text("Type", color = Color.White.copy(alpha = 0.6f), fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.weight(0.7f))
+            Text("Name", color = TahoText.copy(alpha = 0.6f), fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.weight(1.7f))
+            Text("Status", color = TahoText.copy(alpha = 0.6f), fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.weight(0.7f))
+            Text("Type", color = TahoText.copy(alpha = 0.6f), fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.weight(0.7f))
         }
         if (captureRequests.isEmpty()) {
             Column(
@@ -1177,7 +1157,7 @@ private fun MockupNetworkPanel(
             ) {
                 Text(
                     "No captured requests for this tab",
-                    color = Color.White.copy(alpha = 0.45f),
+                    color = TahoText.copy(alpha = 0.45f),
                     fontFamily = TahoBody,
                     fontSize = 12.sp,
                 )
@@ -1199,7 +1179,7 @@ private fun MockupNetworkPanel(
                         Column(modifier = Modifier.weight(1.7f)) {
                             Text(
                                 text = request.url.substringAfterLast('/').ifBlank { request.url },
-                                color = Color.White,
+                                color = TahoText,
                                 fontFamily = TahoMono,
                                 fontSize = 9.5.sp,
                                 maxLines = 1,
@@ -1207,21 +1187,21 @@ private fun MockupNetworkPanel(
                             )
                             Text(
                                 text = request.method,
-                                color = MockupBlue,
+                                color = MockupAccent,
                                 fontFamily = TahoMono,
                                 fontSize = 8.sp,
                             )
                         }
                         Text(
                             request.status?.toString() ?: "—",
-                            color = if ((request.status ?: 0) in 200..399) Color(0xFF6BCF8C) else Color.White.copy(alpha = 0.6f),
+                            color = if ((request.status ?: 0) in 200..399) TahoText else TahoText.copy(alpha = 0.6f),
                             fontFamily = TahoMono,
                             fontSize = 9.sp,
                             modifier = Modifier.weight(0.7f),
                         )
                         Text(
                             request.category,
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = TahoText.copy(alpha = 0.5f),
                             fontFamily = TahoMono,
                             fontSize = 8.5.sp,
                             modifier = Modifier.weight(0.7f),
@@ -1233,7 +1213,7 @@ private fun MockupNetworkPanel(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(1.dp)
-                            .background(Color.White.copy(alpha = 0.05f)),
+                            .background(TahoText.copy(alpha = 0.05f)),
                     )
                 }
             }
