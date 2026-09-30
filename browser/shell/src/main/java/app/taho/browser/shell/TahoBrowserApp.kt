@@ -166,6 +166,7 @@ fun TahoBrowserApp(
     var showTabs by rememberSaveable { mutableStateOf(false) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var showBrowserMenu by rememberSaveable { mutableStateOf(false) }
+    var showDeveloperTools by rememberSaveable { mutableStateOf(false) }
     var showSiteInfo by rememberSaveable { mutableStateOf(false) }
     var showShareQr by rememberSaveable { mutableStateOf(false) }
     var showReaderMode by rememberSaveable { mutableStateOf(false) }
@@ -216,6 +217,7 @@ fun TahoBrowserApp(
             showTabs ||
             showSettings ||
             showBrowserMenu ||
+            showDeveloperTools ||
             showSiteInfo ||
             showShareQr ||
             showReaderMode ||
@@ -270,6 +272,7 @@ fun TahoBrowserApp(
             showCaptureSummary = false
             showSettings = false
             showBrowserMenu = false
+            showDeveloperTools = false
             showSiteInfo = false
             showShareQr = false
             showReaderMode = false
@@ -286,6 +289,7 @@ fun TahoBrowserApp(
             findInPageActive ||
             showTranslationBar ||
             showBrowserMenu ||
+            showDeveloperTools ||
             showSiteInfo ||
             showShareQr ||
             originWarningTargetUrl != null ||
@@ -306,6 +310,7 @@ fun TahoBrowserApp(
                 findInPageQuery = ""
             }
             showTranslationBar -> showTranslationBar = false
+            showDeveloperTools -> showDeveloperTools = false
             showBrowserMenu -> showBrowserMenu = false
             showSiteInfo -> showSiteInfo = false
             showShareQr -> showShareQr = false
@@ -336,16 +341,9 @@ fun TahoBrowserApp(
                 browserContent()
 
                 if (isStartPage && !showReaderMode) {
-                    TahoStartPage(
+                    TahoMockupStartPage(
                         isPrivate = state.isPrivate,
                         onNavigate = onNavigate,
-                        onOpenTabs = { showTabs = true },
-                        onOpenSettings = {
-                            settingsInitialSubPage = SettingsSubPage.MAIN
-                            showSettings = true
-                        },
-                        onNewTab = onNewTab,
-                        onNewPrivateTab = onNewPrivateTab,
                         recentTabs = state.tabs,
                         onSelectTab = onSelectTab,
                     )
@@ -381,8 +379,8 @@ fun TahoBrowserApp(
                     .padding(horizontal = 13.dp, vertical = 11.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                if (isTopToolbar) {
-                    Omnibox(
+                if (!isStartPage && isTopToolbar) {
+                    TahoMockupToolbar(
                         value = state.omniboxText,
                         draft = draft,
                         editing = editing,
@@ -448,22 +446,6 @@ fun TahoBrowserApp(
                     Spacer(Modifier.height(9.dp))
                 } else if (state.loadFailed) {
                     LoadFailureBanner(onReload = onReload)
-                    Spacer(Modifier.height(9.dp))
-                }
-
-                if (state.captureState != CaptureState.OFF) {
-                    CaptureIndicator(
-                        state = state.captureState,
-                        relevantCount = state.relevantCount,
-                        onClick = {
-                            showTabs = false
-                            editing = false
-                            selectedCaptureId = null
-                            showTransferConfirmation = false
-                            showCaptureSummary = true
-                            onCaptureClick()
-                        },
-                    )
                     Spacer(Modifier.height(9.dp))
                 }
 
@@ -537,8 +519,8 @@ fun TahoBrowserApp(
                     Spacer(Modifier.height(8.dp))
                 }
 
-                if (!isTopToolbar) {
-                    Omnibox(
+                if (!isStartPage && !isTopToolbar) {
+                    TahoMockupToolbar(
                         value = state.omniboxText,
                         draft = draft,
                         editing = editing,
@@ -886,38 +868,8 @@ fun TahoBrowserApp(
                 scrimColor = Color.Black.copy(alpha = .50f),
                 dragHandle = { SheetGrabHandle() },
             ) {
-                TahoBrowserMenuSheet(
-                    currentLocation = currentTab?.location,
-                    currentTitle = currentTab?.title,
+                TahoMockupBrowserMenuSheet(
                     isDesktopMode = effectiveDesktop,
-                    isBookmarked = isBookmarked,
-                    zoomPercent = currentZoom,
-                    onZoomIn = {
-                        TahoBrowserStateStore.setZoomForOrigin(currentOrigin, (currentZoom + 10).coerceAtMost(300))
-                    },
-                    onZoomOut = {
-                        TahoBrowserStateStore.setZoomForOrigin(currentOrigin, (currentZoom - 10).coerceAtLeast(50))
-                    },
-                    onZoomReset = {
-                        TahoBrowserStateStore.setZoomForOrigin(currentOrigin, 100)
-                    },
-                    onToggleBookmark = {
-                        currentTab?.location?.let { loc ->
-                            if (isBookmarked) {
-                                val bm = TahoBrowserStateStore.bookmarks.find { it.url == loc }
-                                if (bm != null) TahoBrowserStateStore.removeBookmark(bm.id)
-                            } else {
-                                TahoBrowserStateStore.addBookmark(currentTab.title ?: loc, loc)
-                            }
-                        }
-                    },
-                    onSaveToReadingList = {
-                        currentTab?.location?.let { loc ->
-                            TahoBrowserStateStore.addReadingListItem(currentTab.title ?: loc, loc)
-                        }
-                    },
-                    onShare = { showShareQr = true },
-                    onFindInPage = { findInPageActive = true },
                     onToggleDesktopMode = {
                         val nextDesktop = !effectiveDesktop
                         currentTab?.location?.let { loc ->
@@ -926,59 +878,49 @@ fun TahoBrowserApp(
                         isDesktopMode = nextDesktop
                         onSetDesktopMode(nextDesktop)
                     },
-                    onReaderMode = {
-                        showReaderMode = true
-                        readerContent = null
-                        readerError = null
-                        readerLoading = true
-                        onExtractReaderContent { extracted ->
-                            readerLoading = false
-                            readerContent = extracted
-                            if (extracted == null) {
-                                readerError = "This page does not expose readable content."
-                            }
+                    onNewTab = onNewTab,
+                    onNewPrivateTab = onNewPrivateTab,
+                    onOpenSettings = { section ->
+                        settingsInitialSubPage = when (section) {
+                            "BOOKMARKS" -> SettingsSubPage.BOOKMARKS
+                            "HISTORY" -> SettingsSubPage.HISTORY
+                            "DOWNLOADS" -> SettingsSubPage.DOWNLOADS
+                            "EXTENSIONS" -> SettingsSubPage.EXTENSIONS
+                            "PRIVACY" -> SettingsSubPage.PRIVACY_SECURITY
+                            "ABOUT" -> SettingsSubPage.ABOUT
+                            else -> SettingsSubPage.MAIN
                         }
+                        showSettings = true
                     },
+                    onFindInPage = { findInPageActive = true },
                     onTranslate = { showTranslationBar = true },
                     onAddToHomeScreen = {
                         currentTab?.location?.let { loc ->
                             onAddToHomeScreen(currentTab.title ?: loc, loc)
                         }
                     },
-                    onPrintPage = {
-                        showBrowserMenu = false
-                        onPrintPage()
-                    },
-                    onSaveOffline = {
-                        currentTab?.location?.let { loc ->
-                            TahoBrowserStateStore.offlinePages = TahoBrowserStateStore.offlinePages + OfflinePageUi(
-                                id = java.util.UUID.randomUUID().toString(),
-                                title = currentTab.title ?: loc,
-                                url = loc,
-                            )
-                        }
-                    },
-                    onSiteInfo = { showSiteInfo = true },
-                    onOpenSettings = { section ->
-                        settingsInitialSubPage = when (section) {
-                            "BOOKMARKS" -> SettingsSubPage.BOOKMARKS
-                            "HISTORY" -> SettingsSubPage.HISTORY
-                            "DOWNLOADS" -> SettingsSubPage.DOWNLOADS
-                            "PASSWORDS" -> SettingsSubPage.PASSWORDS
-                            "EXTENSIONS" -> SettingsSubPage.EXTENSIONS
-                            else -> SettingsSubPage.MAIN
-                        }
-                        showSettings = true
-                    },
-                    onNewTab = {
-                        onNewTab()
-                        showBrowserMenu = false
-                    },
-                    onNewPrivateTab = {
-                        onNewPrivateTab()
-                        showBrowserMenu = false
+                    onOpenDeveloperTools = {
+                        showDeveloperTools = true
                     },
                     onCloseMenu = { showBrowserMenu = false },
+                )
+            }
+        }
+
+        if (showDeveloperTools && state.sitePermission == null) {
+            ModalBottomSheet(
+                onDismissRequest = { showDeveloperTools = false },
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                containerColor = Color(0xFF0A0D11),
+                contentColor = Color.White,
+                shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
+                tonalElevation = 0.dp,
+                scrimColor = Color.Black.copy(alpha = .56f),
+                dragHandle = { SheetGrabHandle() },
+            ) {
+                TahoMockupDeveloperToolsSheet(
+                    captureRequests = state.captureRequests,
+                    onDismiss = { showDeveloperTools = false },
                 )
             }
         }
