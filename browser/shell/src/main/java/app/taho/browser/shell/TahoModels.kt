@@ -9,7 +9,7 @@ data class ReaderPageContentUi(
     val isGated: Boolean,
 )
 
-enum class TahoThemeMode { SYSTEM, DARK, LIGHT }
+enum class TahoThemeMode { SYSTEM, DARK, LIGHT, AMOLED }
 enum class TahoToolbarPosition { BOTTOM, TOP }
 enum class TahoHomePageMode { START_PAGE, CUSTOM_URL }
 enum class TahoTrackingProtectionLevel { STANDARD, STRICT, CUSTOM }
