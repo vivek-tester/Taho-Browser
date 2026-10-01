@@ -468,7 +468,7 @@ internal fun Phase2CaptureFiltersScreen(
 @Composable
 internal fun Phase2ExportScreen(
     requests: List<M4CaptureRequestUiState>,
-    onExport: (String) -> Unit,
+    onExport: (String, String, String) -> Unit,
     onBack: () -> Unit,
 ) {
     var format by rememberSaveable { mutableStateOf(Phase2ExportFormat.JSON) }
@@ -505,7 +505,18 @@ internal fun Phase2ExportScreen(
         Text("${requests.size} packet${if (requests.size == 1) "" else "s"} selected for export", color = P2Muted, fontFamily = TahoBody, fontSize = 11.sp)
         Spacer(Modifier.weight(1f))
         Phase2PrimaryButton("Export ${requests.size} Packets", enabled = requests.isNotEmpty() && format != Phase2ExportFormat.PCAP) {
-            onExport(phase2ExportText(requests, format))
+            val fileName = when (format) {
+                Phase2ExportFormat.JSON -> "taho-capture.json"
+                Phase2ExportFormat.HAR -> "taho-capture.har"
+                Phase2ExportFormat.CSV -> "taho-capture.csv"
+                Phase2ExportFormat.PCAP -> "taho-capture.pcap"
+            }
+            val mimeType = when (format) {
+                Phase2ExportFormat.JSON, Phase2ExportFormat.HAR -> "application/json"
+                Phase2ExportFormat.CSV -> "text/csv"
+                Phase2ExportFormat.PCAP -> "application/vnd.tcpdump.pcap"
+            }
+            onExport(fileName, mimeType, phase2ExportText(requests, format))
         }
     }
 }
