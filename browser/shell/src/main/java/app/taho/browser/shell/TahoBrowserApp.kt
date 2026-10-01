@@ -192,6 +192,9 @@ fun TahoBrowserApp(
     var showTabs by rememberSaveable { mutableStateOf(false) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var showBrowserMenu by rememberSaveable { mutableStateOf(false) }
+    var showAddShortcut by rememberSaveable { mutableStateOf(false) }
+    var newShortcutTitle by rememberSaveable { mutableStateOf("") }
+    var newShortcutUrl by rememberSaveable { mutableStateOf("") }
     var showPacketCapture by rememberSaveable { mutableStateOf(false) }
     var showDeveloperTools by rememberSaveable { mutableStateOf(false) }
     var showSiteInfo by rememberSaveable { mutableStateOf(false) }
@@ -249,6 +252,7 @@ fun TahoBrowserApp(
             showTabs ||
             showSettings ||
             showBrowserMenu ||
+            showAddShortcut ||
             showPacketCapture ||
             showDeveloperTools ||
             showSiteInfo ||
@@ -378,6 +382,7 @@ fun TahoBrowserApp(
             showTranslationBar -> showTranslationBar = false
             showDeveloperTools -> showDeveloperTools = false
             showPacketCapture -> showPacketCapture = false
+            showAddShortcut -> showAddShortcut = false
             showBrowserMenu -> showBrowserMenu = false
             showSiteInfo -> showSiteInfo = false
             showShareQr -> showShareQr = false
@@ -428,6 +433,23 @@ fun TahoBrowserApp(
                         onNavigate = onNavigate,
                         recentTabs = state.tabs,
                         onSelectTab = onSelectTab,
+                        onOpenBookmarks = {
+                            settingsInitialSubPage = SettingsSubPage.BOOKMARKS
+                            showSettings = true
+                        },
+                        onOpenHistory = {
+                            settingsInitialSubPage = SettingsSubPage.HISTORY
+                            showSettings = true
+                        },
+                        onOpenDownloads = {
+                            settingsInitialSubPage = SettingsSubPage.DOWNLOADS
+                            showSettings = true
+                        },
+                        onAddShortcut = {
+                            newShortcutTitle = ""
+                            newShortcutUrl = ""
+                            showAddShortcut = true
+                        },
                     )
                 }
 
@@ -926,6 +948,114 @@ fun TahoBrowserApp(
             }
         }
 
+        if (showAddShortcut && state.sitePermission == null) {
+            ModalBottomSheet(
+                onDismissRequest = { showAddShortcut = false },
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                containerColor = TahoSheet,
+                contentColor = TahoText,
+                shape = TahoSheetShape,
+                tonalElevation = 0.dp,
+                scrimColor = Color.Black.copy(alpha = .50f),
+                dragHandle = { SheetGrabHandle() },
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 20.dp, vertical = 10.dp),
+                ) {
+                    Text(
+                        "Add shortcut to Taho",
+                        color = TahoText,
+                        fontFamily = TahoDisplay,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 18.sp,
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    BasicTextField(
+                        value = newShortcutTitle,
+                        onValueChange = { newShortcutTitle = it },
+                        singleLine = true,
+                        textStyle = TextStyle(
+                            color = TahoText,
+                            fontFamily = TahoBody,
+                            fontSize = 14.sp,
+                        ),
+                        cursorBrush = SolidColor(TahoText),
+                        decorationBox = { field ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(TahoPillShape)
+                                    .background(TahoSurfaceControl)
+                                    .border(1.dp, TahoHairlineStrong, TahoPillShape)
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                            ) {
+                                if (newShortcutTitle.isBlank()) {
+                                    Text("Name", color = TahoFaint, fontFamily = TahoBody, fontSize = 14.sp)
+                                }
+                                field()
+                            }
+                        },
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    BasicTextField(
+                        value = newShortcutUrl,
+                        onValueChange = { newShortcutUrl = it },
+                        singleLine = true,
+                        textStyle = TextStyle(
+                            color = TahoText,
+                            fontFamily = TahoBody,
+                            fontSize = 14.sp,
+                        ),
+                        cursorBrush = SolidColor(TahoText),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        decorationBox = { field ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(TahoPillShape)
+                                    .background(TahoSurfaceControl)
+                                    .border(1.dp, TahoHairlineStrong, TahoPillShape)
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                            ) {
+                                if (newShortcutUrl.isBlank()) {
+                                    Text("URL", color = TahoFaint, fontFamily = TahoBody, fontSize = 14.sp)
+                                }
+                                field()
+                            }
+                        },
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        M7SecondaryButton("Cancel", Modifier.weight(1f)) {
+                            showAddShortcut = false
+                        }
+                        M7PrimaryButton(
+                            label = "Add",
+                            showArrow = false,
+                            modifier = Modifier.weight(1f),
+                            enabled = newShortcutTitle.isNotBlank() && newShortcutUrl.isNotBlank(),
+                        ) {
+                            TahoBrowserStateStore.addTopSite(
+                                title = newShortcutTitle.trim(),
+                                url = newShortcutUrl.trim(),
+                                isPinned = true,
+                            )
+                            showAddShortcut = false
+                            newShortcutTitle = ""
+                            newShortcutUrl = ""
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                }
+            }
+        }
+
         if (showSettings && state.sitePermission == null) {
             ModalBottomSheet(
                 onDismissRequest = {
@@ -1020,6 +1150,10 @@ fun TahoBrowserApp(
                     },
                     onOpenPacketCapture = { showPacketCapture = true },
                     onOpenDeveloperTools = { showDeveloperTools = true },
+                    onOpenRecentTabs = {
+                        showBrowserMenu = false
+                        showTabs = true
+                    },
                     onCloseMenu = { showBrowserMenu = false },
                 )
             }
