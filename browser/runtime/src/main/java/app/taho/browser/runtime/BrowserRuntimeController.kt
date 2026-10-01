@@ -6,6 +6,7 @@ import android.os.Handler
 import android.os.Looper
 import org.mozilla.geckoview.AllowOrDeny
 import org.mozilla.geckoview.GeckoResult
+import org.mozilla.geckoview.GeckoRuntimeSettings
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSessionSettings
 import org.mozilla.geckoview.PageExtractionController
@@ -484,6 +485,36 @@ class BrowserRuntimeController(context: Context) {
             else GeckoSessionSettings.VIEWPORT_MODE_MOBILE,
         )
         tab.session.reload()
+    }
+
+    /**
+     * Apply the browser's Secure DNS choice directly to Gecko's Trusted
+     * Recursive Resolver (DNS-over-HTTPS) runtime settings.
+     *
+     * A null URI means the user explicitly selected system DNS. A non-null
+     * HTTPS URI is treated as an explicit provider choice and therefore uses
+     * TRR-only mode so Gecko does not silently fall back to platform DNS.
+     */
+    fun setSecureDns(resolverUri: String?) {
+        val runtimeSettings = runtime.settings
+        runtimeSettings.setDohAutoselectEnabled(false)
+
+        if (resolverUri.isNullOrBlank()) {
+            runtimeSettings.setTrustedRecursiveResolverMode(
+                GeckoRuntimeSettings.TRR_MODE_DISABLED,
+            )
+            return
+        }
+
+        require(resolverUri.startsWith("https://")) {
+            "Secure DNS resolver must use HTTPS."
+        }
+
+        runtimeSettings.setTrustedRecursiveResolverUri(resolverUri)
+        runtimeSettings.setDefaultRecursiveResolverUri(resolverUri)
+        runtimeSettings.setTrustedRecursiveResolverMode(
+            GeckoRuntimeSettings.TRR_MODE_ONLY,
+        )
     }
 
     fun printCurrentPage(): Boolean {
