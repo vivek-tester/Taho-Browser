@@ -1436,6 +1436,7 @@ fun TahoBrowserApp(
         }
 
         if (showDevToolsPanel && state.sitePermission == null) {
+            Box(modifier = Modifier.fillMaxSize()) {
             val devToolsModifier = when (phase3DevToolsMode) {
                 Phase3DevToolsMode.BOTTOM -> Modifier
                     .align(Alignment.BottomCenter)
@@ -1503,6 +1504,7 @@ fun TahoBrowserApp(
                         devToolsFloatingY += dy
                     },
                 )
+            }
             }
         }
 
