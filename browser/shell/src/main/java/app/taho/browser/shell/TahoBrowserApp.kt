@@ -730,35 +730,43 @@ fun TahoBrowserApp(
         }
 
         if (showCaptureSummary && selectedCaptureId == null && state.sitePermission == null) {
-            ModalBottomSheet(
-                onDismissRequest = { showCaptureSummary = false },
-                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                containerColor = TahoSheet,
-                contentColor = TahoText,
-                shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
-                tonalElevation = 0.dp,
-                scrimColor = Color.Black.copy(alpha = .50f),
-                dragHandle = { SheetGrabHandle() },
-            ) {
-                M7CaptureSummarySheet(
-                    requests = state.captureRequests,
-                    filter = captureFilter,
-                    searchQuery = searchQuery,
-                    onSearchQueryChange = { searchQuery = it },
-                    listState = captureListState,
-                    selectedId = lastSelectedCaptureId,
-                    onFilterSelected = { captureFilter = it },
-                    onSelect = { requestId ->
-                        lastSelectedCaptureId = requestId
-                        selectedCaptureId = requestId
-                        selectedSecretPolicy = M4SecretPolicyUi.PARAMETERIZE
-                    },
-                    onClose = {
-                        showCaptureSummary = false
-                        searchQuery = ""
-                    },
-                )
+            val currentHost = currentTab?.location?.let { location ->
+                runCatching { java.net.URI(location).host?.lowercase() }.getOrNull()
             }
+            Phase2CapturedPacketsScreen(
+                requests = state.captureRequests,
+                currentHost = currentHost,
+                searchQuery = searchQuery,
+                onSearchQueryChange = { searchQuery = it },
+                methodFilter = phase2MethodFilter,
+                statusFilter = phase2StatusFilter,
+                domainFilter = phase2DomainFilter,
+                thirdPartyOnly = phase2ThirdPartyOnly,
+                failedOnly = phase2FailedOnly,
+                webSocketOnly = phase2WebSocketOnly,
+                onMethodFilterChange = { phase2MethodFilter = it },
+                onInspect = { requestId ->
+                    lastSelectedCaptureId = requestId
+                    selectedCaptureId = requestId
+                    selectedSecretPolicy = M4SecretPolicyUi.PARAMETERIZE
+                },
+                onOpenFilters = { showCaptureFilters = true },
+                onOpenExport = { requests ->
+                    exportCaptureIds = requests.map { it.id }
+                    showCaptureExport = true
+                },
+                onDeleteSelected = { ids -> ids.forEach(onDeleteRequest) },
+                onSendSingleToTaho = { requestId ->
+                    lastSelectedCaptureId = requestId
+                    selectedCaptureId = requestId
+                    selectedSecretPolicy = M4SecretPolicyUi.PARAMETERIZE
+                    showTransferConfirmation = true
+                },
+                onBack = {
+                    showCaptureSummary = false
+                    searchQuery = ""
+                },
+            )
         }
 
         selectedCapture?.let { request ->
@@ -768,53 +776,23 @@ fun TahoBrowserApp(
                     runCatching { java.net.URI(loc).host?.lowercase() }.getOrNull()
                 }
 
-                ModalBottomSheet(
-                    onDismissRequest = { selectedCaptureId = null },
-                    sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                    containerColor = TahoSheet,
-                    contentColor = TahoText,
-                    shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
-                    tonalElevation = 0.dp,
-                    scrimColor = Color.Black.copy(alpha = .50f),
-                    dragHandle = { SheetGrabHandle() },
-                ) {
-                    M7RequestInspectorSheet(
-                        request = request,
-                        onBack = { selectedCaptureId = null },
-                        onCopyCurl = {
-                            hapticFeedback.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                            onCopyCurl(M7SafeExport.curl(request))
-                        },
-                        onShare = {
-                            hapticFeedback.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                            onShare(M7SafeExport.shareText(request))
-                        },
-                        onSendToTaho = {
-                            hapticFeedback.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                            selectedSecretPolicy = M4SecretPolicyUi.PARAMETERIZE
-                            showTransferConfirmation = true
-                        },
-                        onReplay = {
-                            hapticFeedback.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                            val targetHost = runCatching { java.net.URI(request.url).host?.lowercase() }.getOrNull()
-                            if (currentTabHost != null && targetHost != null && currentTabHost != targetHost) {
-                                originWarningTargetUrl = request.url
-                            } else {
-                                selectedCaptureId = null
-                                onReplayRequest(request.url)
-                            }
-                        },
-                        onDelete = {
-                            hapticFeedback.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                            onDeleteRequest(request.id)
-                            selectedCaptureId = null
-                        },
-                        onToggleWorkspace = {
-                            hapticFeedback.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                            workspaceExpanded = true
-                        },
-                    )
-                }
+                Phase2PacketDetailsScreen(
+                    request = request,
+                    onBack = { selectedCaptureId = null },
+                    onCopy = {
+                        hapticFeedback.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        onCopyCurl(M7SafeExport.curl(request))
+                    },
+                    onShare = {
+                        hapticFeedback.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        onShare(M7SafeExport.shareText(request))
+                    },
+                    onSendToTaho = {
+                        hapticFeedback.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        selectedSecretPolicy = M4SecretPolicyUi.PARAMETERIZE
+                        showTransferConfirmation = true
+                    },
+                )
             }
 
             if (showTransferConfirmation && state.sitePermission == null) {
