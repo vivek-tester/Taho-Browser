@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.taho.browser.capture.domain.CaptureState
 import java.net.URLEncoder
+import org.json.JSONObject
 
 private val MockupChrome: Color get() = TahoBg
 private val MockupChromeElevated: Color get() = TahoSheet
@@ -988,10 +989,21 @@ private enum class MockupDevToolsMode(val title: String) {
 internal fun TahoMockupDeveloperToolsSheet(
     enabled: Boolean,
     captureRequests: List<M4CaptureRequestUiState>,
+    devToolsState: DevToolsUiState,
+    onRequest: (String, String?) -> Unit,
+    onReloadPage: () -> Unit,
+    onInspectRequest: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var selected by rememberSaveable { mutableStateOf(MockupDevToolsPanel.ELEMENTS) }
     var mode by rememberSaveable { mutableStateOf(MockupDevToolsMode.BOTTOM) }
+
+    LaunchedEffect(selected, enabled, devToolsState.connected) {
+        val command = devToolsCommandFor(selected)
+        if (enabled && devToolsState.connected && command != null) {
+            onRequest(command, null)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -1002,9 +1014,7 @@ internal fun TahoMockupDeveloperToolsSheet(
             .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 52.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -1014,6 +1024,18 @@ internal fun TahoMockupDeveloperToolsSheet(
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 18.sp,
                 modifier = Modifier.weight(1f),
+            )
+            Text(
+                "↻",
+                color = if (enabled && selected != MockupDevToolsPanel.NETWORK) TahoText else TahoText.copy(alpha = .28f),
+                fontSize = 18.sp,
+                modifier = Modifier
+                    .size(44.dp)
+                    .clickable(enabled = enabled && selected != MockupDevToolsPanel.NETWORK) {
+                        devToolsCommandFor(selected)?.let { onRequest(it, null) }
+                    }
+                    .padding(10.dp),
+                textAlign = TextAlign.Center,
             )
             Text(
                 "×",
@@ -1043,10 +1065,10 @@ internal fun TahoMockupDeveloperToolsSheet(
                     fontSize = 14.sp,
                 )
                 Text(
-                    if (enabled) {
-                        "Controlled by the Packet Capture master switch."
-                    } else {
-                        "Enable Packet Capture from the Taho menu to use these panels."
+                    when {
+                        !enabled -> "Enable Packet Capture from the Taho menu to use these panels."
+                        devToolsState.connected -> "Live inspector attached to the current page."
+                        else -> "Packet Capture is on; reload once to attach the live page inspector."
                     },
                     color = TahoText.copy(alpha = 0.48f),
                     fontFamily = TahoBody,
@@ -1054,7 +1076,11 @@ internal fun TahoMockupDeveloperToolsSheet(
                 )
             }
             Text(
-                if (enabled) "ON" else "OFF",
+                when {
+                    !enabled -> "OFF"
+                    devToolsState.connected -> "LIVE"
+                    else -> "WAIT"
+                },
                 color = TahoText.copy(alpha = if (enabled) 0.82f else 0.42f),
                 fontFamily = TahoMono,
                 fontWeight = FontWeight.SemiBold,
@@ -1065,9 +1091,7 @@ internal fun TahoMockupDeveloperToolsSheet(
         Spacer(Modifier.height(10.dp))
 
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(7.dp),
         ) {
             MockupDevToolsMode.entries.forEach { item ->
@@ -1076,17 +1100,13 @@ internal fun TahoMockupDeveloperToolsSheet(
                     modifier = Modifier
                         .clip(RoundedCornerShape(18.dp))
                         .background(if (active) MockupAccent else MockupChromeElevated)
-                        .border(
-                            1.dp,
-                            if (active) MockupAccent else MockupBorder,
-                            RoundedCornerShape(18.dp),
-                        )
+                        .border(1.dp, if (active) MockupAccent else MockupBorder, RoundedCornerShape(18.dp))
                         .clickable(enabled = enabled) { mode = item }
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                 ) {
                     Text(
                         item.title,
-                        color = TahoText,
+                        color = if (active) TahoBg else TahoText,
                         fontFamily = TahoBody,
                         fontSize = 11.sp,
                     )
@@ -1097,9 +1117,7 @@ internal fun TahoMockupDeveloperToolsSheet(
         Spacer(Modifier.height(10.dp))
 
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             MockupDevToolsPanel.entries.forEach { panel ->
@@ -1135,34 +1153,78 @@ internal fun TahoMockupDeveloperToolsSheet(
                 .background(TahoBg)
                 .border(1.dp, MockupBorder, RoundedCornerShape(14.dp)),
         ) {
-            if (!enabled) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(
-                        "Developer tools are disabled",
-                        color = TahoText,
-                        fontFamily = TahoDisplay,
-                        fontSize = 16.sp,
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        "Enable the switch above to inspect this tab.",
-                        color = TahoText.copy(alpha = 0.5f),
-                        fontFamily = TahoBody,
-                        fontSize = 12.sp,
-                    )
+            when {
+                !enabled -> DevToolsCenteredMessage(
+                    title = "Developer tools are disabled",
+                    detail = "Enable Packet Capture from the Taho menu to inspect this tab.",
+                )
+
+                selected != MockupDevToolsPanel.NETWORK && !devToolsState.connected -> {
+                    Column(
+                        modifier = Modifier.fillMaxSize().padding(24.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            "Inspector not attached to this page",
+                            color = TahoText,
+                            fontFamily = TahoDisplay,
+                            fontSize = 16.sp,
+                        )
+                        Spacer(Modifier.height(7.dp))
+                        Text(
+                            "Reload the current page once. Taho attaches its live inspection bridge at document start.",
+                            color = TahoText.copy(alpha = .52f),
+                            fontFamily = TahoBody,
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp,
+                            textAlign = TextAlign.Center,
+                        )
+                        Spacer(Modifier.height(14.dp))
+                        Box(
+                            modifier = Modifier
+                                .heightIn(min = 44.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(MockupChromeElevated)
+                                .border(1.dp, MockupBorder, RoundedCornerShape(14.dp))
+                                .clickable(onClick = onReloadPage)
+                                .padding(horizontal = 18.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("Reload page", color = TahoText, fontFamily = TahoBody, fontSize = 12.sp)
+                        }
+                    }
                 }
-            } else {
-                MockupDevToolsPanelContent(
+
+                else -> MockupDevToolsPanelContent(
                     panel = selected,
                     captureRequests = captureRequests,
+                    devToolsState = devToolsState,
                     mode = mode,
+                    onRequest = onRequest,
+                    onInspectRequest = onInspectRequest,
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun DevToolsCenteredMessage(title: String, detail: String) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(22.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(title, color = TahoText, fontFamily = TahoDisplay, fontSize = 16.sp)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            detail,
+            color = TahoText.copy(alpha = .5f),
+            fontFamily = TahoBody,
+            fontSize = 12.sp,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -1170,18 +1232,143 @@ internal fun TahoMockupDeveloperToolsSheet(
 private fun MockupDevToolsPanelContent(
     panel: MockupDevToolsPanel,
     captureRequests: List<M4CaptureRequestUiState>,
+    devToolsState: DevToolsUiState,
     mode: MockupDevToolsMode,
+    onRequest: (String, String?) -> Unit,
+    onInspectRequest: (String) -> Unit,
 ) {
     when (panel) {
-        MockupDevToolsPanel.NETWORK -> MockupNetworkPanel(captureRequests)
-        MockupDevToolsPanel.ELEMENTS -> MockupElementsPanel()
-        MockupDevToolsPanel.CONSOLE -> MockupConsolePanel()
-        else -> {
-            Column(
+        MockupDevToolsPanel.NETWORK -> MockupNetworkPanel(captureRequests, onInspectRequest)
+        MockupDevToolsPanel.ELEMENTS -> MockupElementsPanel(devToolsState)
+        MockupDevToolsPanel.CONSOLE -> MockupConsolePanel(devToolsState, onRequest)
+        else -> MockupLiveDataPanel(panel, devToolsState, mode, onRequest)
+    }
+}
+
+@Composable
+private fun MockupElementsPanel(state: DevToolsUiState) {
+    val payload = state.payloadJson
+    val parsed = remember(payload) {
+        payload?.let { runCatching { JSONObject(it) }.getOrNull() }
+    }
+    val html = parsed?.optString("html").orEmpty()
+    val meta = parsed?.let {
+        it.optInt("nodeCount").toString() + " nodes · " +
+            it.optInt("linkCount") + " links · " +
+            it.optInt("imageCount") + " images"
+    }.orEmpty()
+
+    Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
+        Text("DOM", color = TahoText.copy(alpha = 0.55f), fontFamily = TahoMono, fontSize = 10.sp)
+        if (meta.isNotBlank()) {
+            Spacer(Modifier.height(4.dp))
+            Text(meta, color = TahoText.copy(alpha = .42f), fontFamily = TahoMono, fontSize = 9.sp)
+        }
+        Spacer(Modifier.height(10.dp))
+        when {
+            state.loading -> Text("Reading live DOM…", color = TahoText.copy(alpha = .48f), fontFamily = TahoMono, fontSize = 10.sp)
+            state.error != null -> Text(state.error, color = TahoText.copy(alpha = .62f), fontFamily = TahoMono, fontSize = 10.sp)
+            html.isBlank() -> Text("No DOM snapshot returned.", color = TahoText.copy(alpha = .42f), fontFamily = TahoMono, fontSize = 10.sp)
+            else -> Text(
+                html,
+                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                color = TahoText,
+                fontFamily = TahoMono,
+                fontSize = 9.5.sp,
+                lineHeight = 14.sp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun MockupConsolePanel(
+    state: DevToolsUiState,
+    onRequest: (String, String?) -> Unit,
+) {
+    var code by rememberSaveable { mutableStateOf("") }
+    val pretty = remember(state.payloadJson) { prettyDevToolsJson(state.payloadJson) }
+
+    Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
+        Text(
+            "JavaScript console",
+            color = TahoText,
+            fontFamily = TahoDisplay,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 15.sp,
+        )
+        Spacer(Modifier.height(5.dp))
+        Text(
+            "Runs in Taho's WebExtension page-inspection world with live DOM access.",
+            color = TahoText.copy(alpha = .46f),
+            fontFamily = TahoBody,
+            fontSize = 10.5.sp,
+        )
+        Spacer(Modifier.height(10.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(MockupChromeElevated)
+                .border(1.dp, MockupBorder, RoundedCornerShape(12.dp))
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("›", color = MockupAccent, fontFamily = TahoMono, fontSize = 15.sp)
+            Spacer(Modifier.width(8.dp))
+            BasicTextField(
+                value = code,
+                onValueChange = { code = it },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 10.5.sp),
+                cursorBrush = SolidColor(TahoText),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
+                keyboardActions = KeyboardActions(
+                    onGo = { if (code.isNotBlank()) onRequest("CONSOLE_EVAL", code) },
+                ),
+            )
+            Text(
+                "Run",
+                color = if (code.isBlank()) TahoText.copy(alpha = .28f) else TahoText,
+                fontFamily = TahoBody,
+                fontSize = 11.sp,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-            ) {
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable(enabled = code.isNotBlank()) { onRequest("CONSOLE_EVAL", code) }
+                    .padding(horizontal = 10.dp, vertical = 7.dp),
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+        when {
+            state.loading -> Text("Running…", color = TahoText.copy(alpha = .46f), fontFamily = TahoMono, fontSize = 10.sp)
+            state.error != null -> Text(state.error, color = TahoText.copy(alpha = .62f), fontFamily = TahoMono, fontSize = 10.sp)
+            pretty.isNotBlank() -> Text(
+                pretty,
+                modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),
+                color = TahoText.copy(alpha = .82f),
+                fontFamily = TahoMono,
+                fontSize = 9.5.sp,
+                lineHeight = 14.sp,
+            )
+            else -> Spacer(Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun MockupLiveDataPanel(
+    panel: MockupDevToolsPanel,
+    state: DevToolsUiState,
+    mode: MockupDevToolsMode,
+    onRequest: (String, String?) -> Unit,
+) {
+    val command = devToolsCommandFor(panel)
+    val pretty = remember(state.payloadJson) { prettyDevToolsJson(state.payloadJson) }
+
+    Column(modifier = Modifier.fillMaxSize().padding(14.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     panel.title,
                     color = TahoText,
@@ -1189,142 +1376,84 @@ private fun MockupDevToolsPanelContent(
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp,
                 )
-                Spacer(Modifier.height(6.dp))
                 Text(
-                    "Layout: ${mode.title}",
-                    color = MockupAccent,
+                    "Live page data · " + mode.title,
+                    color = TahoText.copy(alpha = .42f),
                     fontFamily = TahoMono,
-                    fontSize = 10.sp,
-                )
-                Spacer(Modifier.height(18.dp))
-                Text(
-                    desktopPanelDescription(panel),
-                    color = TahoText.copy(alpha = 0.72f),
-                    fontFamily = TahoBody,
-                    fontSize = 12.sp,
-                )
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    "UI shell is wired. Engine transport for this panel is the next implementation layer; no placeholder inspection data is being fabricated.",
-                    color = TahoText.copy(alpha = 0.42f),
-                    fontFamily = TahoBody,
-                    fontSize = 11.sp,
-                    lineHeight = 16.sp,
+                    fontSize = 9.sp,
                 )
             }
+            if (panel == MockupDevToolsPanel.RECORDER) {
+                DevToolsMiniAction("Start") { onRequest("RECORDER", "start") }
+                DevToolsMiniAction("Stop") { onRequest("RECORDER", "stop") }
+                DevToolsMiniAction("Clear") { onRequest("RECORDER", "clear") }
+            } else if (panel == MockupDevToolsPanel.CHANGES) {
+                DevToolsMiniAction("Clear") { onRequest("CHANGES", "clear") }
+            }
         }
-    }
-}
 
-@Composable
-private fun MockupElementsPanel() {
-    Row(
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .padding(12.dp),
-        ) {
-            Text(
-                "DOM",
-                color = TahoText.copy(alpha = 0.55f),
-                fontFamily = TahoMono,
-                fontSize = 10.sp,
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                "<html>\n  <head>…</head>\n  <body>\n    Inspector transport not connected\n  </body>\n</html>",
-                color = TahoText,
-                fontFamily = TahoMono,
-                fontSize = 10.sp,
-                lineHeight = 16.sp,
-            )
-        }
-        Box(
-            modifier = Modifier
-                .width(1.dp)
-                .fillMaxHeight()
-                .background(TahoText.copy(alpha = 0.08f)),
-        )
-        Column(
-            modifier = Modifier
-                .weight(0.9f)
-                .fillMaxHeight()
-                .padding(12.dp),
-        ) {
-            Text(
-                "Styles  Computed  Layout",
-                color = TahoText.copy(alpha = 0.7f),
-                fontFamily = TahoMono,
-                fontSize = 9.sp,
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                "Select an element to inspect CSS.",
-                color = TahoText.copy(alpha = 0.4f),
-                fontFamily = TahoBody,
-                fontSize = 11.sp,
-            )
-        }
-    }
-}
-
-@Composable
-private fun MockupConsolePanel() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(12.dp),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
-                .background(MockupChromeElevated)
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("⌕ Filter", color = TahoText.copy(alpha = 0.45f), fontFamily = TahoMono, fontSize = 10.sp)
-            Spacer(Modifier.weight(1f))
-            Text("Default levels ▾", color = TahoText.copy(alpha = 0.6f), fontFamily = TahoMono, fontSize = 10.sp)
-        }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
-            "Console transport not connected yet.",
-            color = TahoText.copy(alpha = 0.52f),
-            fontFamily = TahoMono,
-            fontSize = 10.sp,
+            desktopPanelDescription(panel),
+            color = TahoText.copy(alpha = .58f),
+            fontFamily = TahoBody,
+            fontSize = 10.5.sp,
+            lineHeight = 15.sp,
         )
-        Spacer(Modifier.weight(1f))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("›", color = MockupAccent, fontFamily = TahoMono, fontSize = 15.sp)
-            Spacer(Modifier.width(8.dp))
-            Text("Run JavaScript in this page", color = TahoText.copy(alpha = 0.34f), fontFamily = TahoMono, fontSize = 10.sp)
+        Spacer(Modifier.height(12.dp))
+        when {
+            state.loading -> Text("Collecting live data…", color = TahoText.copy(alpha = .46f), fontFamily = TahoMono, fontSize = 10.sp)
+            state.error != null -> Text(state.error, color = TahoText.copy(alpha = .62f), fontFamily = TahoMono, fontSize = 10.sp)
+            pretty.isNotBlank() -> Text(
+                pretty,
+                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                color = TahoText.copy(alpha = .84f),
+                fontFamily = TahoMono,
+                fontSize = 9.3.sp,
+                lineHeight = 14.sp,
+            )
+            command != null -> Text(
+                "No live data returned yet.",
+                color = TahoText.copy(alpha = .42f),
+                fontFamily = TahoMono,
+                fontSize = 10.sp,
+            )
         }
     }
+}
+
+@Composable
+private fun DevToolsMiniAction(label: String, onClick: () -> Unit) {
+    Text(
+        label,
+        color = TahoText.copy(alpha = .78f),
+        fontFamily = TahoMono,
+        fontSize = 9.sp,
+        modifier = Modifier
+            .clip(RoundedCornerShape(9.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 7.dp, vertical = 6.dp),
+    )
 }
 
 @Composable
 private fun MockupNetworkPanel(
     captureRequests: List<M4CaptureRequestUiState>,
+    onInspectRequest: (String) -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(12.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+    Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("●", color = TahoText, fontSize = 12.sp)
             Spacer(Modifier.width(10.dp))
-            Text("Filter", color = TahoText.copy(alpha = 0.5f), fontFamily = TahoMono, fontSize = 10.sp)
+            Text(
+                "Captured traffic",
+                color = TahoText.copy(alpha = 0.5f),
+                fontFamily = TahoMono,
+                fontSize = 10.sp,
+            )
             Spacer(Modifier.weight(1f))
             Text(
-                "${captureRequests.size} requests",
+                captureRequests.size.toString() + " requests",
                 color = TahoText.copy(alpha = 0.45f),
                 fontFamily = TahoMono,
                 fontSize = 10.sp,
@@ -1341,32 +1470,21 @@ private fun MockupNetworkPanel(
             Text("Status", color = TahoText.copy(alpha = 0.6f), fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.weight(0.7f))
             Text("Type", color = TahoText.copy(alpha = 0.6f), fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.weight(0.7f))
         }
+
         if (captureRequests.isEmpty()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    "No captured requests for this tab",
-                    color = TahoText.copy(alpha = 0.45f),
-                    fontFamily = TahoBody,
-                    fontSize = 12.sp,
-                )
-            }
+            DevToolsCenteredMessage(
+                title = "No captured requests",
+                detail = "Browse or reload the page while Packet Capture is enabled.",
+            )
         } else {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState()),
+                modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),
             ) {
-                captureRequests.take(40).forEach { request ->
+                captureRequests.take(80).forEach { request ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .clickable { onInspectRequest(request.id) }
                             .padding(horizontal = 8.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -1388,7 +1506,7 @@ private fun MockupNetworkPanel(
                         }
                         Text(
                             request.status?.toString() ?: "—",
-                            color = if ((request.status ?: 0) in 200..399) TahoText else TahoText.copy(alpha = 0.6f),
+                            color = TahoText.copy(alpha = if ((request.status ?: 0) in 200..399) 1f else .62f),
                             fontFamily = TahoMono,
                             fontSize = 9.sp,
                             modifier = Modifier.weight(0.7f),
@@ -1404,10 +1522,7 @@ private fun MockupNetworkPanel(
                         )
                     }
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(1.dp)
-                            .background(TahoText.copy(alpha = 0.05f)),
+                        modifier = Modifier.fillMaxWidth().height(1.dp).background(TahoText.copy(alpha = 0.05f)),
                     )
                 }
             }
@@ -1415,24 +1530,49 @@ private fun MockupNetworkPanel(
     }
 }
 
+private fun devToolsCommandFor(panel: MockupDevToolsPanel): String? =
+    when (panel) {
+        MockupDevToolsPanel.ELEMENTS -> "ELEMENTS"
+        MockupDevToolsPanel.CONSOLE -> "CONSOLE_INFO"
+        MockupDevToolsPanel.SOURCES -> "SOURCES"
+        MockupDevToolsPanel.NETWORK -> null
+        MockupDevToolsPanel.PERFORMANCE -> "PERFORMANCE"
+        MockupDevToolsPanel.MEMORY -> "MEMORY"
+        MockupDevToolsPanel.APPLICATION -> "APPLICATION"
+        MockupDevToolsPanel.SECURITY -> "SECURITY"
+        MockupDevToolsPanel.LIGHTHOUSE -> "LIGHTHOUSE"
+        MockupDevToolsPanel.RECORDER -> "RECORDER"
+        MockupDevToolsPanel.ISSUES -> "ISSUES"
+        MockupDevToolsPanel.RENDERING -> "RENDERING"
+        MockupDevToolsPanel.SENSORS -> "SENSORS"
+        MockupDevToolsPanel.COVERAGE -> "COVERAGE"
+        MockupDevToolsPanel.CHANGES -> "CHANGES"
+        MockupDevToolsPanel.ANIMATIONS -> "ANIMATIONS"
+    }
+
+private fun prettyDevToolsJson(raw: String?): String {
+    if (raw.isNullOrBlank()) return ""
+    return runCatching { JSONObject(raw).toString(2) }.getOrDefault(raw)
+}
+
 private fun desktopPanelDescription(panel: MockupDevToolsPanel): String =
     when (panel) {
-        MockupDevToolsPanel.SOURCES -> "Debugger, source tree, breakpoints, scope, watch expressions and snippets."
-        MockupDevToolsPanel.PERFORMANCE -> "CPU, rendering, network and interaction timeline recording."
-        MockupDevToolsPanel.MEMORY -> "Heap snapshots, allocation sampling and constructor comparison."
-        MockupDevToolsPanel.APPLICATION -> "Manifest, service workers, storage, cookies, IndexedDB and cache storage."
-        MockupDevToolsPanel.SECURITY -> "TLS/security overview, certificate details, mixed-content state and permissions."
-        MockupDevToolsPanel.LIGHTHOUSE -> "Performance, accessibility, best-practices and SEO audits."
-        MockupDevToolsPanel.RECORDER -> "Record, replay and export user flows."
-        MockupDevToolsPanel.ISSUES -> "Aggregated browser, security and compatibility issues."
-        MockupDevToolsPanel.RENDERING -> "Paint flashing, layout shifts, FPS meter and rendering diagnostics."
-        MockupDevToolsPanel.SENSORS -> "Geolocation, orientation, touch and device-state emulation."
-        MockupDevToolsPanel.COVERAGE -> "JavaScript and CSS coverage."
-        MockupDevToolsPanel.CHANGES -> "Track local CSS and source modifications."
-        MockupDevToolsPanel.ANIMATIONS -> "Inspect and scrub CSS/Web Animations timelines."
-        MockupDevToolsPanel.ELEMENTS -> "DOM and CSS inspector."
-        MockupDevToolsPanel.CONSOLE -> "JavaScript console."
-        MockupDevToolsPanel.NETWORK -> "Network request inspector."
+        MockupDevToolsPanel.SOURCES -> "Live script and stylesheet inventory with inline-source previews."
+        MockupDevToolsPanel.PERFORMANCE -> "Navigation, paint and resource timing collected from the live page."
+        MockupDevToolsPanel.MEMORY -> "Live JavaScript heap metrics when Gecko exposes them, plus DOM resource counters."
+        MockupDevToolsPanel.APPLICATION -> "Local/session storage, service workers, Cache Storage, IndexedDB, cookie names and manifest."
+        MockupDevToolsPanel.SECURITY -> "Secure-context, protocol, referrer policy, CSP meta and mixed-resource inspection."
+        MockupDevToolsPanel.LIGHTHOUSE -> "Taho on-device performance/accessibility/best-practice checks. This is not Chromium Lighthouse."
+        MockupDevToolsPanel.RECORDER -> "Record live click, input, change and submit events. Password values are never recorded."
+        MockupDevToolsPanel.ISSUES -> "Live DOM/security scan for duplicate IDs, broken images, insecure forms and missing alt text."
+        MockupDevToolsPanel.RENDERING -> "Viewport, visual viewport, scroll state, media preferences and animation count."
+        MockupDevToolsPanel.SENSORS -> "Live screen, orientation, touch and sensor API capability information."
+        MockupDevToolsPanel.COVERAGE -> "Live CSS selector-use approximation plus JavaScript load inventory."
+        MockupDevToolsPanel.CHANGES -> "MutationObserver-backed DOM change history from the moment this panel is opened."
+        MockupDevToolsPanel.ANIMATIONS -> "Live Web Animations list with timing, target and play-state information."
+        MockupDevToolsPanel.ELEMENTS -> "Live DOM snapshot from the current page."
+        MockupDevToolsPanel.CONSOLE -> "Execute JavaScript in Taho's page-inspection WebExtension context."
+        MockupDevToolsPanel.NETWORK -> "Real captured requests; tap a row to inspect and send it to Taho."
     }
 
 private fun compactMockupUrl(value: String): String =
