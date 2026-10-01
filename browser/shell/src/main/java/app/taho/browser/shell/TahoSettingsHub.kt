@@ -585,7 +585,22 @@ private fun SettingsPrivacySecurityPage() {
                         .weight(1f)
                         .clip(TahoPillShape)
                         .background(if (sel) TahoGold else TahoSurfaceControl)
-                        .clickable { TahoBrowserStateStore.updateSettings { it.copy(trackingProtectionLevel = level) } }
+                        .clickable {
+                            TahoBrowserStateStore.updateSettings {
+                                when (level) {
+                                    TahoTrackingProtectionLevel.STANDARD,
+                                    TahoTrackingProtectionLevel.STRICT -> it.copy(
+                                        trackingProtectionLevel = level,
+                                        blockTrackers = true,
+                                        blockThirdPartyCookies = true,
+                                        fingerprintingProtection = true,
+                                        cryptominingProtection = true,
+                                    )
+                                    TahoTrackingProtectionLevel.CUSTOM ->
+                                        it.copy(trackingProtectionLevel = level)
+                                }
+                            }
+                        }
                         .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -597,16 +612,36 @@ private fun SettingsPrivacySecurityPage() {
         Spacer(Modifier.height(16.dp))
         SettingsSectionTitle("PROTECTION GUARDS")
         SettingsToggleRow("Cross-Site Tracker Blocking", "Block known ad and telemetry trackers", settings.blockTrackers) {
-            TahoBrowserStateStore.updateSettings { it.copy(blockTrackers = !it.blockTrackers) }
+            TahoBrowserStateStore.updateSettings {
+                it.copy(
+                    trackingProtectionLevel = TahoTrackingProtectionLevel.CUSTOM,
+                    blockTrackers = !it.blockTrackers,
+                )
+            }
         }
         SettingsToggleRow("Third-Party Cookie Isolation", "Prevent multi-site identity graphing", settings.blockThirdPartyCookies) {
-            TahoBrowserStateStore.updateSettings { it.copy(blockThirdPartyCookies = !it.blockThirdPartyCookies) }
+            TahoBrowserStateStore.updateSettings {
+                it.copy(
+                    trackingProtectionLevel = TahoTrackingProtectionLevel.CUSTOM,
+                    blockThirdPartyCookies = !it.blockThirdPartyCookies,
+                )
+            }
         }
         SettingsToggleRow("Fingerprinting Protection", "Mask canvas, audio & hardware indicators", settings.fingerprintingProtection) {
-            TahoBrowserStateStore.updateSettings { it.copy(fingerprintingProtection = !it.fingerprintingProtection) }
+            TahoBrowserStateStore.updateSettings {
+                it.copy(
+                    trackingProtectionLevel = TahoTrackingProtectionLevel.CUSTOM,
+                    fingerprintingProtection = !it.fingerprintingProtection,
+                )
+            }
         }
         SettingsToggleRow("Cryptomining Defense", "Terminate in-browser mining scripts", settings.cryptominingProtection) {
-            TahoBrowserStateStore.updateSettings { it.copy(cryptominingProtection = !it.cryptominingProtection) }
+            TahoBrowserStateStore.updateSettings {
+                it.copy(
+                    trackingProtectionLevel = TahoTrackingProtectionLevel.CUSTOM,
+                    cryptominingProtection = !it.cryptominingProtection,
+                )
+            }
         }
         SettingsToggleRow("HTTPS-Only Mode", "Enforce encrypted transport across all hosts", settings.httpsOnlyMode) {
             TahoBrowserStateStore.updateSettings { it.copy(httpsOnlyMode = !it.httpsOnlyMode) }
@@ -615,7 +650,13 @@ private fun SettingsPrivacySecurityPage() {
             TahoBrowserStateStore.updateSettings { it.copy(safeBrowsingEnabled = !it.safeBrowsingEnabled) }
         }
         SettingsToggleRow("Pop-Up & Redirect Blocker", "Suppress intrusive modals & redirect loops", settings.popupBlockerEnabled) {
-            TahoBrowserStateStore.updateSettings { it.copy(popupBlockerEnabled = !it.popupBlockerEnabled) }
+            TahoBrowserStateStore.updateSettings {
+                val enabled = !it.popupBlockerEnabled
+                it.copy(
+                    popupBlockerEnabled = enabled,
+                    redirectBlockingEnabled = enabled,
+                )
+            }
         }
         SettingsToggleRow("Do Not Track (DNT) Header", "Transmit RFC DNT=1 signal", settings.doNotTrack) {
             TahoBrowserStateStore.updateSettings { it.copy(doNotTrack = !it.doNotTrack) }
@@ -649,7 +690,13 @@ private fun SettingsPrivacySecurityPage() {
             TahoBrowserStateStore.updateSettings { it.copy(privateTabLock = !it.privateTabLock) }
         }
         SettingsToggleRow("Biometric Lock for Private Tabs", "Unlock private sessions using fingerprint or device biometrics", settings.biometricLockForPrivateTabs) {
-            TahoBrowserStateStore.updateSettings { it.copy(biometricLockForPrivateTabs = !it.biometricLockForPrivateTabs) }
+            TahoBrowserStateStore.updateSettings {
+                val enabled = !it.biometricLockForPrivateTabs
+                it.copy(
+                    biometricLockForPrivateTabs = enabled,
+                    privateTabLock = if (enabled) true else it.privateTabLock,
+                )
+            }
         }
         SettingsToggleRow("Clear Private Tabs on Exit", "Automatically purge all private tabs and session cookies on close", settings.clearPrivateTabsOnExit) {
             TahoBrowserStateStore.updateSettings { it.copy(clearPrivateTabsOnExit = !it.clearPrivateTabsOnExit) }
