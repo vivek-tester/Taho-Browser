@@ -19,6 +19,7 @@ class TahoFeaturesTest {
         assertNotNull(store.settings)
         assertEquals(TahoThemeMode.DARK, store.settings.themeMode)
         assertEquals(TahoToolbarPosition.BOTTOM, store.settings.toolbarPosition)
+        assertEquals("google", store.settings.defaultSearchEngineId)
         assertEquals(TahoTrackingProtectionLevel.STRICT, store.settings.trackingProtectionLevel)
         assertTrue(store.settings.httpsOnlyMode)
         assertTrue(store.settings.blockTrackers)
