@@ -95,6 +95,10 @@ internal fun TahoMockupStartPage(
     onNavigate: (String) -> Unit,
     recentTabs: List<BrowserTabUiState>,
     onSelectTab: (String) -> Unit,
+    onOpenBookmarks: () -> Unit,
+    onOpenHistory: () -> Unit,
+    onOpenDownloads: () -> Unit,
+    onAddShortcut: () -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     val settings = TahoBrowserStateStore.settings
@@ -102,13 +106,16 @@ internal fun TahoMockupStartPage(
         .firstOrNull { it.id == settings.defaultSearchEngineId }
         ?: TahoBrowserStateStore.searchEngines.first()
     val shortcuts = remember(TahoBrowserStateStore.topSites) {
-        if (TahoBrowserStateStore.topSites.isEmpty()) {
-            MockupDefaultShortcuts
-        } else {
-            TahoBrowserStateStore.topSites.take(4).map {
-                MockupShortcut(it.title, it.url, it.iconGlyph.ifBlank { it.title.take(1).uppercase() })
-            }
+        val userShortcuts = TahoBrowserStateStore.topSites.map {
+            MockupShortcut(
+                it.title,
+                it.url,
+                it.iconGlyph.ifBlank { it.title.take(1).uppercase() },
+            )
         }
+        (userShortcuts + MockupDefaultShortcuts)
+            .distinctBy { it.url }
+            .take(4)
     }
     val suggestions = remember(query, TahoBrowserStateStore.history, TahoBrowserStateStore.bookmarks) {
         val q = query.trim()
@@ -260,12 +267,10 @@ internal fun TahoMockupStartPage(
                             .width(74.dp)
                             .clickable {
                                 when (item.title) {
-                                    "Bookmarks" -> Unit
-                                    "History" -> recentTabs
-                                        .firstOrNull { !it.location.isNullOrBlank() && it.location != "about:blank" }
-                                        ?.let { onSelectTab(it.id) }
-                                    "Downloads" -> Unit
-                                    "Add" -> Unit
+                                    "Bookmarks" -> onOpenBookmarks()
+                                    "History" -> onOpenHistory()
+                                    "Downloads" -> onOpenDownloads()
+                                    "Add" -> onAddShortcut()
                                     else -> item.url?.let(onNavigate)
                                 }
                             },
@@ -629,6 +634,7 @@ internal fun TahoMockupBrowserMenuSheet(
     onAddToHomeScreen: () -> Unit,
     onOpenPacketCapture: () -> Unit,
     onOpenDeveloperTools: () -> Unit,
+    onOpenRecentTabs: () -> Unit,
     onCloseMenu: () -> Unit,
 ) {
     Column(
@@ -661,7 +667,7 @@ internal fun TahoMockupBrowserMenuSheet(
         }
         MockupMenuRow("▤", "Recent tabs") {
             onCloseMenu()
-            onOpenSettings("HISTORY")
+            onOpenRecentTabs()
         }
         MockupMenuDivider()
         MockupMenuRow("✚", "Extensions", trailing = "›") {
