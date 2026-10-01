@@ -46,8 +46,11 @@ import androidx.compose.ui.unit.sp
 import app.taho.browser.shell.R
 
 /*
- * Taho design tokens — extracted 1:1 from Doc/TAHO_BROWSER_UI_UX_SPEC.md §2/§15
- * (source of truth: TAHO_BROWSER_UI_PROTOTYPE.html).
+ * Taho design tokens.
+ *
+ * The approved product mockups are the visual source of truth. These tokens
+ * intentionally stay monochrome across Dark, Light and AMOLED while the
+ * browser-shell geometry is matched screen-by-screen to those mockups.
  */
 
 // ---------- monochrome color system ----------
