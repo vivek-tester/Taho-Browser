@@ -685,7 +685,7 @@ internal fun TahoMockupBrowserMenuSheet(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 50.dp)
+                .heightIn(min = 52.dp)
                 .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -916,8 +916,7 @@ private fun MockupMenuRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 50.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .heightIn(min = 52.dp)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
