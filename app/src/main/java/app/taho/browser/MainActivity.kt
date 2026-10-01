@@ -31,6 +31,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -77,6 +78,7 @@ import app.taho.browser.shell.SiteSecurityUiState
 import app.taho.browser.shell.TahoBrowserApp
 import app.taho.browser.shell.TahoBrowserStateStore
 import app.taho.browser.shell.TahoStartupBehavior
+import app.taho.browser.shell.TahoSecureDns
 import app.taho.browser.shell.TahoAutoCloseTabs
 import app.taho.browser.transfer.android.TahoDirectTransferIntentFactory
 import app.taho.browser.transfer.android.TahoDirectTransferTarget
@@ -110,6 +112,7 @@ class MainActivity : ComponentActivity() {
     private var originatingTabId: String? = null
     private var pendingExternalNavDialog by mutableStateOf<Triple<String, String, Intent>?>(null)
     private var captureRetentionMode by mutableStateOf("Session only")
+    private var appliedSecureDnsKey: String? = null
     private val committedHistoryLocationByTab = mutableMapOf<String, String?>()
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
@@ -155,6 +158,7 @@ class MainActivity : ComponentActivity() {
 
         TahoBrowserStateStore.initialize(this)
         controller = BrowserRuntimeStore.get(this)
+        applySecureDnsSetting(reloadSelectedPage = false)
         if (savedInstanceState == null && !isIncomingWebIntent(intent)) {
             applyStartupBehavior()
         }
@@ -230,6 +234,12 @@ class MainActivity : ComponentActivity() {
                 mutableStateOf(DevToolsUiState())
             }
             val captureEnabled = TahoBrowserStateStore.captureEnabled
+            val secureDns = TahoBrowserStateStore.settings.secureDns
+            val customDnsProvider = TahoBrowserStateStore.settings.customDnsProvider
+
+            LaunchedEffect(secureDns, customDnsProvider) {
+                applySecureDnsSetting(reloadSelectedPage = true)
+            }
 
             DisposableEffect(controller, captureRuntime, devToolsRuntime) {
                 controller.setListener { next ->
@@ -1088,6 +1098,40 @@ class MainActivity : ComponentActivity() {
                     transferNotice = storageNotice(result.reason)
                 }
             }
+        }
+    }
+
+    private fun applySecureDnsSetting(reloadSelectedPage: Boolean) {
+        val browserSettings = TahoBrowserStateStore.settings
+        val resolverUri = when (browserSettings.secureDns) {
+            TahoSecureDns.CLOUDFLARE -> "https://cloudflare-dns.com/dns-query"
+            TahoSecureDns.QUAD9 -> "https://dns.quad9.net/dns-query"
+            TahoSecureDns.GOOGLE -> "https://dns.google/dns-query"
+            TahoSecureDns.CUSTOM -> browserSettings.customDnsProvider
+                .trim()
+                .takeIf { it.startsWith("https://", ignoreCase = true) }
+            TahoSecureDns.OFF -> null
+        }
+        val key = browserSettings.secureDns.name + "|" + resolverUri.orEmpty()
+        if (key == appliedSecureDnsKey) return
+
+        val hadPreviousSetting = appliedSecureDnsKey != null
+        runCatching {
+            controller.setSecureDns(resolverUri)
+        }.onSuccess {
+            appliedSecureDnsKey = key
+            if (
+                reloadSelectedPage &&
+                hadPreviousSetting &&
+                controller.snapshot().location
+                    ?.takeUnless { it == "about:blank" }
+                    .isNullOrBlank()
+                    .not()
+            ) {
+                controller.reload()
+            }
+        }.onFailure {
+            transferNotice = "Secure DNS could not be applied. Check the resolver configuration."
         }
     }
 
