@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
@@ -451,7 +452,7 @@ fun TahoBrowserApp(
 
             val toolbarAlignment = if (isTopToolbar) Alignment.TopCenter else Alignment.BottomCenter
 
-            if (!state.isFullScreen) Column(
+            if (!state.isFullScreen && !isStartPage) Column(
                 modifier = Modifier
                     .align(toolbarAlignment)
                     .fillMaxWidth()
@@ -956,15 +957,34 @@ fun TahoBrowserApp(
         }
 
         if (showBrowserMenu && state.sitePermission == null) {
-            ModalBottomSheet(
-                onDismissRequest = { showBrowserMenu = false },
-                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                containerColor = TahoSheet,
-                contentColor = TahoText,
-                shape = TahoSheetShape,
-                tonalElevation = 0.dp,
-                scrimColor = Color.Black.copy(alpha = .50f),
-                dragHandle = { SheetGrabHandle() },
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = .34f))
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                    ) { showBrowserMenu = false },
+            )
+
+            Box(
+                modifier = Modifier
+                    .align(if (isTopToolbar) Alignment.TopEnd else Alignment.BottomEnd)
+                    .then(if (isTopToolbar) Modifier.statusBarsPadding() else Modifier.navigationBarsPadding())
+                    .padding(
+                        top = if (isTopToolbar) 68.dp else 12.dp,
+                        end = 12.dp,
+                        bottom = if (isTopToolbar) 12.dp else 68.dp,
+                    )
+                    .widthIn(min = 292.dp, max = 332.dp)
+                    .heightIn(max = 690.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(TahoSheet)
+                    .border(1.dp, TahoHairlineStrong, RoundedCornerShape(18.dp))
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                    ) {},
             ) {
                 TahoMockupBrowserMenuSheet(
                     isDesktopMode = effectiveDesktop,
@@ -998,12 +1018,8 @@ fun TahoBrowserApp(
                             onAddToHomeScreen(currentTab.title ?: loc, loc)
                         }
                     },
-                    onOpenPacketCapture = {
-                        showPacketCapture = true
-                    },
-                    onOpenDeveloperTools = {
-                        showDeveloperTools = true
-                    },
+                    onOpenPacketCapture = { showPacketCapture = true },
+                    onOpenDeveloperTools = { showDeveloperTools = true },
                     onCloseMenu = { showBrowserMenu = false },
                 )
             }
