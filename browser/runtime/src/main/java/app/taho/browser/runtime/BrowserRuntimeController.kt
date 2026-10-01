@@ -110,7 +110,6 @@ data class BrowserSnapshot(
     val loadFailed: Boolean,
     val crashed: Boolean,
     val isPrivate: Boolean,
-    val isFullScreen: Boolean,
     val canGoBack: Boolean,
     val canGoForward: Boolean,
     val security: BrowserSecuritySnapshot?,
@@ -119,6 +118,7 @@ data class BrowserSnapshot(
     val externalNavigationRequest: BrowserExternalNavigationRequest?,
     val notice: String?,
     val tabs: List<BrowserTabSnapshot>,
+    val isFullScreen: Boolean = false,
 )
 
 class BrowserRuntimeController(context: Context) {
