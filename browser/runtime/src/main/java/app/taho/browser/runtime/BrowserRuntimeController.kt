@@ -845,7 +845,11 @@ class BrowserRuntimeController(context: Context) {
     private fun newSession(privateMode: Boolean): GeckoSession {
         val settings = GeckoSessionSettings.Builder()
             .usePrivateMode(privateMode)
-            .useTrackingProtection(privacySettings.blockTrackers)
+            .useTrackingProtection(
+                privacySettings.blockTrackers ||
+                    privacySettings.fingerprintingProtection ||
+                    privacySettings.cryptominingProtection,
+            )
             .build()
         return GeckoSession(settings)
     }
@@ -1223,8 +1227,12 @@ class BrowserRuntimeController(context: Context) {
         val exception = origin != null && privacySettings.perSiteTrackingExceptions.any { saved ->
             BrowserNavigationPolicy.displayOrigin(saved) == origin || saved == origin
         }
+        val protectionEnabled =
+            privacySettings.blockTrackers ||
+                privacySettings.fingerprintingProtection ||
+                privacySettings.cryptominingProtection
         tab.session.settings.setUseTrackingProtection(
-            privacySettings.blockTrackers && !exception,
+            protectionEnabled && !exception,
         )
     }
 
