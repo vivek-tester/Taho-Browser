@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.taho.browser.capture.domain.CaptureState
 import java.net.URLEncoder
 
 private val MockupChrome: Color get() = TahoBg
@@ -624,6 +625,7 @@ private fun TahoMockupMenuButton(onClick: () -> Unit) {
 @Composable
 internal fun TahoMockupBrowserMenuSheet(
     isDesktopMode: Boolean,
+    captureEnabled: Boolean,
     onToggleDesktopMode: () -> Unit,
     onNewTab: () -> Unit,
     onNewPrivateTab: () -> Unit,
@@ -631,6 +633,7 @@ internal fun TahoMockupBrowserMenuSheet(
     onFindInPage: () -> Unit,
     onTranslate: () -> Unit,
     onAddToHomeScreen: () -> Unit,
+    onOpenPacketCapture: () -> Unit,
     onOpenDeveloperTools: () -> Unit,
     onCloseMenu: () -> Unit,
 ) {
@@ -674,6 +677,10 @@ internal fun TahoMockupBrowserMenuSheet(
         MockupMenuRow("◇", "Privacy tools", trailing = "›") {
             onCloseMenu()
             onOpenSettings("PRIVACY")
+        }
+        MockupMenuRow("◎", "Packet capture", trailing = if (captureEnabled) "On" else "Off") {
+            onCloseMenu()
+            onOpenPacketCapture()
         }
         MockupMenuRow("⌘", "Developer tools", trailing = "›") {
             onCloseMenu()
@@ -722,6 +729,183 @@ internal fun TahoMockupBrowserMenuSheet(
             onCloseMenu()
             onOpenSettings("ABOUT")
         }
+        Spacer(Modifier.height(10.dp))
+    }
+}
+
+@Composable
+internal fun TahoMockupPacketCaptureSheet(
+    enabled: Boolean,
+    captureState: CaptureState,
+    relevantCount: Int,
+    totalCount: Int,
+    capabilityNote: String?,
+    onEnabledChange: (Boolean) -> Unit,
+    onViewCaptured: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val status = when {
+        !enabled -> "Off"
+        captureState == CaptureState.CAPTURING -> "Capturing"
+        captureState == CaptureState.OBSERVING -> "Active"
+        captureState == CaptureState.LIMITED -> "Limited"
+        captureState == CaptureState.ERROR -> "Unavailable"
+        else -> "Starting"
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 18.dp, vertical = 10.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Packet capture",
+                    color = TahoText,
+                    fontFamily = TahoDisplay,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 18.sp,
+                )
+                Text(
+                    "Master developer mode",
+                    color = TahoText.copy(alpha = 0.48f),
+                    fontFamily = TahoBody,
+                    fontSize = 11.sp,
+                )
+            }
+            Text(
+                "×",
+                color = TahoText,
+                fontSize = 22.sp,
+                modifier = Modifier
+                    .size(44.dp)
+                    .clickable(onClick = onDismiss)
+                    .padding(10.dp),
+                textAlign = TextAlign.Center,
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(MockupChromeElevated)
+                .border(1.dp, MockupBorder, RoundedCornerShape(16.dp))
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Enable packet capture",
+                    color = TahoText,
+                    fontFamily = TahoBody,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    if (enabled) {
+                        "State is saved and restored on the next browser launch."
+                    } else {
+                        "Off means normal browsing; developer tools remain disabled."
+                    },
+                    color = TahoText.copy(alpha = 0.48f),
+                    fontFamily = TahoBody,
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp,
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Switch(
+                checked = enabled,
+                onCheckedChange = onEnabledChange,
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(TahoBg)
+                .border(1.dp, MockupBorder, RoundedCornerShape(14.dp))
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Status",
+                    color = TahoText.copy(alpha = 0.5f),
+                    fontFamily = TahoMono,
+                    fontSize = 9.sp,
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    status,
+                    color = TahoText,
+                    fontFamily = TahoBody,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    "$relevantCount relevant",
+                    color = TahoText,
+                    fontFamily = TahoMono,
+                    fontSize = 10.sp,
+                )
+                Text(
+                    "$totalCount retained",
+                    color = TahoText.copy(alpha = 0.45f),
+                    fontFamily = TahoMono,
+                    fontSize = 9.sp,
+                )
+            }
+        }
+
+        if (enabled && capabilityNote != null) {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                capabilityNote,
+                color = TahoText.copy(alpha = 0.58f),
+                fontFamily = TahoBody,
+                fontSize = 11.sp,
+                lineHeight = 15.sp,
+            )
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(MockupChromeElevated)
+                .border(1.dp, MockupBorder, RoundedCornerShape(14.dp))
+                .clickable(enabled = totalCount > 0, onClick = onViewCaptured)
+                .padding(horizontal = 14.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Text(
+                if (totalCount > 0) "View captured requests" else "No captured requests yet",
+                color = if (totalCount > 0) TahoText else TahoText.copy(alpha = 0.36f),
+                fontFamily = TahoBody,
+                fontSize = 13.sp,
+            )
+        }
+
         Spacer(Modifier.height(10.dp))
     }
 }
@@ -802,10 +986,10 @@ private enum class MockupDevToolsMode(val title: String) {
 
 @Composable
 internal fun TahoMockupDeveloperToolsSheet(
+    enabled: Boolean,
     captureRequests: List<M4CaptureRequestUiState>,
     onDismiss: () -> Unit,
 ) {
-    var enabled by rememberSaveable { mutableStateOf(true) }
     var selected by rememberSaveable { mutableStateOf(MockupDevToolsPanel.ELEMENTS) }
     var mode by rememberSaveable { mutableStateOf(MockupDevToolsMode.BOTTOM) }
 
@@ -853,19 +1037,29 @@ internal fun TahoMockupDeveloperToolsSheet(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "Enable Developer tools",
+                    if (enabled) "Developer tools enabled" else "Developer tools disabled",
                     color = TahoText,
                     fontFamily = TahoBody,
                     fontSize = 14.sp,
                 )
                 Text(
-                    "Desktop-grade panels adapted for touch",
+                    if (enabled) {
+                        "Controlled by the Packet Capture master switch."
+                    } else {
+                        "Enable Packet Capture from the Taho menu to use these panels."
+                    },
                     color = TahoText.copy(alpha = 0.48f),
                     fontFamily = TahoBody,
                     fontSize = 11.sp,
                 )
             }
-            Switch(checked = enabled, onCheckedChange = { enabled = it })
+            Text(
+                if (enabled) "ON" else "OFF",
+                color = TahoText.copy(alpha = if (enabled) 0.82f else 0.42f),
+                fontFamily = TahoMono,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 10.sp,
+            )
         }
 
         Spacer(Modifier.height(10.dp))
@@ -887,7 +1081,7 @@ internal fun TahoMockupDeveloperToolsSheet(
                             if (active) MockupAccent else MockupBorder,
                             RoundedCornerShape(18.dp),
                         )
-                        .clickable { mode = item }
+                        .clickable(enabled = enabled) { mode = item }
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                 ) {
                     Text(
@@ -912,7 +1106,7 @@ internal fun TahoMockupDeveloperToolsSheet(
                 val active = panel == selected
                 Column(
                     modifier = Modifier
-                        .clickable { selected = panel }
+                        .clickable(enabled = enabled) { selected = panel }
                         .padding(horizontal = 11.dp, vertical = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {

@@ -50,15 +50,18 @@ class ProductionObservationCoordinator(
     private val sessions = mutableListOf<RegisteredSession>()
     private val bindingByExtTab = mutableMapOf<Int, RegisteredSession>()
     private var extension: WebExtension? = null
+    private var activePort: WebExtension.Port? = null
     private var activeConnection: String? = null
     private var lastSequence: Long = 0
+    private var running: Boolean = false
 
     private val backgroundDelegate = object : WebExtension.MessageDelegate {
         override fun onConnect(port: WebExtension.Port) {
-            if (gate != ProductionCaptureGate.ENABLED) {
+            if (!running || gate != ProductionCaptureGate.ENABLED) {
                 port.disconnect()
                 return
             }
+            activePort = port
             activeConnection = null
             lastSequence = 0
 
@@ -73,6 +76,7 @@ class ProductionObservationCoordinator(
                     }
 
                     override fun onDisconnect(port: WebExtension.Port) {
+                        if (activePort === port) activePort = null
                         activeConnection = null
                         lastSequence = 0
                     }
@@ -85,6 +89,7 @@ class ProductionObservationCoordinator(
             message: Any,
             sender: WebExtension.MessageSender,
         ): GeckoResult<Any>? {
+            if (!running) return null
             val raw = message as? String ?: run {
                 sink(ProductionObservationEvent.Rejected("bulk message was not a string"))
                 return null
@@ -96,7 +101,17 @@ class ProductionObservationCoordinator(
 
     fun start() {
         if (gate != ProductionCaptureGate.ENABLED) {
+            running = false
             sink(ProductionObservationEvent.GateBlocked)
+            return
+        }
+        if (running) return
+        running = true
+
+        extension?.let { installed ->
+            installed.setMessageDelegate(backgroundDelegate, BULK_NATIVE_APP)
+            sessions.forEach { attachIdentityDelegate(installed, it) }
+            sink(ProductionObservationEvent.ExtensionReady(installed.id))
             return
         }
 
@@ -105,22 +120,38 @@ class ProductionObservationCoordinator(
             .accept(
                 { installed ->
                     if (installed == null) {
-                        sink(ProductionObservationEvent.ExtensionFailed("extension unavailable"))
+                        if (running) {
+                            sink(ProductionObservationEvent.ExtensionFailed("extension unavailable"))
+                        }
                     } else {
                         extension = installed
-                        installed.setMessageDelegate(backgroundDelegate, BULK_NATIVE_APP)
-                        sessions.forEach { attachIdentityDelegate(installed, it) }
-                        sink(ProductionObservationEvent.ExtensionReady(installed.id))
+                        if (running) {
+                            installed.setMessageDelegate(backgroundDelegate, BULK_NATIVE_APP)
+                            sessions.forEach { attachIdentityDelegate(installed, it) }
+                            sink(ProductionObservationEvent.ExtensionReady(installed.id))
+                        }
                     }
                 },
                 { error ->
-                    sink(
-                        ProductionObservationEvent.ExtensionFailed(
-                            error?.javaClass?.simpleName ?: "install failure",
-                        ),
-                    )
+                    if (running) {
+                        sink(
+                            ProductionObservationEvent.ExtensionFailed(
+                                error?.javaClass?.simpleName ?: "install failure",
+                            ),
+                        )
+                    }
                 },
             )
+    }
+
+    fun stop() {
+        if (!running) return
+        running = false
+        runCatching { activePort?.disconnect() }
+        activePort = null
+        activeConnection = null
+        lastSequence = 0
+        bindingByExtTab.clear()
     }
 
     fun attachSession(
@@ -129,13 +160,13 @@ class ProductionObservationCoordinator(
         committedUrl: () -> String?,
         isPrivate: Boolean,
     ) {
-        if (gate != ProductionCaptureGate.ENABLED) return
-
         sessions.removeAll { it.session === session || it.tahoTabId == tahoTabId }
         bindingByExtTab.entries.removeAll { it.value.session === session }
         val registered = RegisteredSession(tahoTabId, session, committedUrl, isPrivate)
         sessions += registered
-        extension?.let { attachIdentityDelegate(it, registered) }
+        if (running) {
+            extension?.let { attachIdentityDelegate(it, registered) }
+        }
     }
 
     fun detachSession(tahoTabId: String) {
@@ -156,6 +187,7 @@ class ProductionObservationCoordinator(
                     message: Any,
                     sender: WebExtension.MessageSender,
                 ): GeckoResult<Any>? {
+                    if (!running) return null
                     val raw = message as? String ?: return rejectIdentity("non-string identity")
                     val parsed = ProductionObservationProtocol.parse(
                         raw,
@@ -200,6 +232,7 @@ class ProductionObservationCoordinator(
     }
 
     private fun acceptBulk(raw: String) {
+        if (!running) return
         val parsed = ProductionObservationProtocol.parse(raw, ObservationLane.BULK)
         val message = (parsed as? ObservationParseResult.Accepted)?.message ?: run {
             val rejected = parsed as ObservationParseResult.Rejected

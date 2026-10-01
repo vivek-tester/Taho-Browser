@@ -6,13 +6,16 @@ import android.content.ContextWrapper
 import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -62,17 +66,20 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.core.view.WindowInsetsControllerCompat
 import app.taho.browser.capture.domain.CaptureState
+import kotlin.math.roundToInt
 
 data class BrowserTabUiState(
     val id: String,
@@ -106,6 +113,7 @@ data class SiteSecurityUiState(
 
 data class BrowserUiState(
     val captureState: CaptureState = CaptureState.OFF,
+    val captureEnabled: Boolean = false,
     val relevantCount: Int = 0,
     val omniboxText: String = "Search or enter address",
     val tabCount: Int = 1,
@@ -130,7 +138,7 @@ data class BrowserUiState(
 @Composable
 fun TahoBrowserApp(
     state: BrowserUiState = BrowserUiState(),
-    onCaptureClick: () -> Unit = {},
+    onCaptureEnabledChange: (Boolean) -> Unit = {},
     onNavigate: (String) -> Unit = {},
     onBack: () -> Unit = {},
     onForward: () -> Unit = {},
@@ -166,6 +174,7 @@ fun TahoBrowserApp(
     var showTabs by rememberSaveable { mutableStateOf(false) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var showBrowserMenu by rememberSaveable { mutableStateOf(false) }
+    var showPacketCapture by rememberSaveable { mutableStateOf(false) }
     var showDeveloperTools by rememberSaveable { mutableStateOf(false) }
     var showSiteInfo by rememberSaveable { mutableStateOf(false) }
     var showShareQr by rememberSaveable { mutableStateOf(false) }
@@ -217,6 +226,7 @@ fun TahoBrowserApp(
             showTabs ||
             showSettings ||
             showBrowserMenu ||
+            showPacketCapture ||
             showDeveloperTools ||
             showSiteInfo ||
             showShareQr ||
@@ -272,6 +282,7 @@ fun TahoBrowserApp(
             showCaptureSummary = false
             showSettings = false
             showBrowserMenu = false
+            showPacketCapture = false
             showDeveloperTools = false
             showSiteInfo = false
             showShareQr = false
@@ -289,6 +300,7 @@ fun TahoBrowserApp(
             findInPageActive ||
             showTranslationBar ||
             showBrowserMenu ||
+            showPacketCapture ||
             showDeveloperTools ||
             showSiteInfo ||
             showShareQr ||
@@ -311,6 +323,7 @@ fun TahoBrowserApp(
             }
             showTranslationBar -> showTranslationBar = false
             showDeveloperTools -> showDeveloperTools = false
+            showPacketCapture -> showPacketCapture = false
             showBrowserMenu -> showBrowserMenu = false
             showSiteInfo -> showSiteInfo = false
             showShareQr -> showShareQr = false
@@ -568,6 +581,22 @@ fun TahoBrowserApp(
                 phase = state.transferPhase,
                 modifier = Modifier.fillMaxSize(),
             )
+
+            if (
+                state.captureEnabled &&
+                state.sitePermission == null &&
+                !showBrowserMenu &&
+                !showPacketCapture &&
+                !showDeveloperTools &&
+                !showSettings &&
+                !showCaptureSummary &&
+                selectedCaptureId == null
+            ) {
+                TahoFloatingCaptureCompanion(
+                    relevantCount = state.relevantCount,
+                    onClick = { showCaptureSummary = true },
+                )
+            }
         }
 
         if (showCaptureSummary && selectedCaptureId == null && state.sitePermission == null) {
@@ -870,6 +899,7 @@ fun TahoBrowserApp(
             ) {
                 TahoMockupBrowserMenuSheet(
                     isDesktopMode = effectiveDesktop,
+                    captureEnabled = state.captureEnabled,
                     onToggleDesktopMode = {
                         val nextDesktop = !effectiveDesktop
                         currentTab?.location?.let { loc ->
@@ -899,10 +929,40 @@ fun TahoBrowserApp(
                             onAddToHomeScreen(currentTab.title ?: loc, loc)
                         }
                     },
+                    onOpenPacketCapture = {
+                        showPacketCapture = true
+                    },
                     onOpenDeveloperTools = {
                         showDeveloperTools = true
                     },
                     onCloseMenu = { showBrowserMenu = false },
+                )
+            }
+        }
+
+        if (showPacketCapture && state.sitePermission == null) {
+            ModalBottomSheet(
+                onDismissRequest = { showPacketCapture = false },
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                containerColor = TahoSheet,
+                contentColor = TahoText,
+                shape = TahoSheetShape,
+                tonalElevation = 0.dp,
+                scrimColor = Color.Black.copy(alpha = .50f),
+                dragHandle = { SheetGrabHandle() },
+            ) {
+                TahoMockupPacketCaptureSheet(
+                    enabled = state.captureEnabled,
+                    captureState = state.captureState,
+                    relevantCount = state.relevantCount,
+                    totalCount = state.captureRequests.size,
+                    capabilityNote = state.captureCapabilityNote,
+                    onEnabledChange = onCaptureEnabledChange,
+                    onViewCaptured = {
+                        showPacketCapture = false
+                        showCaptureSummary = true
+                    },
+                    onDismiss = { showPacketCapture = false },
                 )
             }
         }
@@ -919,6 +979,7 @@ fun TahoBrowserApp(
                 dragHandle = { SheetGrabHandle() },
             ) {
                 TahoMockupDeveloperToolsSheet(
+                    enabled = state.captureEnabled,
                     captureRequests = state.captureRequests,
                     onDismiss = { showDeveloperTools = false },
                 )
@@ -1144,6 +1205,95 @@ private fun ChromeAction(
             fontSize = 9.sp,
             maxLines = 1,
         )
+    }
+}
+
+@Composable
+private fun TahoFloatingCaptureCompanion(
+    relevantCount: Int,
+    onClick: () -> Unit,
+) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val density = LocalDensity.current
+        val visualSize = 40.dp
+        val touchSize = 48.dp
+        val margin = 10.dp
+        val maxX = with(density) { (maxWidth - touchSize - margin).toPx() }.coerceAtLeast(0f)
+        val maxY = with(density) { (maxHeight - touchSize - margin).toPx() }.coerceAtLeast(0f)
+        val minX = with(density) { margin.toPx() }
+        val minY = with(density) { margin.toPx() }
+
+        var x by rememberSaveable { mutableStateOf(Float.NaN) }
+        var y by rememberSaveable { mutableStateOf(Float.NaN) }
+
+        val safeX = if (x.isNaN()) maxX else x.coerceIn(minX.coerceAtMost(maxX), maxX)
+        val safeY = if (y.isNaN()) maxY * 0.56f else y.coerceIn(minY.coerceAtMost(maxY), maxY)
+        val countLabel = when {
+            relevantCount > 99 -> "99+"
+            relevantCount > 0 -> relevantCount.toString()
+            else -> ""
+        }
+
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(safeX.roundToInt(), safeY.roundToInt()) }
+                .size(touchSize)
+                .pointerInput(maxX, maxY) {
+                    detectDragGestures { change, dragAmount ->
+                        change.consume()
+                        val startX = if (x.isNaN()) safeX else x
+                        val startY = if (y.isNaN()) safeY else y
+                        x = (startX + dragAmount.x).coerceIn(minX.coerceAtMost(maxX), maxX)
+                        y = (startY + dragAmount.y).coerceIn(minY.coerceAtMost(maxY), maxY)
+                    }
+                }
+                .tahoPulse(trigger = relevantCount)
+                .semantics {
+                    role = Role.Button
+                    contentDescription =
+                        if (relevantCount == 1) "Taho capture, 1 relevant request"
+                        else "Taho capture, $relevantCount relevant requests"
+                }
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(visualSize)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(TahoSheet.copy(alpha = .97f))
+                    .border(1.dp, TahoHairlineStrong, RoundedCornerShape(14.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "T",
+                    color = TahoText,
+                    fontFamily = TahoDisplay,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 16.sp,
+                )
+            }
+
+            if (countLabel.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .heightIn(min = 18.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(TahoText)
+                        .padding(horizontal = 5.dp, vertical = 2.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = countLabel,
+                        color = TahoBg,
+                        fontFamily = TahoMono,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 8.sp,
+                    )
+                }
+            }
+        }
     }
 }
 

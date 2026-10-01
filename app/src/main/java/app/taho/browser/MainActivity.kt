@@ -205,6 +205,7 @@ class MainActivity : ComponentActivity() {
             },
             clearStorage = captureRepository::clearCaptureData,
         )
+        captureRuntime.setEnabled(TahoBrowserStateStore.captureEnabled)
         captureRuntime.start()
 
         setContent {
@@ -212,6 +213,7 @@ class MainActivity : ComponentActivity() {
             var captureSnapshot by remember {
                 mutableStateOf(captureRuntime.snapshot())
             }
+            val captureEnabled = TahoBrowserStateStore.captureEnabled
 
             DisposableEffect(controller, captureRuntime) {
                 controller.setListener { next ->
@@ -328,6 +330,7 @@ class MainActivity : ComponentActivity() {
             TahoBrowserApp(
                 state = BrowserUiState(
                     captureState = captureSnapshot.state,
+                    captureEnabled = captureEnabled,
                     relevantCount = captureRequests.count { it.relevantByDefault },
                     omniboxText = visibleLocation,
                     tabCount = snapshot.tabCount,
@@ -390,6 +393,10 @@ class MainActivity : ComponentActivity() {
                     },
                     captureRequests = captureRequests,
                 ),
+                onCaptureEnabledChange = { enabled ->
+                    TahoBrowserStateStore.setCaptureEnabled(enabled)
+                    captureRuntime.setEnabled(enabled)
+                },
                 onNavigate = { input ->
                     val searchTemplate = TahoBrowserStateStore.searchEngines
                         .firstOrNull { it.id == TahoBrowserStateStore.settings.defaultSearchEngineId }

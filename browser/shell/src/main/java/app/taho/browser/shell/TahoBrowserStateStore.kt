@@ -11,6 +11,9 @@ object TahoBrowserStateStore {
     private var persistence: TahoBrowserPersistence? = null
     private var uiMetaPreferences: android.content.SharedPreferences? = null
 
+    var captureEnabled by mutableStateOf(false)
+        private set
+
     var settings by mutableStateOf(BrowserSettingsState())
 
     var searchEngines by mutableStateOf(
@@ -73,6 +76,9 @@ object TahoBrowserStateStore {
             "taho_browser_ui_meta",
             Context.MODE_PRIVATE,
         )
+        captureEnabled = uiMetaPreferences
+            ?.getBoolean("capture_enabled", false)
+            ?: false
         pinnedTabIds = uiMetaPreferences
             ?.getStringSet("pinned_tab_ids", emptySet())
             ?.toSet()
@@ -181,6 +187,7 @@ object TahoBrowserStateStore {
         syncedDevices = emptyList()
         tabGroups = emptyList()
         pinnedTabIds = emptySet()
+        captureEnabled = false
         uiMetaPreferences = null
         sitePermissions = emptyList()
         siteData = emptyList()
@@ -194,6 +201,14 @@ object TahoBrowserStateStore {
     }
 
     // --- State mutation helpers ---
+    fun setCaptureEnabled(enabled: Boolean) {
+        captureEnabled = enabled
+        uiMetaPreferences
+            ?.edit()
+            ?.putBoolean("capture_enabled", enabled)
+            ?.apply()
+    }
+
     fun updateSettings(updater: (BrowserSettingsState) -> BrowserSettingsState) {
         settings = updater(settings)
     }
