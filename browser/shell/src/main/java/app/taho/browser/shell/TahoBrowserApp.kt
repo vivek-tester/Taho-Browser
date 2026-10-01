@@ -29,6 +29,9 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -77,6 +80,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import app.taho.browser.capture.domain.CaptureState
 import kotlin.math.roundToInt
@@ -129,6 +133,7 @@ data class BrowserUiState(
     val loadFailed: Boolean = false,
     val crashed: Boolean = false,
     val isPrivate: Boolean = false,
+    val isFullScreen: Boolean = false,
     val canGoBack: Boolean = false,
     val canGoForward: Boolean = false,
     val securityInfo: SiteSecurityUiState? = null,
@@ -154,6 +159,7 @@ fun TahoBrowserApp(
     onBack: () -> Unit = {},
     onForward: () -> Unit = {},
     onReload: () -> Unit = {},
+    onExitFullScreen: () -> Unit = {},
     onNewTab: () -> Unit = {},
     onNewPrivateTab: () -> Unit = {},
     onSelectTab: (String) -> Unit = {},
@@ -229,6 +235,11 @@ fun TahoBrowserApp(
     val isOriginDesktop = TahoBrowserStateStore.isDesktopModeForOrigin(currentOrigin)
     val effectiveDesktop = isDesktopMode || isOriginDesktop
     val currentZoom = TahoBrowserStateStore.getZoomForOrigin(currentOrigin)
+    val isTopToolbar = TahoBrowserStateStore.settings.toolbarPosition == TahoToolbarPosition.TOP
+    val density = LocalDensity.current
+    val topSystemInset = with(density) { WindowInsets.statusBars.getTop(this).toDp() }
+    val bottomSystemInset = with(density) { WindowInsets.navigationBars.getBottom(this).toDp() }
+    val toolbarReserve = 62.dp
 
     val selectedCapture = state.captureRequests.firstOrNull { it.id == selectedCaptureId }
     val darkSystemChromeVisible =
@@ -263,9 +274,38 @@ fun TahoBrowserApp(
     SideEffect {
         rootView.context.findActivity()?.window?.let { window ->
             WindowInsetsControllerCompat(window, rootView).apply {
-                isAppearanceLightStatusBars = !darkSystemChromeVisible
-                isAppearanceLightNavigationBars = !darkSystemChromeVisible
+                if (state.isFullScreen) {
+                    systemBarsBehavior =
+                        WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                    hide(WindowInsetsCompat.Type.systemBars())
+                } else {
+                    show(WindowInsetsCompat.Type.systemBars())
+                    val lightTheme = TahoBrowserStateStore.settings.themeMode == TahoThemeMode.LIGHT
+                    isAppearanceLightStatusBars = lightTheme && !darkSystemChromeVisible
+                    isAppearanceLightNavigationBars = lightTheme && !darkSystemChromeVisible
+                }
             }
+        }
+    }
+
+    LaunchedEffect(state.isFullScreen) {
+        if (state.isFullScreen) {
+            editing = false
+            showTabs = false
+            showSettings = false
+            showBrowserMenu = false
+            showPacketCapture = false
+            showDeveloperTools = false
+            showSiteInfo = false
+            showShareQr = false
+            showReaderMode = false
+            findInPageActive = false
+            showTranslationBar = false
+            showCaptureSummary = false
+            selectedCaptureId = null
+            showTransferConfirmation = false
+            workspaceExpanded = false
+            originWarningTargetUrl = null
         }
     }
 
@@ -307,7 +347,8 @@ fun TahoBrowserApp(
     }
 
     BackHandler(
-        enabled = showReaderMode ||
+        enabled = state.isFullScreen ||
+            showReaderMode ||
             findInPageActive ||
             showTranslationBar ||
             showBrowserMenu ||
@@ -327,6 +368,7 @@ fun TahoBrowserApp(
             (state.canGoBack && !state.crashed),
     ) {
         when {
+            state.isFullScreen -> onExitFullScreen()
             showReaderMode -> showReaderMode = false
             findInPageActive -> {
                 findInPageActive = false
@@ -361,7 +403,22 @@ fun TahoBrowserApp(
                 .fillMaxSize()
                 .background(TahoBg),
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(
+                        top = if (!state.isFullScreen && !isStartPage && isTopToolbar) {
+                            toolbarReserve + topSystemInset
+                        } else {
+                            0.dp
+                        },
+                        bottom = if (!state.isFullScreen && !isStartPage && !isTopToolbar) {
+                            toolbarReserve + bottomSystemInset
+                        } else {
+                            0.dp
+                        },
+                    ),
+            ) {
                 browserContent()
 
                 if (isStartPage && !showReaderMode) {
@@ -392,15 +449,15 @@ fun TahoBrowserApp(
                 }
             }
 
-            val isTopToolbar = TahoBrowserStateStore.settings.toolbarPosition == TahoToolbarPosition.TOP
             val toolbarAlignment = if (isTopToolbar) Alignment.TopCenter else Alignment.BottomCenter
 
-            Column(
+            if (!state.isFullScreen) Column(
                 modifier = Modifier
                     .align(toolbarAlignment)
                     .fillMaxWidth()
+                    .background(TahoSheet)
                     .then(if (isTopToolbar) Modifier.statusBarsPadding() else Modifier.navigationBarsPadding())
-                    .padding(horizontal = 13.dp, vertical = 11.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 if (!isStartPage && isTopToolbar) {
@@ -595,6 +652,7 @@ fun TahoBrowserApp(
 
             if (
                 state.captureEnabled &&
+                !state.isFullScreen &&
                 state.sitePermission == null &&
                 !showBrowserMenu &&
                 !showPacketCapture &&
