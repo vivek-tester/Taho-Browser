@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -211,6 +212,11 @@ fun TahoBrowserApp(
     var phase2FailedOnly by rememberSaveable { mutableStateOf(false) }
     var phase2WebSocketOnly by rememberSaveable { mutableStateOf(false) }
     var showDeveloperTools by rememberSaveable { mutableStateOf(false) }
+    var showDevToolsPanel by rememberSaveable { mutableStateOf(false) }
+    var phase3DevToolsMode by remember { mutableStateOf(Phase3DevToolsMode.BOTTOM) }
+    var phase3DevToolsPanel by remember { mutableStateOf(Phase3DevToolsPanel.ELEMENTS) }
+    var devToolsFloatingX by remember { mutableStateOf(0f) }
+    var devToolsFloatingY by remember { mutableStateOf(0f) }
     var showSiteInfo by rememberSaveable { mutableStateOf(false) }
     var showShareQr by rememberSaveable { mutableStateOf(false) }
     var showReaderMode by rememberSaveable { mutableStateOf(false) }
@@ -274,6 +280,7 @@ fun TahoBrowserApp(
             showAddShortcut ||
             showPacketCapture ||
             showDeveloperTools ||
+            showDevToolsPanel ||
             showSiteInfo ||
             showShareQr ||
             showReaderMode ||
@@ -325,6 +332,7 @@ fun TahoBrowserApp(
             showCaptureExport = false
             showCaptureSettings = false
             showDeveloperTools = false
+            showDevToolsPanel = false
             showSiteInfo = false
             showShareQr = false
             showReaderMode = false
@@ -369,6 +377,7 @@ fun TahoBrowserApp(
             showCaptureExport = false
             showCaptureSettings = false
             showDeveloperTools = false
+            showDevToolsPanel = false
             showSiteInfo = false
             showShareQr = false
             showReaderMode = false
@@ -393,6 +402,7 @@ fun TahoBrowserApp(
             showCaptureExport ||
             showCaptureSettings ||
             showDeveloperTools ||
+            showDevToolsPanel ||
             showSiteInfo ||
             showShareQr ||
             originWarningTargetUrl != null ||
@@ -414,6 +424,10 @@ fun TahoBrowserApp(
                 findInPageQuery = ""
             }
             showTranslationBar -> showTranslationBar = false
+            showDevToolsPanel -> {
+                showDevToolsPanel = false
+                showDeveloperTools = true
+            }
             showDeveloperTools -> showDeveloperTools = false
             showCaptureExport -> showCaptureExport = false
             showCaptureFilters -> showCaptureFilters = false
@@ -450,7 +464,16 @@ fun TahoBrowserApp(
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .then(
+                        if (showDevToolsPanel && phase3DevToolsMode == Phase3DevToolsMode.SIDE) {
+                            Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(.42f)
+                                .align(Alignment.CenterStart)
+                        } else {
+                            Modifier.fillMaxSize()
+                        },
+                    )
                     .padding(
                         top = if (!state.isFullScreen && !isStartPage && isTopToolbar) {
                             toolbarReserve + topSystemInset
@@ -511,12 +534,19 @@ fun TahoBrowserApp(
                 }
             }
 
-            val toolbarAlignment = if (isTopToolbar) Alignment.TopCenter else Alignment.BottomCenter
+            val toolbarAlignment = when {
+                showDevToolsPanel && phase3DevToolsMode == Phase3DevToolsMode.SIDE && isTopToolbar -> Alignment.TopStart
+                showDevToolsPanel && phase3DevToolsMode == Phase3DevToolsMode.SIDE -> Alignment.BottomStart
+                isTopToolbar -> Alignment.TopCenter
+                else -> Alignment.BottomCenter
+            }
 
             if (!state.isFullScreen && !isStartPage) Column(
                 modifier = Modifier
                     .align(toolbarAlignment)
-                    .fillMaxWidth()
+                    .fillMaxWidth(
+                        if (showDevToolsPanel && phase3DevToolsMode == Phase3DevToolsMode.SIDE) .42f else 1f,
+                    )
                     .background(TahoSheet)
                     .then(if (isTopToolbar) Modifier.statusBarsPadding() else Modifier.navigationBarsPadding())
                     .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -725,6 +755,7 @@ fun TahoBrowserApp(
                 !showCaptureExport &&
                 !showCaptureSettings &&
                 !showDeveloperTools &&
+                !showDevToolsPanel &&
                 !showSettings &&
                 !showCaptureSummary &&
                 selectedCaptureId == null
@@ -1379,29 +1410,98 @@ fun TahoBrowserApp(
         }
 
         if (showDeveloperTools && state.sitePermission == null) {
-            ModalBottomSheet(
-                onDismissRequest = { showDeveloperTools = false },
-                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                containerColor = Color(0xFF0A0D11),
-                contentColor = Color.White,
-                shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
-                tonalElevation = 0.dp,
-                scrimColor = Color.Black.copy(alpha = .56f),
-                dragHandle = { SheetGrabHandle() },
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFF06101A)),
             ) {
-                TahoMockupDeveloperToolsSheet(
+                Phase3DevToolsHub(
                     enabled = state.captureEnabled,
+                    connected = state.devTools.connected,
+                    mode = phase3DevToolsMode,
+                    onEnabledChange = onCaptureEnabledChange,
+                    onModeChange = { phase3DevToolsMode = it },
+                    onOpenPanel = { panel ->
+                        phase3DevToolsPanel = panel
+                        showDeveloperTools = false
+                        showDevToolsPanel = true
+                    },
+                    onOpenPacketCapture = {
+                        showDeveloperTools = false
+                        showPacketCapture = true
+                    },
+                    onDismiss = { showDeveloperTools = false },
+                )
+            }
+        }
+
+        if (showDevToolsPanel && state.sitePermission == null) {
+            val devToolsModifier = when (phase3DevToolsMode) {
+                Phase3DevToolsMode.BOTTOM -> Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .fillMaxHeight(.58f)
+                Phase3DevToolsMode.SIDE -> Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxWidth(.58f)
+                    .fillMaxHeight()
+                Phase3DevToolsMode.FLOATING -> Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth(.90f)
+                    .fillMaxHeight(.74f)
+                    .offset {
+                        IntOffset(
+                            devToolsFloatingX.roundToInt(),
+                            devToolsFloatingY.roundToInt(),
+                        )
+                    }
+                Phase3DevToolsMode.FULLSCREEN -> Modifier.fillMaxSize()
+            }
+
+            Box(
+                modifier = devToolsModifier
+                    .then(
+                        if (phase3DevToolsMode == Phase3DevToolsMode.FULLSCREEN) {
+                            Modifier
+                        } else {
+                            Modifier
+                                .padding(6.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                        },
+                    )
+                    .background(Color(0xFF06101A)),
+            ) {
+                Phase3DevToolsPanelSurface(
+                    enabled = state.captureEnabled,
+                    panel = phase3DevToolsPanel,
+                    mode = phase3DevToolsMode,
                     captureRequests = state.captureRequests,
-                    devToolsState = state.devTools,
+                    state = state.devTools,
+                    onPanelChange = { phase3DevToolsPanel = it },
+                    onModeChange = { mode ->
+                        phase3DevToolsMode = mode
+                        if (mode != Phase3DevToolsMode.FLOATING) {
+                            devToolsFloatingX = 0f
+                            devToolsFloatingY = 0f
+                        }
+                    },
                     onRequest = onDevToolsRequest,
                     onReloadPage = onDevToolsReloadPage,
                     onInspectRequest = { requestId ->
-                        showDeveloperTools = false
+                        showDevToolsPanel = false
                         lastSelectedCaptureId = requestId
                         selectedCaptureId = requestId
                         selectedSecretPolicy = M4SecretPolicyUi.PARAMETERIZE
                     },
-                    onDismiss = { showDeveloperTools = false },
+                    onBackToHub = {
+                        showDevToolsPanel = false
+                        showDeveloperTools = true
+                    },
+                    onClose = { showDevToolsPanel = false },
+                    onFloatingDrag = { dx, dy ->
+                        devToolsFloatingX += dx
+                        devToolsFloatingY += dy
+                    },
                 )
             }
         }
