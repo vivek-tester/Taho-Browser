@@ -21,6 +21,14 @@
     }
   };
 
+  const safeAsync = async (fn, fallback = null) => {
+    try {
+      return await fn();
+    } catch (_) {
+      return fallback;
+    }
+  };
+
   const simpleValue = (value, depth = 0, seen = new WeakSet()) => {
     if (value == null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
       return value;
@@ -155,8 +163,8 @@
       return out;
     };
 
-    const cacheNames = await safe(async () => Array.from(await caches.keys()).slice(0, 100), []);
-    const registrations = await safe(
+    const cacheNames = await safeAsync(async () => Array.from(await caches.keys()).slice(0, 100), []);
+    const registrations = await safeAsync(
       async () => (await navigator.serviceWorker.getRegistrations()).slice(0, 50).map((reg) => ({
         scope: reg.scope,
         active: reg.active ? reg.active.state : null,
@@ -165,7 +173,7 @@
       })),
       []
     );
-    const databases = await safe(
+    const databases = await safeAsync(
       async () => typeof indexedDB.databases === "function"
         ? (await indexedDB.databases()).slice(0, 100).map((db) => ({ name: db.name || null, version: db.version || null }))
         : [],
