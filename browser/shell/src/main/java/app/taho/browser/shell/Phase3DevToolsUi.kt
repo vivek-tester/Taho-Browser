@@ -274,6 +274,7 @@ internal fun Phase3DevToolsPanelSurface(
     onBackToHub: () -> Unit,
     onClose: () -> Unit,
     onFloatingDrag: (Float, Float) -> Unit = { _, _ -> },
+    onResize: (Float, Float) -> Unit = { _, _ -> },
 ) {
     LaunchedEffect(panel, enabled, state.connected) {
         if (enabled && state.connected) panel.command?.let { onRequest(it, null) }
@@ -286,14 +287,22 @@ internal fun Phase3DevToolsPanelSurface(
         Row(
             modifier = Modifier.fillMaxWidth().height(48.dp).background(D3Surface)
                 .then(
-                    if (mode == Phase3DevToolsMode.FLOATING) {
-                        Modifier.pointerInput(Unit) {
+                    when (mode) {
+                        Phase3DevToolsMode.FLOATING -> Modifier.pointerInput(mode) {
                             detectDragGestures { change, dragAmount ->
                                 change.consume()
                                 onFloatingDrag(dragAmount.x, dragAmount.y)
                             }
                         }
-                    } else Modifier,
+                        Phase3DevToolsMode.BOTTOM,
+                        Phase3DevToolsMode.SIDE -> Modifier.pointerInput(mode) {
+                            detectDragGestures { change, dragAmount ->
+                                change.consume()
+                                onResize(dragAmount.x, dragAmount.y)
+                            }
+                        }
+                        Phase3DevToolsMode.FULLSCREEN -> Modifier
+                    },
                 )
                 .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
