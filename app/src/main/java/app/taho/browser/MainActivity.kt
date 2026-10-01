@@ -53,6 +53,7 @@ import app.taho.browser.capture.persist.CaptureMaintenance
 import app.taho.browser.capture.persist.RoomCaptureRepository
 import app.taho.browser.observation.M4CaptureRuntime
 import app.taho.browser.observation.M4CaptureRuntimeSnapshot
+import app.taho.browser.observation.MobileDevToolsRuntime
 import app.taho.browser.observation.ObservedBrowserSession
 import app.taho.browser.observation.ProductionCaptureGate
 import app.taho.browser.runtime.BrowserRuntimeController
@@ -64,6 +65,7 @@ import app.taho.browser.runtime.GeckoRuntimeHolder
 import app.taho.browser.runtime.NavigationInput
 import app.taho.browser.shell.BrowserTabUiState
 import app.taho.browser.shell.BrowserUiState
+import app.taho.browser.shell.DevToolsUiState
 import app.taho.browser.shell.M4CaptureHeaderUiState
 import app.taho.browser.shell.M4CaptureRequestUiState
 import app.taho.browser.shell.M4CompletenessUi
@@ -95,6 +97,7 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var controller: BrowserRuntimeController
     private lateinit var captureRuntime: M4CaptureRuntime
+    private lateinit var devToolsRuntime: MobileDevToolsRuntime
     private lateinit var captureRepository: RoomCaptureRepository
     private lateinit var transferCoordinator: TahoSecureTransferCoordinator
     private var activeAndroidPermissionRequestId: String? = null
@@ -186,13 +189,14 @@ class MainActivity : ComponentActivity() {
         } else if (transferCoordinator.recoverExpiredAttempts().isNotEmpty()) {
             transferNotice = "A previous Taho transfer expired. The source capture is still available."
         }
+        val captureGate = if (BuildConfig.M1_ATTRIBUTION_VERIFIED) {
+            ProductionCaptureGate.ENABLED
+        } else {
+            ProductionCaptureGate.BLOCKED_M1_DEVICE_EVIDENCE
+        }
         captureRuntime = M4CaptureRuntime(
             runtime = GeckoRuntimeHolder.get(this),
-            gate = if (BuildConfig.M1_ATTRIBUTION_VERIFIED) {
-                ProductionCaptureGate.ENABLED
-            } else {
-                ProductionCaptureGate.BLOCKED_M1_DEVICE_EVIDENCE
-            },
+            gate = captureGate,
             appVersion = BuildConfig.VERSION_NAME,
             engineVersion = BuildConfig.GECKOVIEW_VERSION,
             captureSessionId = CapturePersistenceStore.captureSessionId(),
@@ -208,23 +212,39 @@ class MainActivity : ComponentActivity() {
         captureRuntime.setEnabled(TahoBrowserStateStore.captureEnabled)
         captureRuntime.start()
 
+        devToolsRuntime = MobileDevToolsRuntime(
+            runtime = GeckoRuntimeHolder.get(this),
+            gate = captureGate,
+        )
+        devToolsRuntime.setEnabled(TahoBrowserStateStore.captureEnabled)
+
         setContent {
             var snapshot by remember { mutableStateOf(controller.snapshot()) }
             var captureSnapshot by remember {
                 mutableStateOf(captureRuntime.snapshot())
             }
+            var devToolsConnections by remember {
+                mutableStateOf(devToolsRuntime.connectedTabs())
+            }
+            var devToolsUi by remember {
+                mutableStateOf(DevToolsUiState())
+            }
             val captureEnabled = TahoBrowserStateStore.captureEnabled
 
-            DisposableEffect(controller, captureRuntime) {
+            DisposableEffect(controller, captureRuntime, devToolsRuntime) {
                 controller.setListener { next ->
                     snapshot = next
                     syncCaptureSessions(next)
                     syncBrowserHistory(next)
                 }
                 captureRuntime.setListener { captureSnapshot = it }
+                devToolsRuntime.setListener { connected ->
+                    devToolsConnections = connected
+                }
                 onDispose {
                     controller.setListener(null)
                     captureRuntime.setListener(null)
+                    devToolsRuntime.setListener(null)
                 }
             }
 
@@ -246,6 +266,12 @@ class MainActivity : ComponentActivity() {
                 captureSnapshot = captureSnapshot,
                 targetHostsByTab = targetHostsByTab,
             )
+
+            androidx.compose.runtime.LaunchedEffect(selectedTabId) {
+                devToolsUi = DevToolsUiState(
+                    connected = captureEnabled && selectedTabId in devToolsConnections,
+                )
+            }
 
             androidx.compose.runtime.LaunchedEffect(androidPermission?.id) {
                 val request = androidPermission ?: return@LaunchedEffect
@@ -392,10 +418,44 @@ class MainActivity : ComponentActivity() {
                         )
                     },
                     captureRequests = captureRequests,
+                    devTools = devToolsUi.copy(
+                        connected = captureEnabled && selectedTabId in devToolsConnections,
+                    ),
                 ),
                 onCaptureEnabledChange = { enabled ->
                     TahoBrowserStateStore.updateCaptureEnabled(enabled)
                     captureRuntime.setEnabled(enabled)
+                    devToolsRuntime.setEnabled(enabled)
+                    if (!enabled) {
+                        devToolsUi = DevToolsUiState(connected = false)
+                    }
+                },
+                onDevToolsRequest = { command, argument ->
+                    devToolsUi = DevToolsUiState(
+                        connected = selectedTabId in devToolsConnections,
+                        loading = true,
+                        command = command,
+                    )
+                    devToolsRuntime.request(
+                        tabId = selectedTabId,
+                        command = command,
+                        argument = argument,
+                    ) { result ->
+                        devToolsUi = DevToolsUiState(
+                            connected = selectedTabId in devToolsConnections,
+                            loading = false,
+                            command = result.command,
+                            payloadJson = result.payloadJson,
+                            error = result.error,
+                        )
+                    }
+                },
+                onDevToolsReloadPage = {
+                    if (snapshot.crashed) {
+                        controller.recoverCrashedTab(snapshot.selectedTabId)
+                    } else {
+                        controller.reload()
+                    }
                 },
                 onNavigate = { input ->
                     val searchTemplate = TahoBrowserStateStore.searchEngines
@@ -517,11 +577,15 @@ class MainActivity : ComponentActivity() {
                     AndroidView(
                         factory = { context ->
                             BrowserSurfaceView(context).also { surface ->
+                                surface.onRefresh = { controller.reload() }
                                 controller.bind(selectedTabId, surface)
+                                surface.onPageLoadingChanged(snapshot.isLoading)
                             }
                         },
                         update = { surface ->
+                            surface.onRefresh = { controller.reload() }
                             controller.bind(selectedTabId, surface)
+                            surface.onPageLoadingChanged(snapshot.isLoading)
                         },
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -611,6 +675,7 @@ class MainActivity : ComponentActivity() {
         runCatching {
             getSystemService(ConnectivityManager::class.java)?.unregisterNetworkCallback(networkCallback)
         }
+        devToolsRuntime.close()
         captureRuntime.close()
         super.onDestroy()
     }
@@ -679,6 +744,7 @@ class MainActivity : ComponentActivity() {
             )
         }
         captureRuntime.syncSessions(observed)
+        devToolsRuntime.syncSessions(observed)
     }
 
     private fun relevantCaptureCounts(
