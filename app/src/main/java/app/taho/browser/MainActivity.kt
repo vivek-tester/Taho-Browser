@@ -1,6 +1,7 @@
 package app.taho.browser
 
 import android.Manifest
+import android.app.KeyguardManager
 import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
@@ -9,12 +10,15 @@ import android.content.Intent
 import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
 import android.graphics.drawable.Icon
+import android.hardware.biometrics.BiometricPrompt
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.CancellationSignal
 import android.os.Handler
 import android.os.PersistableBundle
 import android.os.Looper
@@ -92,6 +96,7 @@ import app.taho.browser.transfer.core.M4PreparationBlock
 import app.taho.browser.transfer.core.M4PreparationResult
 import app.taho.browser.transfer.core.M4TransferPreparer
 import java.net.URI
+import java.util.concurrent.Executor
 
 class MainActivity : ComponentActivity() {
     private companion object {
@@ -112,6 +117,8 @@ class MainActivity : ComponentActivity() {
     private var transferPreparationInFlight: Boolean = false
     private var isOffline by mutableStateOf(false)
     private var originatingTabId: String? = null
+    private var pendingPrivateAction: (() -> Unit)? = null
+    private var privateBiometricCancellation: CancellationSignal? = null
     private var pendingExternalNavDialog by mutableStateOf<Triple<String, String, Intent>?>(null)
     private var captureRetentionMode by mutableStateOf("Session only")
     private var appliedSecureDnsKey: String? = null
@@ -124,6 +131,18 @@ class MainActivity : ComponentActivity() {
         }
         override fun onLost(network: Network) {
             runOnUiThread { isOffline = true }
+        }
+    }
+
+    private val privateTabCredentialLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        val action = pendingPrivateAction
+        pendingPrivateAction = null
+        if (result.resultCode == RESULT_OK) {
+            action?.invoke()
+        } else {
+            transferNotice = "Private tabs remain locked."
         }
     }
 
@@ -511,8 +530,27 @@ class MainActivity : ComponentActivity() {
                     }
                 },
                 onNewTab = { controller.newTab(privateMode = false) },
-                onNewPrivateTab = { controller.newTab(privateMode = true) },
-                onSelectTab = controller::selectTab,
+                onNewPrivateTab = {
+                    val current = controller.snapshot()
+                    if (current.isPrivate) {
+                        controller.newTab(privateMode = true)
+                    } else {
+                        requestPrivateTabAccess {
+                            controller.newTab(privateMode = true)
+                        }
+                    }
+                },
+                onSelectTab = { tabId ->
+                    val current = controller.snapshot()
+                    val target = current.tabs.firstOrNull { it.id == tabId }
+                    if (target?.isPrivate == true && !current.isPrivate) {
+                        requestPrivateTabAccess {
+                            controller.selectTab(tabId)
+                        }
+                    } else {
+                        controller.selectTab(tabId)
+                    }
+                },
                 onCloseTab = { tabId ->
                     snapshot.tabs.firstOrNull { it.id == tabId }?.let { tab ->
                         if (!tab.isPrivate) {
@@ -711,6 +749,9 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        privateBiometricCancellation?.cancel()
+        privateBiometricCancellation = null
+        pendingPrivateAction = null
         runCatching {
             getSystemService(ConnectivityManager::class.java)?.unregisterNetworkCallback(networkCallback)
         }
@@ -1128,6 +1169,85 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun requestPrivateTabAccess(action: () -> Unit) {
+        val settings = TahoBrowserStateStore.settings
+        if (!settings.privateTabLock && !settings.biometricLockForPrivateTabs) {
+            action()
+            return
+        }
+        if (pendingPrivateAction != null) {
+            transferNotice = "Private-tab authentication is already in progress."
+            return
+        }
+
+        pendingPrivateAction = action
+
+        if (settings.biometricLockForPrivateTabs && Build.VERSION.SDK_INT >= 28) {
+            showPrivateTabBiometricPrompt()
+            return
+        }
+
+        launchPrivateTabDeviceCredential()
+    }
+
+    private fun launchPrivateTabDeviceCredential() {
+        val keyguard = getSystemService(KeyguardManager::class.java)
+        val intent = keyguard?.createConfirmDeviceCredentialIntent(
+            "Unlock private tabs",
+            "Authenticate to enter Taho private browsing.",
+        )
+        if (intent == null) {
+            pendingPrivateAction = null
+            transferNotice = "Set a device screen lock before enabling private-tab protection."
+            return
+        }
+        privateTabCredentialLauncher.launch(intent)
+    }
+
+    @androidx.annotation.RequiresApi(28)
+    private fun showPrivateTabBiometricPrompt() {
+        privateBiometricCancellation?.cancel()
+        val cancellation = CancellationSignal()
+        privateBiometricCancellation = cancellation
+        val executor = Executor { command -> runOnUiThread(command) }
+
+        val prompt = BiometricPrompt.Builder(this)
+            .setTitle("Unlock private tabs")
+            .setSubtitle("Authenticate to enter Taho private browsing.")
+            .setNegativeButton("Use device lock", executor) { _, _ ->
+                privateBiometricCancellation = null
+                launchPrivateTabDeviceCredential()
+            }
+            .build()
+
+        prompt.authenticate(
+            cancellation,
+            executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(
+                    result: BiometricPrompt.AuthenticationResult,
+                ) {
+                    privateBiometricCancellation = null
+                    val action = pendingPrivateAction
+                    pendingPrivateAction = null
+                    action?.invoke()
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    privateBiometricCancellation = null
+                    if (pendingPrivateAction != null) {
+                        transferNotice = "Private tabs remain locked."
+                        pendingPrivateAction = null
+                    }
+                }
+
+                override fun onAuthenticationFailed() {
+                    transferNotice = "Biometric authentication was not recognized."
+                }
+            },
+        )
     }
 
     private fun applyPrivacySettings(reloadSelectedPage: Boolean) {
