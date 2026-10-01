@@ -138,7 +138,7 @@ class MobileDevToolsRuntime(
             ?.let { message.put("argument", it) }
 
         runCatching {
-            port.postMessage(message.toString())
+            port.postMessage(message)
         }.onFailure { error ->
             pending.remove(requestId)
             callback(
