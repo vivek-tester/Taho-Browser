@@ -18,8 +18,8 @@ object TahoBrowserStateStore {
 
     var searchEngines by mutableStateOf(
         listOf(
-            SearchEngineItem("duckduckgo", "DuckDuckGo", "https://duckduckgo.com/?q=%s", "⌕", isDefault = true),
-            SearchEngineItem("google", "Google", "https://www.google.com/search?q=%s", "G"),
+            SearchEngineItem("duckduckgo", "DuckDuckGo", "https://duckduckgo.com/?q=%s", "D"),
+            SearchEngineItem("google", "Google", "https://www.google.com/search?q=%s", "G", isDefault = true),
             SearchEngineItem("brave", "Brave Search", "https://search.brave.com/search?q=%s", "B"),
             SearchEngineItem("bing", "Bing", "https://www.bing.com/search?q=%s", "b"),
             SearchEngineItem("ecosia", "Ecosia", "https://www.ecosia.org/search?q=%s", "E"),
@@ -158,8 +158,8 @@ object TahoBrowserStateStore {
         persistence = null
         settings = BrowserSettingsState()
         searchEngines = listOf(
-            SearchEngineItem("duckduckgo", "DuckDuckGo", "https://duckduckgo.com/?q=%s", "⌕", isDefault = true),
-            SearchEngineItem("google", "Google", "https://www.google.com/search?q=%s", "G"),
+            SearchEngineItem("duckduckgo", "DuckDuckGo", "https://duckduckgo.com/?q=%s", "D"),
+            SearchEngineItem("google", "Google", "https://www.google.com/search?q=%s", "G", isDefault = true),
             SearchEngineItem("brave", "Brave Search", "https://search.brave.com/search?q=%s", "B"),
             SearchEngineItem("bing", "Bing", "https://www.bing.com/search?q=%s", "b"),
             SearchEngineItem("ecosia", "Ecosia", "https://www.ecosia.org/search?q=%s", "E"),
