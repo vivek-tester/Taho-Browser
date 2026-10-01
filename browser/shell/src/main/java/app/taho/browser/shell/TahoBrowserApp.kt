@@ -239,7 +239,7 @@ fun TahoBrowserApp(
     val density = LocalDensity.current
     val topSystemInset = with(density) { WindowInsets.statusBars.getTop(this).toDp() }
     val bottomSystemInset = with(density) { WindowInsets.navigationBars.getBottom(this).toDp() }
-    val toolbarReserve = 62.dp
+    val toolbarReserve = 64.dp
 
     val selectedCapture = state.captureRequests.firstOrNull { it.id == selectedCaptureId }
     val darkSystemChromeVisible =
