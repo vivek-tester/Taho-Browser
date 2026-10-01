@@ -57,7 +57,7 @@ class ProductionObservationCoordinator(
 
     private val backgroundDelegate = object : WebExtension.MessageDelegate {
         override fun onConnect(port: WebExtension.Port) {
-            if (!running || gate != ProductionCaptureGate.ENABLED) {
+            if (gate != ProductionCaptureGate.ENABLED) {
                 port.disconnect()
                 return
             }
@@ -82,6 +82,7 @@ class ProductionObservationCoordinator(
                     }
                 },
             )
+            sendCaptureControl(running)
         }
 
         override fun onMessage(
@@ -111,6 +112,7 @@ class ProductionObservationCoordinator(
         extension?.let { installed ->
             installed.setMessageDelegate(backgroundDelegate, BULK_NATIVE_APP)
             sessions.forEach { attachIdentityDelegate(installed, it) }
+            sendCaptureControl(true)
             sink(ProductionObservationEvent.ExtensionReady(installed.id))
             return
         }
@@ -147,11 +149,9 @@ class ProductionObservationCoordinator(
     fun stop() {
         if (!running) return
         running = false
-        runCatching { activePort?.disconnect() }
-        activePort = null
+        sendCaptureControl(false)
         activeConnection = null
         lastSequence = 0
-        bindingByExtTab.clear()
     }
 
     fun attachSession(
@@ -164,9 +164,7 @@ class ProductionObservationCoordinator(
         bindingByExtTab.entries.removeAll { it.value.session === session }
         val registered = RegisteredSession(tahoTabId, session, committedUrl, isPrivate)
         sessions += registered
-        if (running) {
-            extension?.let { attachIdentityDelegate(it, registered) }
-        }
+        extension?.let { attachIdentityDelegate(it, registered) }
     }
 
     fun detachSession(tahoTabId: String) {
@@ -187,7 +185,6 @@ class ProductionObservationCoordinator(
                     message: Any,
                     sender: WebExtension.MessageSender,
                 ): GeckoResult<Any>? {
-                    if (!running) return null
                     val raw = message as? String ?: return rejectIdentity("non-string identity")
                     val parsed = ProductionObservationProtocol.parse(
                         raw,
@@ -224,6 +221,17 @@ class ProductionObservationCoordinator(
             },
             IDENTITY_NATIVE_APP,
         )
+    }
+
+    private fun sendCaptureControl(enabled: Boolean) {
+        val port = activePort ?: return
+        runCatching {
+            port.postMessage(
+                JSONObject()
+                    .put("type", "CONTROL_CAPTURE")
+                    .put("enabled", enabled),
+            )
+        }
     }
 
     private fun rejectIdentity(reason: String): GeckoResult<Any>? {
