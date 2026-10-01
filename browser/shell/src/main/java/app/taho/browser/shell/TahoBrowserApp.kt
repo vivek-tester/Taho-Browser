@@ -111,6 +111,14 @@ data class SiteSecurityUiState(
     val passiveMixedContentLoaded: Boolean,
 )
 
+data class DevToolsUiState(
+    val connected: Boolean = false,
+    val loading: Boolean = false,
+    val command: String? = null,
+    val payloadJson: String? = null,
+    val error: String? = null,
+)
+
 data class BrowserUiState(
     val captureState: CaptureState = CaptureState.OFF,
     val captureEnabled: Boolean = false,
@@ -132,6 +140,7 @@ data class BrowserUiState(
     val transferPhase: M7TransferPhaseUi = M7TransferPhaseUi.NOT_STARTED,
     val isTahoInstalled: Boolean = true,
     val retentionMode: String = "Session only",
+    val devTools: DevToolsUiState = DevToolsUiState(),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -139,6 +148,8 @@ data class BrowserUiState(
 fun TahoBrowserApp(
     state: BrowserUiState = BrowserUiState(),
     onCaptureEnabledChange: (Boolean) -> Unit = {},
+    onDevToolsRequest: (String, String?) -> Unit = { _, _ -> },
+    onDevToolsReloadPage: () -> Unit = {},
     onNavigate: (String) -> Unit = {},
     onBack: () -> Unit = {},
     onForward: () -> Unit = {},
@@ -981,6 +992,15 @@ fun TahoBrowserApp(
                 TahoMockupDeveloperToolsSheet(
                     enabled = state.captureEnabled,
                     captureRequests = state.captureRequests,
+                    devToolsState = state.devTools,
+                    onRequest = onDevToolsRequest,
+                    onReloadPage = onDevToolsReloadPage,
+                    onInspectRequest = { requestId ->
+                        showDeveloperTools = false
+                        lastSelectedCaptureId = requestId
+                        selectedCaptureId = requestId
+                        selectedSecretPolicy = M4SecretPolicyUi.PARAMETERIZE
+                    },
                     onDismiss = { showDeveloperTools = false },
                 )
             }
@@ -1265,13 +1285,7 @@ private fun TahoFloatingCaptureCompanion(
                     .border(1.dp, TahoHairlineStrong, RoundedCornerShape(14.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = "T",
-                    color = TahoText,
-                    fontFamily = TahoDisplay,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 16.sp,
-                )
+                TahoCaptureMascot()
             }
 
             if (countLabel.isNotEmpty()) {
@@ -1294,6 +1308,32 @@ private fun TahoFloatingCaptureCompanion(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun TahoCaptureMascot() {
+    Canvas(modifier = Modifier.size(30.dp)) {
+        val line = 1.6.dp.toPx()
+        val faceWidth = size.width * 0.66f
+        val faceHeight = size.height * 0.46f
+        val faceLeft = (size.width - faceWidth) / 2f
+        val faceTop = size.height * 0.10f
+        drawRoundRect(
+            color = TahoText,
+            topLeft = Offset(faceLeft, faceTop),
+            size = Size(faceWidth, faceHeight),
+            cornerRadius = CornerRadius(6.dp.toPx(), 6.dp.toPx()),
+            style = Stroke(width = line),
+        )
+        drawCircle(TahoText, 1.5.dp.toPx(), Offset(size.width * 0.41f, size.height * 0.30f))
+        drawCircle(TahoText, 1.5.dp.toPx(), Offset(size.width * 0.59f, size.height * 0.30f))
+        drawLine(TahoText, Offset(size.width * 0.42f, size.height * 0.43f), Offset(size.width * 0.58f, size.height * 0.43f), line)
+        drawLine(TahoText, Offset(size.width * 0.50f, size.height * 0.57f), Offset(size.width * 0.50f, size.height * 0.78f), line)
+        drawLine(TahoText, Offset(size.width * 0.50f, size.height * 0.64f), Offset(size.width * 0.27f, size.height * 0.72f), line)
+        drawLine(TahoText, Offset(size.width * 0.50f, size.height * 0.64f), Offset(size.width * 0.73f, size.height * 0.72f), line)
+        drawLine(TahoText, Offset(size.width * 0.50f, size.height * 0.78f), Offset(size.width * 0.36f, size.height * 0.94f), line)
+        drawLine(TahoText, Offset(size.width * 0.50f, size.height * 0.78f), Offset(size.width * 0.64f, size.height * 0.94f), line)
     }
 }
 
