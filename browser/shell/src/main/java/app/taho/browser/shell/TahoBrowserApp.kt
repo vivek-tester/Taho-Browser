@@ -1151,16 +1151,19 @@ fun TahoBrowserApp(
                         onNewTab = onNewTab,
                         onNewPrivateTab = onNewPrivateTab,
                         onOpenSettings = { section ->
-                            settingsInitialSubPage = when (section) {
-                                "BOOKMARKS" -> SettingsSubPage.BOOKMARKS
-                                "HISTORY" -> SettingsSubPage.HISTORY
-                                "DOWNLOADS" -> SettingsSubPage.DOWNLOADS
-                                "EXTENSIONS" -> SettingsSubPage.EXTENSIONS
-                                "PRIVACY" -> SettingsSubPage.PRIVACY_SECURITY
-                                "ABOUT" -> SettingsSubPage.ABOUT
-                                else -> SettingsSubPage.MAIN
+                            if (section == "PRIVACY") {
+                                showPrivacyToolsMenu = true
+                            } else {
+                                settingsInitialSubPage = when (section) {
+                                    "BOOKMARKS" -> SettingsSubPage.BOOKMARKS
+                                    "HISTORY" -> SettingsSubPage.HISTORY
+                                    "DOWNLOADS" -> SettingsSubPage.DOWNLOADS
+                                    "EXTENSIONS" -> SettingsSubPage.EXTENSIONS
+                                    "ABOUT" -> SettingsSubPage.ABOUT
+                                    else -> SettingsSubPage.MAIN
+                                }
+                                showSettings = true
                             }
-                            showSettings = true
                         },
                         onFindInPage = { findInPageActive = true },
                         onTranslate = { showTranslationBar = true },
@@ -1182,28 +1185,173 @@ fun TahoBrowserApp(
         }
 
         if (showPacketCapture && state.sitePermission == null) {
+            Phase2PacketCaptureScreen(
+                enabled = state.captureEnabled,
+                captureState = state.captureState,
+                requests = state.captureRequests,
+                relevantCount = state.relevantCount,
+                captureInBackground = TahoBrowserStateStore.captureInBackground,
+                floatingEnabled = TahoBrowserStateStore.captureFloatingCharacterEnabled,
+                onEnabledChange = onCaptureEnabledChange,
+                onBackgroundChange = TahoBrowserStateStore::updateCaptureInBackground,
+                onFloatingChange = TahoBrowserStateStore::updateCaptureFloatingCharacterEnabled,
+                onViewCaptured = {
+                    showPacketCapture = false
+                    showCaptureSummary = true
+                },
+                onOpenSettings = {
+                    showPacketCapture = false
+                    showCaptureSettings = true
+                },
+                onBack = { showPacketCapture = false },
+            )
+        }
+
+        if (showCaptureQuickPanel && state.sitePermission == null) {
             ModalBottomSheet(
-                onDismissRequest = { showPacketCapture = false },
+                onDismissRequest = { showCaptureQuickPanel = false },
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                 containerColor = TahoSheet,
                 contentColor = TahoText,
-                shape = TahoSheetShape,
+                shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
                 tonalElevation = 0.dp,
-                scrimColor = Color.Black.copy(alpha = .50f),
+                scrimColor = Color.Black.copy(alpha = .45f),
                 dragHandle = { SheetGrabHandle() },
             ) {
-                TahoMockupPacketCaptureSheet(
-                    enabled = state.captureEnabled,
-                    captureState = state.captureState,
-                    relevantCount = state.relevantCount,
-                    totalCount = state.captureRequests.size,
-                    capabilityNote = state.captureCapabilityNote,
-                    onEnabledChange = onCaptureEnabledChange,
-                    onViewCaptured = {
-                        showPacketCapture = false
+                Phase2CaptureQuickPanel(
+                    requests = state.captureRequests,
+                    onOpenFull = {
+                        showCaptureQuickPanel = false
                         showCaptureSummary = true
                     },
-                    onDismiss = { showPacketCapture = false },
+                    onStop = {
+                        onCaptureEnabledChange(false)
+                        showCaptureQuickPanel = false
+                    },
+                    onDismiss = { showCaptureQuickPanel = false },
+                )
+            }
+        }
+
+        if (showCaptureFilters && state.sitePermission == null) {
+            Phase2CaptureFiltersScreen(
+                methodFilter = phase2MethodFilter,
+                statusFilter = phase2StatusFilter,
+                domainFilter = phase2DomainFilter,
+                thirdPartyOnly = phase2ThirdPartyOnly,
+                failedOnly = phase2FailedOnly,
+                webSocketOnly = phase2WebSocketOnly,
+                onMethodChange = { phase2MethodFilter = it },
+                onStatusChange = { phase2StatusFilter = it },
+                onDomainChange = { phase2DomainFilter = it },
+                onThirdPartyChange = { phase2ThirdPartyOnly = it },
+                onFailedChange = { phase2FailedOnly = it },
+                onWebSocketChange = { phase2WebSocketOnly = it },
+                onReset = {
+                    phase2MethodFilter = Phase2MethodFilter.ALL
+                    phase2StatusFilter = Phase2StatusFilter.ALL
+                    phase2DomainFilter = ""
+                    phase2ThirdPartyOnly = false
+                    phase2FailedOnly = false
+                    phase2WebSocketOnly = false
+                },
+                onApply = { showCaptureFilters = false },
+                onBack = { showCaptureFilters = false },
+            )
+        }
+
+        if (showCaptureExport && state.sitePermission == null) {
+            Phase2ExportScreen(
+                requests = state.captureRequests.filter { it.id in exportCaptureIds },
+                onExport = { exportText ->
+                    onShare(exportText)
+                    showCaptureExport = false
+                },
+                onBack = { showCaptureExport = false },
+            )
+        }
+
+        if (showCaptureSettings && state.sitePermission == null) {
+            Phase2CaptureSettingsScreen(
+                enabled = state.captureEnabled,
+                captureInBackground = TahoBrowserStateStore.captureInBackground,
+                floatingEnabled = TahoBrowserStateStore.captureFloatingCharacterEnabled,
+                animationStyle = TahoBrowserStateStore.captureAnimationStyle,
+                defaultPosition = TahoBrowserStateStore.captureDefaultPosition,
+                capabilityNote = state.captureCapabilityNote,
+                onEnabledChange = onCaptureEnabledChange,
+                onBackgroundChange = TahoBrowserStateStore::updateCaptureInBackground,
+                onFloatingChange = TahoBrowserStateStore::updateCaptureFloatingCharacterEnabled,
+                onAnimationStyleChange = TahoBrowserStateStore::updateCaptureAnimationStyle,
+                onDefaultPositionChange = TahoBrowserStateStore::updateCaptureDefaultPosition,
+                onExport = {
+                    exportCaptureIds = state.captureRequests.map { it.id }
+                    showCaptureExport = true
+                },
+                onClear = onClearCaptureData,
+                onBack = { showCaptureSettings = false },
+            )
+        }
+
+        if (showPrivacyToolsMenu && state.sitePermission == null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = .34f))
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                    ) { showPrivacyToolsMenu = false },
+            )
+
+            Box(
+                modifier = Modifier
+                    .align(if (isTopToolbar) Alignment.TopEnd else Alignment.BottomEnd)
+                    .then(if (isTopToolbar) Modifier.statusBarsPadding() else Modifier.navigationBarsPadding())
+                    .padding(
+                        top = if (isTopToolbar) 68.dp else 12.dp,
+                        end = 12.dp,
+                        bottom = if (isTopToolbar) 12.dp else 68.dp,
+                    )
+                    .widthIn(min = 292.dp, max = 332.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(TahoSheet)
+                    .border(1.dp, TahoHairlineStrong, RoundedCornerShape(18.dp))
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                    ) {},
+            ) {
+                Phase2PrivacyToolsMenu(
+                    captureEnabled = state.captureEnabled,
+                    httpsOnlyEnabled = TahoBrowserStateStore.settings.httpsOnlyMode,
+                    trackingProtectionEnabled = TahoBrowserStateStore.settings.blockTrackers,
+                    onPacketCapture = {
+                        showPrivacyToolsMenu = false
+                        showPacketCapture = true
+                    },
+                    onClearBrowsingData = {
+                        showPrivacyToolsMenu = false
+                        settingsInitialSubPage = SettingsSubPage.CLEAR_BROWSING_DATA
+                        showSettings = true
+                    },
+                    onSitePermissions = {
+                        showPrivacyToolsMenu = false
+                        settingsInitialSubPage = SettingsSubPage.SITE_PERMISSIONS
+                        showSettings = true
+                    },
+                    onTrackerProtection = {
+                        showPrivacyToolsMenu = false
+                        settingsInitialSubPage = SettingsSubPage.PRIVACY_SECURITY
+                        showSettings = true
+                    },
+                    onHttpsOnlyChange = { enabled ->
+                        TahoBrowserStateStore.updateSettings { it.copy(httpsOnlyMode = enabled) }
+                    },
+                    onBack = {
+                        showPrivacyToolsMenu = false
+                        showBrowserMenu = true
+                    },
                 )
             }
         }
