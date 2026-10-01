@@ -321,7 +321,12 @@ class MobileDevToolsRuntime(
     }
 
     private fun notifyConnections() {
-        listener?.invoke(connectedTabs())
+        val snapshot = connectedTabs()
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            listener?.invoke(snapshot)
+        } else {
+            mainHandler.post { listener?.invoke(snapshot) }
+        }
     }
 
     companion object {
