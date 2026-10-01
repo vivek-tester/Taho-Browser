@@ -718,7 +718,12 @@ fun TahoBrowserApp(
                 !state.isFullScreen &&
                 state.sitePermission == null &&
                 !showBrowserMenu &&
+                !showPrivacyToolsMenu &&
                 !showPacketCapture &&
+                !showCaptureQuickPanel &&
+                !showCaptureFilters &&
+                !showCaptureExport &&
+                !showCaptureSettings &&
                 !showDeveloperTools &&
                 !showSettings &&
                 !showCaptureSummary &&
