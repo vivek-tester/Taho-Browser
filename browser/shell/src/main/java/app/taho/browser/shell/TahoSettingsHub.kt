@@ -647,7 +647,14 @@ private fun SettingsPrivacySecurityPage() {
             TahoBrowserStateStore.updateSettings { it.copy(httpsOnlyMode = !it.httpsOnlyMode) }
         }
         SettingsToggleRow("Safe Browsing & Phishing Shield", "Block malware & dangerous downloads", settings.safeBrowsingEnabled) {
-            TahoBrowserStateStore.updateSettings { it.copy(safeBrowsingEnabled = !it.safeBrowsingEnabled) }
+            TahoBrowserStateStore.updateSettings {
+                val enabled = !it.safeBrowsingEnabled
+                it.copy(
+                    safeBrowsingEnabled = enabled,
+                    dangerousDownloadProtection = enabled,
+                    phishingProtection = enabled,
+                )
+            }
         }
         SettingsToggleRow("Pop-Up & Redirect Blocker", "Suppress intrusive modals & redirect loops", settings.popupBlockerEnabled) {
             TahoBrowserStateStore.updateSettings {
