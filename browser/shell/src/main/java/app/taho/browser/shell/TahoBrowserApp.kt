@@ -1091,75 +1091,77 @@ fun TahoBrowserApp(
         }
 
         if (showBrowserMenu && state.sitePermission == null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = .34f))
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() },
-                    ) { showBrowserMenu = false },
-            )
-
-            Box(
-                modifier = Modifier
-                    .align(if (isTopToolbar) Alignment.TopEnd else Alignment.BottomEnd)
-                    .then(if (isTopToolbar) Modifier.statusBarsPadding() else Modifier.navigationBarsPadding())
-                    .padding(
-                        top = if (isTopToolbar) 68.dp else 12.dp,
-                        end = 12.dp,
-                        bottom = if (isTopToolbar) 12.dp else 68.dp,
-                    )
-                    .widthIn(min = 292.dp, max = 332.dp)
-                    .heightIn(max = 690.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(TahoSheet)
-                    .border(1.dp, TahoHairlineStrong, RoundedCornerShape(18.dp))
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() },
-                    ) {},
-            ) {
-                TahoMockupBrowserMenuSheet(
-                    isDesktopMode = effectiveDesktop,
-                    captureEnabled = state.captureEnabled,
-                    onToggleDesktopMode = {
-                        val nextDesktop = !effectiveDesktop
-                        currentTab?.location?.let { loc ->
-                            TahoBrowserStateStore.toggleDesktopModeForOrigin(loc)
-                        }
-                        isDesktopMode = nextDesktop
-                        onSetDesktopMode(nextDesktop)
-                    },
-                    onNewTab = onNewTab,
-                    onNewPrivateTab = onNewPrivateTab,
-                    onOpenSettings = { section ->
-                        settingsInitialSubPage = when (section) {
-                            "BOOKMARKS" -> SettingsSubPage.BOOKMARKS
-                            "HISTORY" -> SettingsSubPage.HISTORY
-                            "DOWNLOADS" -> SettingsSubPage.DOWNLOADS
-                            "EXTENSIONS" -> SettingsSubPage.EXTENSIONS
-                            "PRIVACY" -> SettingsSubPage.PRIVACY_SECURITY
-                            "ABOUT" -> SettingsSubPage.ABOUT
-                            else -> SettingsSubPage.MAIN
-                        }
-                        showSettings = true
-                    },
-                    onFindInPage = { findInPageActive = true },
-                    onTranslate = { showTranslationBar = true },
-                    onAddToHomeScreen = {
-                        currentTab?.location?.let { loc ->
-                            onAddToHomeScreen(currentTab.title ?: loc, loc)
-                        }
-                    },
-                    onOpenPacketCapture = { showPacketCapture = true },
-                    onOpenDeveloperTools = { showDeveloperTools = true },
-                    onOpenRecentTabs = {
-                        showBrowserMenu = false
-                        showTabs = true
-                    },
-                    onCloseMenu = { showBrowserMenu = false },
+            Box(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = .34f))
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() },
+                        ) { showBrowserMenu = false },
                 )
+
+                Box(
+                    modifier = Modifier
+                        .align(if (isTopToolbar) Alignment.TopEnd else Alignment.BottomEnd)
+                        .then(if (isTopToolbar) Modifier.statusBarsPadding() else Modifier.navigationBarsPadding())
+                        .padding(
+                            top = if (isTopToolbar) 68.dp else 12.dp,
+                            end = 12.dp,
+                            bottom = if (isTopToolbar) 12.dp else 68.dp,
+                        )
+                        .widthIn(min = 292.dp, max = 332.dp)
+                        .heightIn(max = 690.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(TahoSheet)
+                        .border(1.dp, TahoHairlineStrong, RoundedCornerShape(18.dp))
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() },
+                        ) {},
+                ) {
+                    TahoMockupBrowserMenuSheet(
+                        isDesktopMode = effectiveDesktop,
+                        captureEnabled = state.captureEnabled,
+                        onToggleDesktopMode = {
+                            val nextDesktop = !effectiveDesktop
+                            currentTab?.location?.let { loc ->
+                                TahoBrowserStateStore.toggleDesktopModeForOrigin(loc)
+                            }
+                            isDesktopMode = nextDesktop
+                            onSetDesktopMode(nextDesktop)
+                        },
+                        onNewTab = onNewTab,
+                        onNewPrivateTab = onNewPrivateTab,
+                        onOpenSettings = { section ->
+                            settingsInitialSubPage = when (section) {
+                                "BOOKMARKS" -> SettingsSubPage.BOOKMARKS
+                                "HISTORY" -> SettingsSubPage.HISTORY
+                                "DOWNLOADS" -> SettingsSubPage.DOWNLOADS
+                                "EXTENSIONS" -> SettingsSubPage.EXTENSIONS
+                                "PRIVACY" -> SettingsSubPage.PRIVACY_SECURITY
+                                "ABOUT" -> SettingsSubPage.ABOUT
+                                else -> SettingsSubPage.MAIN
+                            }
+                            showSettings = true
+                        },
+                        onFindInPage = { findInPageActive = true },
+                        onTranslate = { showTranslationBar = true },
+                        onAddToHomeScreen = {
+                            currentTab?.location?.let { loc ->
+                                onAddToHomeScreen(currentTab.title ?: loc, loc)
+                            }
+                        },
+                        onOpenPacketCapture = { showPacketCapture = true },
+                        onOpenDeveloperTools = { showDeveloperTools = true },
+                        onOpenRecentTabs = {
+                            showBrowserMenu = false
+                            showTabs = true
+                        },
+                        onCloseMenu = { showBrowserMenu = false },
+                    )
+                }
             }
         }
 
