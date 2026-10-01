@@ -201,7 +201,7 @@ object TahoBrowserStateStore {
     }
 
     // --- State mutation helpers ---
-    fun setCaptureEnabled(enabled: Boolean) {
+    fun updateCaptureEnabled(enabled: Boolean) {
         captureEnabled = enabled
         uiMetaPreferences
             ?.edit()
