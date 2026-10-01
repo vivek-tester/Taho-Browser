@@ -240,8 +240,8 @@ fun TahoTabsOverviewSheet(
                 Text(
                     text = "Recently closed (${recentlyClosed.size})",
                     color = TahoGoldHi,
-                    fontFamily = TahoMono,
-                    fontSize = 9.5.sp,
+                    fontFamily = TahoBody,
+                    fontSize = 12.sp,
                     modifier = Modifier
                         .clickable { showRecentlyClosedSheet = true }
                         .padding(vertical = 4.dp),
@@ -249,8 +249,8 @@ fun TahoTabsOverviewSheet(
                 Text(
                     text = "Archive (${archivedTabs.size})",
                     color = TahoMuted,
-                    fontFamily = TahoMono,
-                    fontSize = 9.5.sp,
+                    fontFamily = TahoBody,
+                    fontSize = 12.sp,
                     modifier = Modifier
                         .clickable { showArchiveSheet = true }
                         .padding(vertical = 4.dp),
@@ -261,8 +261,8 @@ fun TahoTabsOverviewSheet(
                 Text(
                     text = "Close all tabs",
                     color = TahoError.copy(alpha = 0.85f),
-                    fontFamily = TahoMono,
-                    fontSize = 9.5.sp,
+                    fontFamily = TahoBody,
+                    fontSize = 12.sp,
                     modifier = Modifier
                         .clickable { onCloseAllTabs() }
                         .padding(vertical = 4.dp),
@@ -541,7 +541,7 @@ fun TahoTabsOverviewSheet(
                     .padding(horizontal = 20.dp, vertical = 16.dp),
             ) {
                 Text(
-                    text = "Assign to Tab Group",
+                    text = "Assign to tab group",
                     color = TahoText,
                     fontFamily = TahoDisplay,
                     fontWeight = FontWeight.Medium,
@@ -563,7 +563,7 @@ fun TahoTabsOverviewSheet(
                         .padding(horizontal = 14.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("✕ Remove from All Groups", color = TahoMuted, fontFamily = TahoMono, fontSize = 11.sp)
+                    Text("Remove from all groups", color = TahoMuted, fontFamily = TahoBody, fontSize = 13.sp)
                 }
 
                 Spacer(Modifier.height(8.dp))
@@ -598,10 +598,10 @@ fun TahoTabsOverviewSheet(
                                     .background(Color(grp.colorHex))
                             )
                             Spacer(Modifier.width(10.dp))
-                            Text(grp.name, color = TahoText, fontFamily = TahoMono, fontSize = 11.5.sp)
+                            Text(grp.name, color = TahoText, fontFamily = TahoBody, fontSize = 13.sp)
                         }
                         if (isMember) {
-                            Text("✓ In Group", color = Color(grp.colorHex), fontFamily = TahoMono, fontSize = 9.sp)
+                            Text("In group", color = Color(grp.colorHex), fontFamily = TahoBody, fontSize = 11.sp)
                         }
                     }
                     Spacer(Modifier.height(6.dp))
