@@ -182,18 +182,6 @@ internal fun TahoMockupStartPage(
                             ),
                         )
                     }
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        text = "●",
-                        color = TahoMuted,
-                        fontSize = 12.sp,
-                        modifier = Modifier
-                            .size(32.dp)
-                            .semantics {
-                                role = Role.Button
-                                contentDescription = "Voice search"
-                            },
-                    )
                 }
 
                 if (query.isNotBlank()) {
