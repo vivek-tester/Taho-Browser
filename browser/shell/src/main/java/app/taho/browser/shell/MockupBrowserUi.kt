@@ -148,7 +148,7 @@ internal fun TahoMockupStartPage(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "G",
+                        text = searchEngine.iconGlyph,
                         color = TahoText,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
@@ -374,12 +374,7 @@ internal fun TahoMockupToolbar(
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(MockupChrome)
-            .border(1.dp, MockupBorder, RoundedCornerShape(18.dp))
-            .padding(horizontal = 6.dp, vertical = 6.dp),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         if (isLoading) {
             Box(
@@ -401,8 +396,8 @@ internal fun TahoMockupToolbar(
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .heightIn(min = 42.dp)
-                    .clip(RoundedCornerShape(22.dp))
+                    .heightIn(min = 46.dp)
+                    .clip(TahoPillShape)
                     .background(MockupControl)
                     .clickable(enabled = !editing, onClick = onBeginEdit)
                     .padding(horizontal = 12.dp),
@@ -541,8 +536,8 @@ private fun MockupSquareButton(
 ) {
     Box(
         modifier = Modifier
-            .size(44.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .size(48.dp)
+            .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
             .semantics {
                 role = Role.Button
@@ -566,7 +561,7 @@ private fun MockupTabButton(
 ) {
     Box(
         modifier = Modifier
-            .size(44.dp)
+            .size(48.dp)
             .clickable(onClick = onClick)
             .semantics {
                 role = Role.Button
@@ -576,9 +571,9 @@ private fun MockupTabButton(
     ) {
         Box(
             modifier = Modifier
-                .size(24.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .border(1.5.dp, TahoText.copy(alpha = 0.86f), RoundedCornerShape(6.dp)),
+                .size(28.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .border(1.5.dp, TahoText.copy(alpha = 0.86f), RoundedCornerShape(8.dp)),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -596,7 +591,7 @@ private fun MockupTabButton(
 private fun TahoMockupMenuButton(onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .size(44.dp)
+            .size(48.dp)
             .clip(CircleShape)
             .clickable(onClick = onClick)
             .semantics {
