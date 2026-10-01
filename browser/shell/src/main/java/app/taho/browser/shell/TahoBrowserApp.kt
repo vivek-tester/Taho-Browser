@@ -217,6 +217,8 @@ fun TahoBrowserApp(
     var phase3DevToolsPanel by remember { mutableStateOf(Phase3DevToolsPanel.ELEMENTS) }
     var devToolsFloatingX by remember { mutableStateOf(0f) }
     var devToolsFloatingY by remember { mutableStateOf(0f) }
+    var devToolsBottomHeightDp by remember { mutableStateOf(420f) }
+    var devToolsSideWidthDp by remember { mutableStateOf(360f) }
     var showSiteInfo by rememberSaveable { mutableStateOf(false) }
     var showShareQr by rememberSaveable { mutableStateOf(false) }
     var showReaderMode by rememberSaveable { mutableStateOf(false) }
@@ -1441,10 +1443,10 @@ fun TahoBrowserApp(
                 Phase3DevToolsMode.BOTTOM -> Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .fillMaxHeight(.58f)
+                    .height(devToolsBottomHeightDp.dp)
                 Phase3DevToolsMode.SIDE -> Modifier
                     .align(Alignment.CenterEnd)
-                    .fillMaxWidth(.58f)
+                    .width(devToolsSideWidthDp.dp)
                     .fillMaxHeight()
                 Phase3DevToolsMode.FLOATING -> Modifier
                     .align(Alignment.Center)
@@ -1502,6 +1504,21 @@ fun TahoBrowserApp(
                     onFloatingDrag = { dx, dy ->
                         devToolsFloatingX += dx
                         devToolsFloatingY += dy
+                    },
+                    onResize = { dx, dy ->
+                        when (phase3DevToolsMode) {
+                            Phase3DevToolsMode.BOTTOM -> {
+                                devToolsBottomHeightDp =
+                                    (devToolsBottomHeightDp - (dy / density.density))
+                                        .coerceIn(220f, 720f)
+                            }
+                            Phase3DevToolsMode.SIDE -> {
+                                devToolsSideWidthDp =
+                                    (devToolsSideWidthDp - (dx / density.density))
+                                        .coerceIn(280f, 720f)
+                            }
+                            else -> Unit
+                        }
                     },
                 )
             }
