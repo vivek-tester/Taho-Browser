@@ -476,6 +476,10 @@ private fun Phase3ElementsPanel(state: DevToolsUiState) {
 @Composable
 private fun Phase3ConsolePanel(state: DevToolsUiState, onRequest: (String, String?) -> Unit) {
     var code by rememberSaveable { mutableStateOf("") }
+    val obj = phase3Object(state)
+    val messages = obj?.optJSONArray("messages")
+    val isEvalResult = state.command == "CONSOLE_EVAL"
+
     Column(Modifier.fillMaxSize().padding(10.dp)) {
         Row(
             Modifier.fillMaxWidth().height(38.dp).clip(RoundedCornerShape(8.dp)).background(D3Surface)
@@ -497,24 +501,85 @@ private fun Phase3ConsolePanel(state: DevToolsUiState, onRequest: (String, Strin
                 color = if (code.isBlank()) D3Muted else D3Text,
                 fontFamily = TahoBody,
                 fontSize = 10.sp,
-                modifier = Modifier.clickable(enabled = code.isNotBlank()) { onRequest("CONSOLE_EVAL", code) }.padding(7.dp),
+                modifier = Modifier.clickable(enabled = code.isNotBlank()) {
+                    onRequest("CONSOLE_EVAL", code)
+                }.padding(7.dp),
             )
         }
         Spacer(Modifier.height(8.dp))
-        val pretty = phase3Pretty(state)
-        Text(
-            when {
-                state.loading -> "Running…"
-                state.error != null -> state.error
-                pretty.isBlank() -> "Console is ready."
-                else -> pretty
-            },
-            color = if (state.error != null) D3Red else D3Text,
-            fontFamily = TahoMono,
-            fontSize = 9.5.sp,
-            lineHeight = 14.sp,
-            modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),
-        )
+
+        when {
+            state.loading -> Phase3Note("Running…")
+            state.error != null -> Phase3Note(state.error)
+            isEvalResult -> {
+                val error = obj?.optString("error").orEmpty()
+                val result = if (error.isNotBlank()) error else obj?.opt("result")?.toString().orEmpty()
+                Text(
+                    result.ifBlank { "undefined" },
+                    color = if (error.isNotBlank()) D3Red else D3Text,
+                    fontFamily = TahoMono,
+                    fontSize = 9.5.sp,
+                    modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),
+                )
+            }
+            messages != null -> {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 3.dp, vertical = 4.dp)) {
+                    Text("Live messages", color = D3Muted, fontFamily = TahoBody, fontSize = 9.sp, modifier = Modifier.weight(1f))
+                    Text(messages.length().toString(), color = D3Muted, fontFamily = TahoMono, fontSize = 8.5.sp)
+                }
+                LazyColumn(Modifier.weight(1f)) {
+                    items((0 until messages.length()).toList()) { i ->
+                        val msg = messages.optJSONObject(i)
+                        val level = msg?.optString("level").orEmpty()
+                        val args = msg?.optJSONArray("args")
+                        val body = buildString {
+                            repeat(args?.length() ?: 0) { index ->
+                                if (index > 0) append(" ")
+                                append(args?.opt(index)?.toString().orEmpty())
+                            }
+                        }
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                            verticalAlignment = Alignment.Top,
+                        ) {
+                            Text(
+                                when (level) {
+                                    "error" -> "●"
+                                    "warn" -> "▲"
+                                    "info" -> "●"
+                                    else -> "›"
+                                },
+                                color = when (level) {
+                                    "error" -> D3Red
+                                    "warn" -> D3Yellow
+                                    "info" -> D3Blue
+                                    else -> D3Muted
+                                },
+                                modifier = Modifier.width(22.dp),
+                                fontSize = 9.sp,
+                            )
+                            Text(
+                                body.ifBlank { level },
+                                color = D3Text,
+                                fontFamily = TahoMono,
+                                fontSize = 8.8.sp,
+                                lineHeight = 13.sp,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
+            }
+            else -> {
+                Text(
+                    "Console is ready. Reload once after enabling DevTools to capture page messages.",
+                    color = D3Muted,
+                    fontFamily = TahoBody,
+                    fontSize = 10.sp,
+                )
+                Spacer(Modifier.weight(1f))
+            }
+        }
     }
 }
 
