@@ -5,9 +5,11 @@ const MAX_REQUEST_BODY_BYTES = 8 * 1024 * 1024;
 
 let port = null;
 let reconnectTimer = null;
+let reconnectDelayMs = 250;
 let connectionId = null;
 let sequence = 0;
 let eventCounter = 0;
+let captureEnabled = false;
 
 function randomId(prefix) {
   if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") {
@@ -25,15 +27,34 @@ function connect() {
     connectionId = randomId("conn");
     sequence = 0;
 
+    next.onMessage.addListener((raw) => {
+      let message = raw;
+      try {
+        if (typeof raw === "string") message = JSON.parse(raw);
+      } catch (_) {
+        return;
+      }
+      if (!message || message.type !== "CONTROL_CAPTURE") return;
+      const nextEnabled = message.enabled === true;
+      const wasEnabled = captureEnabled;
+      captureEnabled = nextEnabled;
+      if (captureEnabled && !wasEnabled) {
+        connectionId = randomId("conn");
+        sequence = 0;
+        emit("HELLO", { protocol: PROTOCOL_VERSION });
+      }
+    });
+
     next.onDisconnect.addListener(() => {
       if (port === next) port = null;
       reconnectTimer = setTimeout(() => {
         reconnectTimer = null;
+        reconnectDelayMs = Math.min(5000, reconnectDelayMs * 2);
         connect();
-      }, 250);
+      }, reconnectDelayMs);
     });
 
-    emit("HELLO", { protocol: PROTOCOL_VERSION });
+    reconnectDelayMs = 250;
   } catch (_) {
     reconnectTimer = setTimeout(() => {
       reconnectTimer = null;
@@ -43,7 +64,7 @@ function connect() {
 }
 
 function emit(type, fields) {
-  if (!port || !connectionId) return;
+  if (!captureEnabled || !port || !connectionId) return;
   const payload = Object.assign({}, fields || {}, {
     type,
     conn: connectionId,
