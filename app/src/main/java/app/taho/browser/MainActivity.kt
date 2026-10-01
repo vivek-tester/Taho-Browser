@@ -394,7 +394,7 @@ class MainActivity : ComponentActivity() {
                     captureRequests = captureRequests,
                 ),
                 onCaptureEnabledChange = { enabled ->
-                    TahoBrowserStateStore.setCaptureEnabled(enabled)
+                    TahoBrowserStateStore.updateCaptureEnabled(enabled)
                     captureRuntime.setEnabled(enabled)
                 },
                 onNavigate = { input ->
