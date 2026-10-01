@@ -81,14 +81,14 @@ private data class MockupShortcut(
 private val MockupDefaultShortcuts = listOf(
     MockupShortcut("YouTube", "https://www.youtube.com", "▶"),
     MockupShortcut("GitHub", "https://github.com", "GH"),
+    MockupShortcut("X", "https://x.com", "X"),
     MockupShortcut("Reddit", "https://www.reddit.com", "R"),
-    MockupShortcut("Wikipedia", "https://www.wikipedia.org", "W"),
+    MockupShortcut("Discord", "https://discord.com/app", "D"),
+    MockupShortcut("Notion", "https://www.notion.so", "N"),
+    MockupShortcut("ChatGPT", "https://chatgpt.com", "◉"),
 )
 
 private val MockupUtilityShortcuts = listOf(
-    MockupShortcut("Bookmarks", null, "★"),
-    MockupShortcut("History", null, "↶"),
-    MockupShortcut("Downloads", null, "↓"),
     MockupShortcut("Add", null, "+"),
 )
 
@@ -446,7 +446,7 @@ internal fun TahoMockupToolbar(
                     }
                 } else {
                     Text(
-                        text = compactMockupUrl(value),
+                        text = fullMockupUrl(value),
                         color = TahoText,
                         fontFamily = TahoBody,
                         fontSize = 13.sp,
@@ -465,7 +465,7 @@ internal fun TahoMockupToolbar(
 
         if (editing && draft.isNotBlank()) {
             val q = draft.trim()
-            val localSuggestions = (
+            val historySuggestions = (
                 TahoBrowserStateStore.bookmarks.map { it.title to it.url } +
                     TahoBrowserStateStore.history.map { it.title to it.url }
                 )
@@ -476,6 +476,17 @@ internal fun TahoMockupToolbar(
                 .distinctBy { it.second }
                 .take(4)
                 .toList()
+            val localSuggestions = if (historySuggestions.isNotEmpty()) {
+                historySuggestions
+            } else {
+                listOf(
+                    q to q,
+                    "$q download" to "$q download",
+                    "$q github" to "$q github",
+                    "$q features" to "$q features",
+                    "$q android" to "$q android",
+                )
+            }
 
             Spacer(Modifier.height(6.dp))
             Column(
@@ -1615,6 +1626,11 @@ private fun desktopPanelDescription(panel: MockupDevToolsPanel): String =
         MockupDevToolsPanel.CONSOLE -> "Execute JavaScript in Taho's page-inspection WebExtension context."
         MockupDevToolsPanel.NETWORK -> "Real captured requests; tap a row to inspect and send it to Taho."
     }
+
+private fun fullMockupUrl(value: String): String =
+    value
+        .takeIf { it.isNotBlank() && it != "Search or enter address" }
+        ?: "Search or enter address"
 
 private fun compactMockupUrl(value: String): String =
     value
