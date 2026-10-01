@@ -687,7 +687,14 @@ private fun SettingsPrivacySecurityPage() {
         Spacer(Modifier.height(16.dp))
         SettingsSectionTitle("PRIVATE BROWSING GUARDS")
         SettingsToggleRow("Private Tab PIN / Biometric Lock", "Require authentication when switching to private session", settings.privateTabLock) {
-            TahoBrowserStateStore.updateSettings { it.copy(privateTabLock = !it.privateTabLock) }
+            TahoBrowserStateStore.updateSettings {
+                val enabled = !it.privateTabLock
+                it.copy(
+                    privateTabLock = enabled,
+                    biometricLockForPrivateTabs =
+                        if (enabled) it.biometricLockForPrivateTabs else false,
+                )
+            }
         }
         SettingsToggleRow("Biometric Lock for Private Tabs", "Unlock private sessions using fingerprint or device biometrics", settings.biometricLockForPrivateTabs) {
             TahoBrowserStateStore.updateSettings {
