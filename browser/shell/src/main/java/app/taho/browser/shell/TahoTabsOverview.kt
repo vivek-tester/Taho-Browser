@@ -240,8 +240,8 @@ fun TahoTabsOverviewSheet(
                 Text(
                     text = "Recently Closed (${recentlyClosed.size})",
                     color = TahoGoldHi,
-                    fontFamily = TahoBody,
-                    fontSize = 12.sp,
+                    fontFamily = TahoMono,
+                    fontSize = 9.5.sp,
                     modifier = Modifier
                         .clickable { showRecentlyClosedSheet = true }
                         .padding(vertical = 4.dp),
@@ -249,8 +249,8 @@ fun TahoTabsOverviewSheet(
                 Text(
                     text = "Archive (${archivedTabs.size})",
                     color = TahoMuted,
-                    fontFamily = TahoBody,
-                    fontSize = 12.sp,
+                    fontFamily = TahoMono,
+                    fontSize = 9.5.sp,
                     modifier = Modifier
                         .clickable { showArchiveSheet = true }
                         .padding(vertical = 4.dp),
@@ -261,8 +261,8 @@ fun TahoTabsOverviewSheet(
                 Text(
                     text = "Close All Tabs",
                     color = TahoError.copy(alpha = 0.85f),
-                    fontFamily = TahoBody,
-                    fontSize = 12.sp,
+                    fontFamily = TahoMono,
+                    fontSize = 9.5.sp,
                     modifier = Modifier
                         .clickable { onCloseAllTabs() }
                         .padding(vertical = 4.dp),
@@ -696,7 +696,7 @@ private fun DetailedTabCard(
                                 .background(TahoInfo.copy(alpha = 0.18f))
                                 .padding(horizontal = 4.dp, vertical = 1.dp)
                         ) {
-                            Text("Pinned", color = TahoInfo, fontFamily = TahoBody, fontSize = 9.sp)
+                            Text("PINNED", color = TahoInfo, fontFamily = TahoMono, fontSize = 7.5.sp)
                         }
                         Spacer(Modifier.width(6.dp))
                     }
@@ -707,15 +707,15 @@ private fun DetailedTabCard(
                                 .background(TahoGold.copy(alpha = 0.2f))
                                 .padding(horizontal = 4.dp, vertical = 1.dp)
                         ) {
-                            Text("Private", color = TahoGoldHi, fontFamily = TahoBody, fontSize = 9.sp)
+                            Text("PRIVATE", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 7.5.sp)
                         }
                         Spacer(Modifier.width(6.dp))
                     }
                     Text(
                         text = tab.title?.takeIf { it.isNotBlank() } ?: (tab.location ?: "New tab"),
                         color = TahoText,
-                        fontFamily = TahoBody,
-                        fontSize = 14.sp,
+                        fontFamily = TahoMono,
+                        fontSize = 11.5.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -794,8 +794,8 @@ private fun TabActionButton(
         Text(
             text = label,
             color = color,
-            fontFamily = TahoBody,
-            fontSize = 11.sp,
+            fontFamily = TahoMono,
+            fontSize = 8.5.sp,
             maxLines = 1,
         )
     }
