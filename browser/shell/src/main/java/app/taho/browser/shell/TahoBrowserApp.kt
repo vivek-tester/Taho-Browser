@@ -1613,6 +1613,8 @@ private fun TahoFloatingCaptureCompanion(
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val density = LocalDensity.current
+        val preferredPosition = TahoBrowserStateStore.captureDefaultPosition
+        val animationStyle = TahoBrowserStateStore.captureAnimationStyle
         val visualSize = 40.dp
         val touchSize = 48.dp
         val margin = 10.dp
@@ -1624,7 +1626,11 @@ private fun TahoFloatingCaptureCompanion(
         var x by rememberSaveable { mutableStateOf(Float.NaN) }
         var y by rememberSaveable { mutableStateOf(Float.NaN) }
 
-        val safeX = if (x.isNaN()) maxX else x.coerceIn(minX.coerceAtMost(maxX), maxX)
+        val safeX = if (x.isNaN()) {
+            if (preferredPosition == "Left side") minX.coerceAtMost(maxX) else maxX
+        } else {
+            x.coerceIn(minX.coerceAtMost(maxX), maxX)
+        }
         val safeY = if (y.isNaN()) maxY * 0.56f else y.coerceIn(minY.coerceAtMost(maxY), maxY)
         val countLabel = when {
             relevantCount > 99 -> "99+"
@@ -1645,7 +1651,10 @@ private fun TahoFloatingCaptureCompanion(
                         y = (startY + dragAmount.y).coerceIn(minY.coerceAtMost(maxY), maxY)
                     }
                 }
-                .tahoPulse(trigger = relevantCount)
+                .then(
+                    if (animationStyle == "Subtle") Modifier.tahoPulse(trigger = relevantCount)
+                    else Modifier,
+                )
                 .semantics {
                     role = Role.Button
                     contentDescription =
@@ -1659,8 +1668,8 @@ private fun TahoFloatingCaptureCompanion(
                 modifier = Modifier
                     .size(visualSize)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(TahoSheet.copy(alpha = .97f))
-                    .border(1.dp, TahoHairlineStrong, RoundedCornerShape(14.dp)),
+                    .background(Color(0xFF07111B).copy(alpha = .97f))
+                    .border(1.dp, Color(0xFF21D4FD).copy(alpha = .55f), RoundedCornerShape(14.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 TahoCaptureMascot()
@@ -1672,13 +1681,13 @@ private fun TahoFloatingCaptureCompanion(
                         .align(Alignment.TopEnd)
                         .heightIn(min = 18.dp)
                         .clip(RoundedCornerShape(999.dp))
-                        .background(TahoText)
+                        .background(Color(0xFF1677FF))
                         .padding(horizontal = 5.dp, vertical = 2.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = countLabel,
-                        color = TahoBg,
+                        color = Color.White,
                         fontFamily = TahoMono,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 8.sp,
