@@ -233,7 +233,7 @@ internal fun Phase2CapturedPacketsScreen(
     onSendSingleToTaho: (String) -> Unit,
     onBack: () -> Unit,
 ) {
-    var selectedIds by rememberSaveable { mutableStateOf(emptySet<String>()) }
+    var selectedIds by remember { mutableStateOf(emptySet<String>()) }
     val selectionMode = selectedIds.isNotEmpty()
     val visible = remember(requests, searchQuery, methodFilter, statusFilter, domainFilter, thirdPartyOnly, failedOnly, webSocketOnly, currentHost) {
         requests.filter { r ->
