@@ -9,6 +9,7 @@
   let changes = [];
   let recorderActive = false;
   let recorderEvents = [];
+  let consoleEntries = [];
 
   const limitText = (value, max = MAX_TEXT_CHARS) =>
     String(value == null ? "" : value).slice(0, max);
@@ -54,6 +55,46 @@
     }
     return limitText(value);
   };
+
+  const pushConsoleEntry = (level, args) => {
+    consoleEntries.push({
+      level,
+      time: Date.now(),
+      args: Array.from(args || []).slice(0, 20).map((value) => simpleValue(value))
+    });
+    if (consoleEntries.length > MAX_LIST_ITEMS) {
+      consoleEntries = consoleEntries.slice(-MAX_LIST_ITEMS);
+    }
+  };
+
+  ["log", "info", "warn", "error", "debug"].forEach((level) => {
+    const original = console[level];
+    if (typeof original !== "function") return;
+    console[level] = function (...args) {
+      pushConsoleEntry(level, args);
+      return original.apply(console, args);
+    };
+  });
+
+  window.addEventListener("error", (event) => {
+    pushConsoleEntry("error", [
+      event.message || "Script error",
+      event.filename || "",
+      event.lineno || 0,
+      event.colno || 0
+    ]);
+  }, true);
+
+  window.addEventListener("unhandledrejection", (event) => {
+    pushConsoleEntry("error", ["Unhandled promise rejection", simpleValue(event.reason)]);
+  }, true);
+
+  const collectConsoleInfo = () => ({
+    url: location.href,
+    title: document.title,
+    context: "WebExtension page inspection world",
+    messages: consoleEntries.slice(-MAX_LIST_ITEMS)
+  });
 
   const selectorFor = (node) => {
     if (!(node instanceof Element)) return node && node.nodeName ? node.nodeName : "node";
@@ -465,7 +506,7 @@
   const handleCommand = async (command, argument) => {
     switch (command) {
       case "ELEMENTS": return collectElements();
-      case "CONSOLE_INFO": return { url: location.href, title: document.title, context: "WebExtension page inspection world" };
+      case "CONSOLE_INFO": return collectConsoleInfo();
       case "CONSOLE_EVAL": return executeConsole(argument);
       case "SOURCES": return collectSources();
       case "PERFORMANCE": return collectPerformance();
