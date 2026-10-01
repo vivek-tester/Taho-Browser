@@ -202,6 +202,7 @@ fun TahoBrowserApp(
     var showCaptureExport by rememberSaveable { mutableStateOf(false) }
     var showCaptureSettings by rememberSaveable { mutableStateOf(false) }
     var exportCaptureIds by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    var exportReturnToCaptureSettings by rememberSaveable { mutableStateOf(false) }
     var phase2MethodFilter by rememberSaveable { mutableStateOf(Phase2MethodFilter.ALL) }
     var phase2StatusFilter by rememberSaveable { mutableStateOf(Phase2StatusFilter.ALL) }
     var phase2DomainFilter by rememberSaveable { mutableStateOf("") }
@@ -753,6 +754,7 @@ fun TahoBrowserApp(
                 onOpenFilters = { showCaptureFilters = true },
                 onOpenExport = { requests ->
                     exportCaptureIds = requests.map { it.id }
+                    exportReturnToCaptureSettings = false
                     showCaptureExport = true
                 },
                 onDeleteSelected = { ids -> ids.forEach(onDeleteRequest) },
@@ -1266,8 +1268,18 @@ fun TahoBrowserApp(
                 onExport = { exportText ->
                     onShare(exportText)
                     showCaptureExport = false
+                    if (exportReturnToCaptureSettings) {
+                        showCaptureSettings = true
+                    }
+                    exportReturnToCaptureSettings = false
                 },
-                onBack = { showCaptureExport = false },
+                onBack = {
+                    showCaptureExport = false
+                    if (exportReturnToCaptureSettings) {
+                        showCaptureSettings = true
+                    }
+                    exportReturnToCaptureSettings = false
+                },
             )
         }
 
@@ -1286,6 +1298,8 @@ fun TahoBrowserApp(
                 onDefaultPositionChange = TahoBrowserStateStore::updateCaptureDefaultPosition,
                 onExport = {
                     exportCaptureIds = state.captureRequests.map { it.id }
+                    exportReturnToCaptureSettings = true
+                    showCaptureSettings = false
                     showCaptureExport = true
                 },
                 onClear = onClearCaptureData,
