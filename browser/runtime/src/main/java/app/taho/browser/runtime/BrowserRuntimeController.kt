@@ -545,7 +545,10 @@ class BrowserRuntimeController(context: Context) {
         )
     }
 
-    fun applyPrivacySettings(settings: BrowserPrivacyRuntimeSettings) {
+    fun applyPrivacySettings(
+        settings: BrowserPrivacyRuntimeSettings,
+        onPreferencesApplied: (() -> Unit)? = null,
+    ) {
         privacySettings = settings
 
         val runtimeSettings = runtime.settings
@@ -620,15 +623,34 @@ class BrowserRuntimeController(context: Context) {
         runtimeSettings.setGlobalPrivacyControl(settings.globalPrivacyControl)
 
         preferenceHandler.post {
-            GeckoPreferenceController.setGeckoPref(
+            val dnt = GeckoPreferenceController.setGeckoPref(
                 "privacy.donottrackheader.enabled",
                 settings.doNotTrack,
                 GeckoPreferenceController.PREF_BRANCH_USER,
             )
-            GeckoPreferenceController.setGeckoPref(
-                "dom.disable_open_during_load",
-                settings.popupBlockerEnabled,
-                GeckoPreferenceController.PREF_BRANCH_USER,
+            dnt.accept(
+                {
+                    val popup = GeckoPreferenceController.setGeckoPref(
+                        "dom.disable_open_during_load",
+                        settings.popupBlockerEnabled,
+                        GeckoPreferenceController.PREF_BRANCH_USER,
+                    )
+                    popup.accept(
+                        { mainHandler.post { onPreferencesApplied?.invoke() } },
+                        { mainHandler.post { onPreferencesApplied?.invoke() } },
+                    )
+                },
+                {
+                    val popup = GeckoPreferenceController.setGeckoPref(
+                        "dom.disable_open_during_load",
+                        settings.popupBlockerEnabled,
+                        GeckoPreferenceController.PREF_BRANCH_USER,
+                    )
+                    popup.accept(
+                        { mainHandler.post { onPreferencesApplied?.invoke() } },
+                        { mainHandler.post { onPreferencesApplied?.invoke() } },
+                    )
+                },
             )
         }
 
