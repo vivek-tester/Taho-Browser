@@ -1332,12 +1332,12 @@ fun TahoBrowserApp(
                     },
                     onClearBrowsingData = {
                         showPrivacyToolsMenu = false
-                        settingsInitialSubPage = SettingsSubPage.CLEAR_BROWSING_DATA
+                        settingsInitialSubPage = SettingsSubPage.CLEAR_DATA
                         showSettings = true
                     },
                     onSitePermissions = {
                         showPrivacyToolsMenu = false
-                        settingsInitialSubPage = SettingsSubPage.SITE_PERMISSIONS
+                        settingsInitialSubPage = SettingsSubPage.PRIVACY_SECURITY
                         showSettings = true
                     },
                     onTrackerProtection = {
