@@ -1,5 +1,6 @@
 package app.taho.browser.shell
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,6 +30,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -44,7 +46,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
@@ -605,18 +609,50 @@ private fun TahoMockupMenuButton(onClick: () -> Unit) {
     ) {
         Box(
             modifier = Modifier
-                .size(28.dp)
+                .size(30.dp)
                 .clip(CircleShape)
-                .background(TahoText.copy(alpha = 0.08f)),
+                .background(TahoText.copy(alpha = 0.06f)),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = "T",
-                color = TahoText,
-                fontFamily = TahoDisplay,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 15.sp,
-            )
+            Canvas(modifier = Modifier.size(22.dp)) {
+                val leaf = Path().apply {
+                    moveTo(size.width * 0.18f, size.height * 0.78f)
+                    cubicTo(
+                        size.width * 0.18f,
+                        size.height * 0.34f,
+                        size.width * 0.50f,
+                        size.height * 0.12f,
+                        size.width * 0.84f,
+                        size.height * 0.18f,
+                    )
+                    cubicTo(
+                        size.width * 0.76f,
+                        size.height * 0.56f,
+                        size.width * 0.50f,
+                        size.height * 0.82f,
+                        size.width * 0.18f,
+                        size.height * 0.78f,
+                    )
+                    close()
+                }
+                drawPath(
+                    path = leaf,
+                    color = TahoText,
+                    style = Stroke(width = 1.8.dp.toPx()),
+                )
+                drawLine(
+                    color = TahoText,
+                    start = androidx.compose.ui.geometry.Offset(
+                        size.width * 0.24f,
+                        size.height * 0.72f,
+                    ),
+                    end = androidx.compose.ui.geometry.Offset(
+                        size.width * 0.70f,
+                        size.height * 0.30f,
+                    ),
+                    strokeWidth = 1.6.dp.toPx(),
+                )
+            }
         }
     }
 }
@@ -640,7 +676,6 @@ internal fun TahoMockupBrowserMenuSheet(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .navigationBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
@@ -705,6 +740,14 @@ internal fun TahoMockupBrowserMenuSheet(
             Switch(
                 checked = isDesktopMode,
                 onCheckedChange = { onToggleDesktopMode() },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = TahoBg,
+                    checkedTrackColor = TahoText,
+                    checkedBorderColor = TahoText,
+                    uncheckedThumbColor = TahoMuted,
+                    uncheckedTrackColor = TahoSurfaceControl,
+                    uncheckedBorderColor = TahoHairlineStrong,
+                ),
             )
         }
         MockupMenuDivider()
