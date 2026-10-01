@@ -119,7 +119,7 @@ internal fun TahoMockupStartPage(
         }
         (userShortcuts + MockupDefaultShortcuts)
             .distinctBy { it.url }
-            .take(4)
+            .take(7)
     }
     val suggestions = remember(query, TahoBrowserStateStore.history, TahoBrowserStateStore.bookmarks) {
         val q = query.trim()
