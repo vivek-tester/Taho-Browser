@@ -170,6 +170,7 @@ fun TahoBrowserApp(
     onClearCaptureData: () -> Unit = {},
     onCopyCurl: (String) -> Unit = {},
     onShare: (String) -> Unit = {},
+    onExportCaptureFile: (String, String, String) -> Unit = { _, _, _ -> },
     onSendToTaho: (String, M4SecretPolicyUi) -> Unit = { _, _ -> },
     onDeleteRequest: (String) -> Unit = {},
     onInstallTaho: () -> Unit = {},
@@ -1265,8 +1266,8 @@ fun TahoBrowserApp(
         if (showCaptureExport && state.sitePermission == null) {
             Phase2ExportScreen(
                 requests = state.captureRequests.filter { it.id in exportCaptureIds },
-                onExport = { exportText ->
-                    onShare(exportText)
+                onExport = { fileName, mimeType, exportText ->
+                    onExportCaptureFile(fileName, mimeType, exportText)
                     showCaptureExport = false
                     if (exportReturnToCaptureSettings) {
                         showCaptureSettings = true
