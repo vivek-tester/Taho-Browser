@@ -1294,6 +1294,7 @@ fun TahoBrowserApp(
         }
 
         if (showPrivacyToolsMenu && state.sitePermission == null) {
+            Box(modifier = Modifier.fillMaxSize()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -1353,6 +1354,7 @@ fun TahoBrowserApp(
                         showBrowserMenu = true
                     },
                 )
+            }
             }
         }
 
