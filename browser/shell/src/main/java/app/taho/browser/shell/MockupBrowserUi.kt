@@ -68,6 +68,26 @@ private val MockupControl: Color get() = TahoSurfaceControl
 private val MockupBorder: Color get() = TahoHairlineStrong
 private val MockupAccent: Color get() = TahoText
 
+private data class MockupShortcut(
+    val title: String,
+    val url: String?,
+    val glyph: String,
+)
+
+private val MockupDefaultShortcuts = listOf(
+    MockupShortcut("YouTube", "https://www.youtube.com", "▶"),
+    MockupShortcut("GitHub", "https://github.com", "GH"),
+    MockupShortcut("Reddit", "https://www.reddit.com", "R"),
+    MockupShortcut("Wikipedia", "https://www.wikipedia.org", "W"),
+)
+
+private val MockupUtilityShortcuts = listOf(
+    MockupShortcut("Bookmarks", null, "★"),
+    MockupShortcut("History", null, "↶"),
+    MockupShortcut("Downloads", null, "↓"),
+    MockupShortcut("Add", null, "+"),
+)
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun TahoMockupStartPage(
@@ -81,13 +101,21 @@ internal fun TahoMockupStartPage(
     val searchEngine = TahoBrowserStateStore.searchEngines
         .firstOrNull { it.id == settings.defaultSearchEngineId }
         ?: TahoBrowserStateStore.searchEngines.first()
-    val shortcuts = TahoBrowserStateStore.topSites.take(8)
+    val shortcuts = remember(TahoBrowserStateStore.topSites) {
+        if (TahoBrowserStateStore.topSites.isEmpty()) {
+            MockupDefaultShortcuts
+        } else {
+            TahoBrowserStateStore.topSites.take(4).map {
+                MockupShortcut(it.title, it.url, it.iconGlyph.ifBlank { it.title.take(1).uppercase() })
+            }
+        }
+    }
     val suggestions = remember(query, TahoBrowserStateStore.history, TahoBrowserStateStore.bookmarks) {
         val q = query.trim()
         if (q.isBlank()) {
             emptyList()
         } else {
-            (
+            val local = (
                 TahoBrowserStateStore.bookmarks.map { it.title to it.url } +
                     TahoBrowserStateStore.history.map { it.title to it.url }
                 )
@@ -96,8 +124,21 @@ internal fun TahoMockupStartPage(
                     title.contains(q, ignoreCase = true) || url.contains(q, ignoreCase = true)
                 }
                 .distinctBy { it.second }
-                .take(5)
+                .take(4)
                 .toList()
+
+            if (local.isNotEmpty()) {
+                local
+            } else {
+                listOf(
+                    q to q,
+                    "$q download" to "$q download",
+                    "$q github" to "$q github",
+                    "$q features" to "$q features",
+                    "$q android" to "$q android",
+                    "$q privacy" to "$q privacy",
+                )
+            }
         }
     }
 
@@ -112,16 +153,16 @@ internal fun TahoMockupStartPage(
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 32.dp),
+                .padding(horizontal = 28.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(Modifier.height(64.dp))
+            Spacer(Modifier.height(92.dp))
             Text(
                 text = if (isPrivate) "Taho Private" else "Taho",
                 color = TahoText,
                 fontFamily = TahoDisplay,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = if (isPrivate) 38.sp else 48.sp,
+                fontSize = if (isPrivate) 38.sp else 44.sp,
                 letterSpacing = (-1).sp,
             )
             Spacer(Modifier.height(4.dp))
@@ -129,9 +170,9 @@ internal fun TahoMockupStartPage(
                 text = if (isPrivate) "Browse privately" else "Browse Freely",
                 color = TahoText.copy(alpha = 0.78f),
                 fontFamily = TahoBody,
-                fontSize = 15.sp,
+                fontSize = 17.sp,
             )
-            Spacer(Modifier.height(30.dp))
+            Spacer(Modifier.height(34.dp))
 
             Column(
                 modifier = Modifier
@@ -143,7 +184,7 @@ internal fun TahoMockupStartPage(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 56.dp)
+                        .heightIn(min = 54.dp)
                         .padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -191,7 +232,7 @@ internal fun TahoMockupStartPage(
                             url = url,
                             onClick = {
                                 query = url
-                                onNavigate(url)
+                                resolveMockupNavigation(url, searchEngine)?.let(onNavigate)
                             },
                         )
                     }
@@ -207,87 +248,56 @@ internal fun TahoMockupStartPage(
 
             Spacer(Modifier.height(34.dp))
 
-            if (shortcuts.isNotEmpty()) {
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    maxItemsInEachRow = 4,
-                    horizontalArrangement = Arrangement.SpaceAround,
-                    verticalArrangement = Arrangement.spacedBy(22.dp),
-                ) {
-                    shortcuts.forEach { item ->
-                        Column(
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                maxItemsInEachRow = 4,
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalArrangement = Arrangement.spacedBy(22.dp),
+            ) {
+                (shortcuts + MockupUtilityShortcuts).forEach { item ->
+                    Column(
+                        modifier = Modifier
+                            .width(74.dp)
+                            .clickable {
+                                when (item.title) {
+                                    "Bookmarks" -> Unit
+                                    "History" -> recentTabs
+                                        .firstOrNull { !it.location.isNullOrBlank() && it.location != "about:blank" }
+                                        ?.let { onSelectTab(it.id) }
+                                    "Downloads" -> Unit
+                                    "Add" -> Unit
+                                    else -> item.url?.let(onNavigate)
+                                }
+                            },
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Box(
                             modifier = Modifier
-                                .width(72.dp)
-                                .clickable { onNavigate(item.url) },
-                            horizontalAlignment = Alignment.CenterHorizontally,
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(TahoSurfaceControl)
+                                .border(1.dp, TahoHairlineStrong, CircleShape),
+                            contentAlignment = Alignment.Center,
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(50.dp)
-                                    .clip(CircleShape)
-                                    .background(TahoSurfaceControl)
-                                    .border(1.dp, TahoText.copy(alpha = 0.08f), CircleShape),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    text = item.title.take(1).uppercase(),
-                                    color = TahoText,
-                                    fontFamily = TahoDisplay,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 17.sp,
-                                )
-                            }
-                            Spacer(Modifier.height(7.dp))
                             Text(
-                                text = item.title,
-                                color = TahoText.copy(alpha = 0.9f),
-                                fontFamily = TahoBody,
-                                fontSize = 11.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                                text = item.glyph,
+                                color = TahoText,
+                                fontFamily = if (item.glyph.length > 1) TahoMono else TahoDisplay,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = if (item.glyph.length > 1) 11.sp else 18.sp,
                             )
                         }
+                        Spacer(Modifier.height(7.dp))
+                        Text(
+                            text = item.title,
+                            color = TahoText.copy(alpha = 0.88f),
+                            fontFamily = TahoBody,
+                            fontSize = 10.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                 }
-            }
-
-            if (recentTabs.any { it.location != null && it.location != "about:blank" }) {
-                Spacer(Modifier.height(34.dp))
-                Text(
-                    text = "Recent tabs",
-                    color = TahoText.copy(alpha = 0.72f),
-                    fontFamily = TahoBody,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 12.sp,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(10.dp))
-                recentTabs
-                    .filter { it.location != null && it.location != "about:blank" }
-                    .take(3)
-                    .forEach { tab ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(TahoSurfaceRow)
-                                .clickable { onSelectTab(tab.id) }
-                                .padding(horizontal = 14.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = tab.title?.takeIf { it.isNotBlank() } ?: "Tab",
-                                color = TahoText,
-                                fontFamily = TahoBody,
-                                fontSize = 13.sp,
-                                modifier = Modifier.weight(1f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text("›", color = TahoText.copy(alpha = 0.6f), fontSize = 20.sp)
-                        }
-                        Spacer(Modifier.height(8.dp))
-                    }
             }
         }
     }
