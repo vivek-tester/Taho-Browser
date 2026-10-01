@@ -57,7 +57,9 @@ import app.taho.browser.observation.M4CaptureRuntimeSnapshot
 import app.taho.browser.observation.MobileDevToolsRuntime
 import app.taho.browser.observation.ObservedBrowserSession
 import app.taho.browser.observation.ProductionCaptureGate
+import app.taho.browser.runtime.BrowserPrivacyRuntimeSettings
 import app.taho.browser.runtime.BrowserRuntimeController
+import app.taho.browser.runtime.BrowserTrackingProtectionLevel
 import app.taho.browser.runtime.BrowserRuntimeStore
 import app.taho.browser.runtime.BrowserSitePermissionKind
 import app.taho.browser.runtime.BrowserSnapshot
@@ -113,6 +115,7 @@ class MainActivity : ComponentActivity() {
     private var pendingExternalNavDialog by mutableStateOf<Triple<String, String, Intent>?>(null)
     private var captureRetentionMode by mutableStateOf("Session only")
     private var appliedSecureDnsKey: String? = null
+    private var appliedPrivacyKey: String? = null
     private val committedHistoryLocationByTab = mutableMapOf<String, String?>()
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
@@ -159,6 +162,7 @@ class MainActivity : ComponentActivity() {
         TahoBrowserStateStore.initialize(this)
         controller = BrowserRuntimeStore.get(this)
         applySecureDnsSetting(reloadSelectedPage = false)
+        applyPrivacySettings(reloadSelectedPage = false)
         if (savedInstanceState == null && !isIncomingWebIntent(intent)) {
             applyStartupBehavior()
         }
@@ -236,9 +240,27 @@ class MainActivity : ComponentActivity() {
             val captureEnabled = TahoBrowserStateStore.captureEnabled
             val secureDns = TahoBrowserStateStore.settings.secureDns
             val customDnsProvider = TahoBrowserStateStore.settings.customDnsProvider
+            val privacySettings = TahoBrowserStateStore.settings
+            val privacyRuntimeKey = buildString {
+                append(privacySettings.trackingProtectionLevel.name)
+                append('|').append(privacySettings.blockTrackers)
+                append('|').append(privacySettings.blockThirdPartyCookies)
+                append('|').append(privacySettings.fingerprintingProtection)
+                append('|').append(privacySettings.cryptominingProtection)
+                append('|').append(privacySettings.httpsOnlyMode)
+                append('|').append(privacySettings.safeBrowsingEnabled)
+                append('|').append(privacySettings.popupBlockerEnabled)
+                append('|').append(privacySettings.redirectBlockingEnabled)
+                append('|').append(privacySettings.doNotTrack)
+                append('|').append(privacySettings.globalPrivacyControl)
+                append('|').append(privacySettings.perSiteTrackingExceptions.sorted().joinToString(","))
+            }
 
             LaunchedEffect(secureDns, customDnsProvider) {
                 applySecureDnsSetting(reloadSelectedPage = true)
+            }
+            LaunchedEffect(privacyRuntimeKey) {
+                applyPrivacySettings(reloadSelectedPage = true)
             }
 
             DisposableEffect(controller, captureRuntime, devToolsRuntime) {
@@ -676,6 +698,13 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        if (
+            isFinishing &&
+            !isChangingConfigurations &&
+            TahoBrowserStateStore.settings.clearPrivateTabsOnExit
+        ) {
+            controller.closePrivateTabs()
+        }
         TahoBrowserStateStore.persistNow()
         controller.persistNow()
         super.onStop()
@@ -1098,6 +1127,52 @@ class MainActivity : ComponentActivity() {
                     transferNotice = storageNotice(result.reason)
                 }
             }
+        }
+    }
+
+    private fun applyPrivacySettings(reloadSelectedPage: Boolean) {
+        val settings = TahoBrowserStateStore.settings
+        val runtimeSettings = BrowserPrivacyRuntimeSettings(
+            trackingProtectionLevel = when (settings.trackingProtectionLevel) {
+                app.taho.browser.shell.TahoTrackingProtectionLevel.STANDARD ->
+                    BrowserTrackingProtectionLevel.STANDARD
+                app.taho.browser.shell.TahoTrackingProtectionLevel.STRICT ->
+                    BrowserTrackingProtectionLevel.STRICT
+                app.taho.browser.shell.TahoTrackingProtectionLevel.CUSTOM ->
+                    BrowserTrackingProtectionLevel.CUSTOM
+            },
+            blockTrackers = settings.blockTrackers,
+            blockThirdPartyCookies = settings.blockThirdPartyCookies,
+            fingerprintingProtection = settings.fingerprintingProtection,
+            cryptominingProtection = settings.cryptominingProtection,
+            httpsOnlyMode = settings.httpsOnlyMode,
+            safeBrowsingEnabled = settings.safeBrowsingEnabled,
+            popupBlockerEnabled = settings.popupBlockerEnabled,
+            redirectBlockingEnabled = settings.redirectBlockingEnabled,
+            doNotTrack = settings.doNotTrack,
+            globalPrivacyControl = settings.globalPrivacyControl,
+            perSiteTrackingExceptions = settings.perSiteTrackingExceptions,
+        )
+        val key = runtimeSettings.toString()
+        if (key == appliedPrivacyKey) return
+
+        val hadPreviousSetting = appliedPrivacyKey != null
+        runCatching {
+            controller.applyPrivacySettings(runtimeSettings)
+        }.onSuccess {
+            appliedPrivacyKey = key
+            if (
+                reloadSelectedPage &&
+                hadPreviousSetting &&
+                controller.snapshot().location
+                    ?.takeUnless { it == "about:blank" }
+                    .isNullOrBlank()
+                    .not()
+            ) {
+                controller.reload()
+            }
+        }.onFailure {
+            transferNotice = "Privacy protection settings could not be applied."
         }
     }
 
