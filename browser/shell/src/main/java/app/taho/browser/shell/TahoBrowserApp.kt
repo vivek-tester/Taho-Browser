@@ -196,6 +196,18 @@ fun TahoBrowserApp(
     var newShortcutTitle by rememberSaveable { mutableStateOf("") }
     var newShortcutUrl by rememberSaveable { mutableStateOf("") }
     var showPacketCapture by rememberSaveable { mutableStateOf(false) }
+    var showPrivacyToolsMenu by rememberSaveable { mutableStateOf(false) }
+    var showCaptureQuickPanel by rememberSaveable { mutableStateOf(false) }
+    var showCaptureFilters by rememberSaveable { mutableStateOf(false) }
+    var showCaptureExport by rememberSaveable { mutableStateOf(false) }
+    var showCaptureSettings by rememberSaveable { mutableStateOf(false) }
+    var exportCaptureIds by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    var phase2MethodFilter by rememberSaveable { mutableStateOf(Phase2MethodFilter.ALL) }
+    var phase2StatusFilter by rememberSaveable { mutableStateOf(Phase2StatusFilter.ALL) }
+    var phase2DomainFilter by rememberSaveable { mutableStateOf("") }
+    var phase2ThirdPartyOnly by rememberSaveable { mutableStateOf(false) }
+    var phase2FailedOnly by rememberSaveable { mutableStateOf(false) }
+    var phase2WebSocketOnly by rememberSaveable { mutableStateOf(false) }
     var showDeveloperTools by rememberSaveable { mutableStateOf(false) }
     var showSiteInfo by rememberSaveable { mutableStateOf(false) }
     var showShareQr by rememberSaveable { mutableStateOf(false) }
@@ -248,6 +260,11 @@ fun TahoBrowserApp(
     val selectedCapture = state.captureRequests.firstOrNull { it.id == selectedCaptureId }
     val darkSystemChromeVisible =
         showCaptureSummary ||
+            showCaptureQuickPanel ||
+            showCaptureFilters ||
+            showCaptureExport ||
+            showCaptureSettings ||
+            showPrivacyToolsMenu ||
             selectedCaptureId != null ||
             showTabs ||
             showSettings ||
@@ -300,6 +317,11 @@ fun TahoBrowserApp(
             showSettings = false
             showBrowserMenu = false
             showPacketCapture = false
+            showPrivacyToolsMenu = false
+            showCaptureQuickPanel = false
+            showCaptureFilters = false
+            showCaptureExport = false
+            showCaptureSettings = false
             showDeveloperTools = false
             showSiteInfo = false
             showShareQr = false
@@ -339,6 +361,11 @@ fun TahoBrowserApp(
             showSettings = false
             showBrowserMenu = false
             showPacketCapture = false
+            showPrivacyToolsMenu = false
+            showCaptureQuickPanel = false
+            showCaptureFilters = false
+            showCaptureExport = false
+            showCaptureSettings = false
             showDeveloperTools = false
             showSiteInfo = false
             showShareQr = false
@@ -357,7 +384,12 @@ fun TahoBrowserApp(
             findInPageActive ||
             showTranslationBar ||
             showBrowserMenu ||
+            showPrivacyToolsMenu ||
             showPacketCapture ||
+            showCaptureQuickPanel ||
+            showCaptureFilters ||
+            showCaptureExport ||
+            showCaptureSettings ||
             showDeveloperTools ||
             showSiteInfo ||
             showShareQr ||
@@ -381,7 +413,12 @@ fun TahoBrowserApp(
             }
             showTranslationBar -> showTranslationBar = false
             showDeveloperTools -> showDeveloperTools = false
+            showCaptureExport -> showCaptureExport = false
+            showCaptureFilters -> showCaptureFilters = false
+            showCaptureSettings -> showCaptureSettings = false
+            showCaptureQuickPanel -> showCaptureQuickPanel = false
             showPacketCapture -> showPacketCapture = false
+            showPrivacyToolsMenu -> showPrivacyToolsMenu = false
             showAddShortcut -> showAddShortcut = false
             showBrowserMenu -> showBrowserMenu = false
             showSiteInfo -> showSiteInfo = false
@@ -675,6 +712,7 @@ fun TahoBrowserApp(
 
             if (
                 state.captureEnabled &&
+                TahoBrowserStateStore.captureFloatingCharacterEnabled &&
                 !state.isFullScreen &&
                 state.sitePermission == null &&
                 !showBrowserMenu &&
@@ -686,7 +724,7 @@ fun TahoBrowserApp(
             ) {
                 TahoFloatingCaptureCompanion(
                     relevantCount = state.relevantCount,
-                    onClick = { showCaptureSummary = true },
+                    onClick = { showCaptureQuickPanel = true },
                 )
             }
         }
