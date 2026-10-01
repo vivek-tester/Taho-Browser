@@ -124,6 +124,7 @@ class MainActivity : ComponentActivity() {
     private var captureRetentionMode by mutableStateOf("Session only")
     private var appliedSecureDnsKey: String? = null
     private var appliedPrivacyKey: String? = null
+    private var pendingCaptureExportText: String? = null
     private val committedHistoryLocationByTab = mutableMapOf<String, String?>()
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
@@ -132,6 +133,24 @@ class MainActivity : ComponentActivity() {
         }
         override fun onLost(network: Network) {
             runOnUiThread { isOffline = true }
+        }
+    }
+
+    private val captureExportLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/octet-stream"),
+    ) { uri ->
+        val text = pendingCaptureExportText
+        pendingCaptureExportText = null
+        if (uri == null || text == null) return@registerForActivityResult
+
+        runCatching {
+            contentResolver.openOutputStream(uri, "w")?.use { output ->
+                output.write(text.toByteArray(Charsets.UTF_8))
+            } ?: error("Unable to open export destination")
+        }.onSuccess {
+            transferNotice = "Captured packets exported."
+        }.onFailure {
+            transferNotice = "Unable to export captured packets."
         }
     }
 
@@ -571,6 +590,7 @@ class MainActivity : ComponentActivity() {
                 onSitePermissionDecision = controller::resolveSitePermission,
                 onCopyCurl = ::copyMaskedCurl,
                 onShare = ::shareMaskedRequest,
+                onExportCaptureFile = ::exportCaptureFile,
                 onDismissNotice = {
                     if (transferNotice != null) {
                         transferNotice = null
@@ -1418,6 +1438,20 @@ class MainActivity : ComponentActivity() {
             "Masked cURL copied."
         } else {
             "Unable to copy the masked cURL."
+        }
+    }
+
+    private fun exportCaptureFile(
+        fileName: String,
+        mimeType: String,
+        text: String,
+    ) {
+        pendingCaptureExportText = text
+        runCatching {
+            captureExportLauncher.launch(fileName)
+        }.onFailure {
+            pendingCaptureExportText = null
+            transferNotice = "Unable to open the export destination."
         }
     }
 
