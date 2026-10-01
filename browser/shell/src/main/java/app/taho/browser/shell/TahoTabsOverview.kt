@@ -113,7 +113,7 @@ fun TahoTabsOverviewSheet(
         ) {
             Column {
                 Text(
-                    text = "Tabs Overview",
+                    text = "Tabs",
                     color = TahoText,
                     fontFamily = TahoDisplay,
                     fontWeight = FontWeight.Medium,
@@ -122,15 +122,15 @@ fun TahoTabsOverviewSheet(
                 Text(
                     text = "${tabs.size} open ${if (tabs.size == 1) "tab" else "tabs"}",
                     color = TahoMuted,
-                    fontFamily = TahoMono,
-                    fontSize = 10.sp,
+                    fontFamily = TahoBody,
+                    fontSize = 12.sp,
                 )
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(
                     modifier = Modifier
-                        .height(34.dp)
+                        .height(48.dp)
                         .clip(TahoPillShape)
                         .background(TahoGold.copy(alpha = 0.15f))
                         .border(1.dp, TahoGold.copy(alpha = 0.35f), TahoPillShape)
@@ -138,12 +138,12 @@ fun TahoTabsOverviewSheet(
                         .padding(horizontal = 12.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("+ New", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                    Text("New tab", color = TahoGoldHi, fontFamily = TahoBody, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 }
 
                 Box(
                     modifier = Modifier
-                        .height(34.dp)
+                        .height(48.dp)
                         .clip(TahoPillShape)
                         .background(TahoSurfaceControl)
                         .border(1.dp, TahoHairline, TahoPillShape)
@@ -151,7 +151,7 @@ fun TahoTabsOverviewSheet(
                         .padding(horizontal = 10.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("◐ Private", color = TahoText, fontFamily = TahoMono, fontSize = 10.sp)
+                    Text("Private", color = TahoText, fontFamily = TahoBody, fontSize = 13.sp)
                 }
             }
         }
@@ -172,14 +172,14 @@ fun TahoTabsOverviewSheet(
                 Spacer(Modifier.width(8.dp))
                 Box(modifier = Modifier.weight(1f)) {
                     if (searchQuery.isEmpty()) {
-                        Text("Search open tabs…", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp)
+                        Text("Search open tabs…", color = TahoFaint, fontFamily = TahoBody, fontSize = 13.sp)
                     }
                     BasicTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp),
+                        textStyle = TextStyle(color = TahoText, fontFamily = TahoBody, fontSize = 13.sp),
                         cursorBrush = SolidColor(TahoGold),
                     )
                 }
@@ -223,7 +223,7 @@ fun TahoTabsOverviewSheet(
                         .padding(horizontal = 10.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("+ Group", color = TahoMuted, fontFamily = TahoMono, fontSize = 9.sp)
+                    Text("New group", color = TahoMuted, fontFamily = TahoBody, fontSize = 12.sp)
                 }
             }
         }
@@ -238,7 +238,7 @@ fun TahoTabsOverviewSheet(
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = "Recently Closed (${recentlyClosed.size})",
+                    text = "Recently closed (${recentlyClosed.size})",
                     color = TahoGoldHi,
                     fontFamily = TahoMono,
                     fontSize = 9.5.sp,
@@ -259,7 +259,7 @@ fun TahoTabsOverviewSheet(
 
             if (tabs.size > 1) {
                 Text(
-                    text = "Close All Tabs",
+                    text = "Close all tabs",
                     color = TahoError.copy(alpha = 0.85f),
                     fontFamily = TahoMono,
                     fontSize = 9.5.sp,
@@ -639,8 +639,8 @@ private fun TabGroupChip(
             Text(
                 text = name,
                 color = if (isSelected) color else TahoMuted,
-                fontFamily = TahoMono,
-                fontSize = 9.sp,
+                fontFamily = TahoBody,
+                fontSize = 11.sp,
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
             )
         }
@@ -696,7 +696,7 @@ private fun DetailedTabCard(
                                 .background(TahoInfo.copy(alpha = 0.18f))
                                 .padding(horizontal = 4.dp, vertical = 1.dp)
                         ) {
-                            Text("PINNED", color = TahoInfo, fontFamily = TahoMono, fontSize = 7.5.sp)
+                            Text("Pinned", color = TahoInfo, fontFamily = TahoBody, fontSize = 9.sp)
                         }
                         Spacer(Modifier.width(6.dp))
                     }
@@ -707,15 +707,15 @@ private fun DetailedTabCard(
                                 .background(TahoGold.copy(alpha = 0.2f))
                                 .padding(horizontal = 4.dp, vertical = 1.dp)
                         ) {
-                            Text("PRIVATE", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 7.5.sp)
+                            Text("Private", color = TahoGoldHi, fontFamily = TahoBody, fontSize = 9.sp)
                         }
                         Spacer(Modifier.width(6.dp))
                     }
                     Text(
                         text = tab.title?.takeIf { it.isNotBlank() } ?: (tab.location ?: "New tab"),
                         color = TahoText,
-                        fontFamily = TahoMono,
-                        fontSize = 11.5.sp,
+                        fontFamily = TahoBody,
+                        fontSize = 14.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -770,7 +770,7 @@ private fun DetailedTabCard(
                 TabActionButton(label = "📥 Archive", onClick = onArchive)
             }
             if (canCloseOthers) {
-                TabActionButton(label = "Close Others", color = TahoError, onClick = onCloseOthers)
+                TabActionButton(label = "Close others", color = TahoError, onClick = onCloseOthers)
             }
         }
     }
@@ -794,8 +794,8 @@ private fun TabActionButton(
         Text(
             text = label,
             color = color,
-            fontFamily = TahoMono,
-            fontSize = 8.5.sp,
+            fontFamily = TahoBody,
+            fontSize = 11.sp,
             maxLines = 1,
         )
     }
