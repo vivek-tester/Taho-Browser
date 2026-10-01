@@ -931,10 +931,14 @@ fun TahoBrowserApp(
                     },
                     onDuplicateTab = { id ->
                         val t = state.tabs.find { it.id == id }
-                        t?.location?.let { loc -> onNavigate(loc) }
+                        t?.location?.let { loc ->
+                            onNewTab()
+                            onNavigate(loc)
+                        }
                         showTabs = false
                     },
                     onRestoreClosedTab = { url ->
+                        onNewTab()
                         onNavigate(url)
                         showTabs = false
                     },
