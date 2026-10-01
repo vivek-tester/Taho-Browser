@@ -417,6 +417,7 @@ class MainActivity : ComponentActivity() {
                     loadFailed = snapshot.loadFailed,
                     crashed = snapshot.crashed,
                     isPrivate = snapshot.isPrivate,
+                    isFullScreen = snapshot.isFullScreen,
                     canGoBack = snapshot.canGoBack,
                     canGoForward = snapshot.canGoForward,
                     securityInfo = snapshot.security?.let { security ->
@@ -531,6 +532,7 @@ class MainActivity : ComponentActivity() {
                         controller.reload()
                     }
                 },
+                onExitFullScreen = controller::exitFullScreen,
                 onNewTab = { controller.newTab(privateMode = false) },
                 onNewPrivateTab = {
                     val current = controller.snapshot()
