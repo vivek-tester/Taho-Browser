@@ -110,6 +110,7 @@ data class BrowserSnapshot(
     val loadFailed: Boolean,
     val crashed: Boolean,
     val isPrivate: Boolean,
+    val isFullScreen: Boolean,
     val canGoBack: Boolean,
     val canGoForward: Boolean,
     val security: BrowserSecuritySnapshot?,
@@ -130,6 +131,7 @@ class BrowserRuntimeController(context: Context) {
         var isLoading: Boolean = false,
         var loadFailed: Boolean = false,
         var crashed: Boolean = false,
+        var isFullScreen: Boolean = false,
         var canGoBack: Boolean = false,
         var canGoForward: Boolean = false,
         var security: BrowserSecuritySnapshot? = null,
@@ -221,6 +223,7 @@ class BrowserRuntimeController(context: Context) {
             loadFailed = selected.loadFailed,
             crashed = selected.crashed,
             isPrivate = selected.isPrivate,
+            isFullScreen = selected.isFullScreen,
             canGoBack = selected.canGoBack,
             canGoForward = selected.canGoForward,
             security = selected.security,
@@ -420,6 +423,12 @@ class BrowserRuntimeController(context: Context) {
         if (!tab.crashed && tab.canGoForward) {
             tab.session.goForward()
         }
+    }
+
+    fun exitFullScreen() {
+        val tab = requireSelected()
+        if (tab.crashed || !tab.isFullScreen) return
+        tab.session.exitFullScreen()
     }
 
     fun findInPage(
@@ -1020,6 +1029,11 @@ class BrowserRuntimeController(context: Context) {
                 notifyChangedIfReady()
             }
 
+            override fun onFullScreen(session: GeckoSession, fullScreen: Boolean) {
+                tab.isFullScreen = fullScreen
+                notifyChangedIfReady()
+            }
+
             override fun onCrash(session: GeckoSession) {
                 markCrashed(tab)
             }
@@ -1158,6 +1172,7 @@ class BrowserRuntimeController(context: Context) {
         rejectPermissionsForTab(tab.id)
         clearExternalNavigationForTab(tab.id)
         tab.crashed = true
+        tab.isFullScreen = false
         tab.isLoading = false
         tab.loadFailed = false
         tab.canGoBack = false
