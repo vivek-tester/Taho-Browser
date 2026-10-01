@@ -259,54 +259,57 @@ internal fun TahoMockupStartPage(
 
             Spacer(Modifier.height(34.dp))
 
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                maxItemsInEachRow = 4,
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalArrangement = Arrangement.spacedBy(22.dp),
-            ) {
-                (shortcuts + MockupUtilityShortcuts).forEach { item ->
-                    Column(
-                        modifier = Modifier
-                            .width(74.dp)
-                            .clickable {
-                                when (item.title) {
-                                    "Bookmarks" -> onOpenBookmarks()
-                                    "History" -> onOpenHistory()
-                                    "Downloads" -> onOpenDownloads()
-                                    "Add" -> onAddShortcut()
-                                    else -> item.url?.let(onNavigate)
-                                }
-                            },
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Box(
+            if (query.isBlank()) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    maxItemsInEachRow = 4,
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    verticalArrangement = Arrangement.spacedBy(22.dp),
+                ) {
+                    (shortcuts + MockupUtilityShortcuts).forEach { item ->
+                        Column(
                             modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .background(TahoSurfaceControl)
-                                .border(1.dp, TahoHairlineStrong, CircleShape),
-                            contentAlignment = Alignment.Center,
+                                .width(74.dp)
+                                .clickable {
+                                    when (item.title) {
+                                        "Bookmarks" -> onOpenBookmarks()
+                                        "History" -> onOpenHistory()
+                                        "Downloads" -> onOpenDownloads()
+                                        "Add" -> onAddShortcut()
+                                        else -> item.url?.let(onNavigate)
+                                    }
+                                },
+                            horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(TahoSurfaceControl)
+                                    .border(1.dp, TahoHairlineStrong, CircleShape),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = item.glyph,
+                                    color = TahoText,
+                                    fontFamily = if (item.glyph.length > 1) TahoMono else TahoDisplay,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = if (item.glyph.length > 1) 11.sp else 18.sp,
+                                )
+                            }
+                            Spacer(Modifier.height(7.dp))
                             Text(
-                                text = item.glyph,
-                                color = TahoText,
-                                fontFamily = if (item.glyph.length > 1) TahoMono else TahoDisplay,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = if (item.glyph.length > 1) 11.sp else 18.sp,
+                                text = item.title,
+                                color = TahoText.copy(alpha = 0.88f),
+                                fontFamily = TahoBody,
+                                fontSize = 10.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
-                        Spacer(Modifier.height(7.dp))
-                        Text(
-                            text = item.title,
-                            color = TahoText.copy(alpha = 0.88f),
-                            fontFamily = TahoBody,
-                            fontSize = 10.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
                     }
                 }
+    
             }
         }
     }
@@ -336,14 +339,19 @@ private fun MockupSearchSuggestion(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                text = url,
-                color = TahoMuted,
-                fontFamily = TahoMono,
-                fontSize = 10.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            if (
+                url.startsWith("http://") ||
+                url.startsWith("https://")
+            ) {
+                Text(
+                    text = compactMockupUrl(url),
+                    color = TahoMuted,
+                    fontFamily = TahoMono,
+                    fontSize = 10.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         Text("↗", color = TahoMuted, fontSize = 13.sp)
     }
