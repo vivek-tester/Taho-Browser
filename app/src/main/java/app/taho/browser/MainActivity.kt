@@ -1286,20 +1286,22 @@ class MainActivity : ComponentActivity() {
         if (key == appliedPrivacyKey) return
 
         val hadPreviousSetting = appliedPrivacyKey != null
-        runCatching {
-            controller.applyPrivacySettings(runtimeSettings)
-        }.onSuccess {
-            appliedPrivacyKey = key
-            if (
-                reloadSelectedPage &&
+        val shouldReload =
+            reloadSelectedPage &&
                 hadPreviousSetting &&
                 controller.snapshot().location
                     ?.takeUnless { it == "about:blank" }
                     .isNullOrBlank()
                     .not()
-            ) {
-                controller.reload()
+
+        runCatching {
+            controller.applyPrivacySettings(runtimeSettings) {
+                if (shouldReload) {
+                    controller.reload()
+                }
             }
+        }.onSuccess {
+            appliedPrivacyKey = key
         }.onFailure {
             transferNotice = "Privacy protection settings could not be applied."
         }
