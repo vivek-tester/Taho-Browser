@@ -670,6 +670,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (
+            ::captureRuntime.isInitialized &&
+            TahoBrowserStateStore.captureEnabled &&
+            !TahoBrowserStateStore.captureInBackground
+        ) {
+            captureRuntime.setEnabled(true)
+            devToolsRuntime.setEnabled(true)
+        }
         originatingTabId?.let { tabId ->
             originatingTabId = null
             if (controller.snapshot().tabs.any { it.id == tabId }) {
@@ -740,6 +748,14 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        if (
+            ::captureRuntime.isInitialized &&
+            TahoBrowserStateStore.captureEnabled &&
+            !TahoBrowserStateStore.captureInBackground
+        ) {
+            captureRuntime.setEnabled(false)
+            devToolsRuntime.setEnabled(false)
+        }
         if (
             isFinishing &&
             !isChangingConfigurations &&
