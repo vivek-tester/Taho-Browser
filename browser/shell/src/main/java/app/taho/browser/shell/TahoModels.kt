@@ -205,7 +205,7 @@ data class BrowserSettingsState(
     val customHomePageUrl: String = "https://duckduckgo.com",
 
     // Search
-    val defaultSearchEngineId: String = "duckduckgo",
+    val defaultSearchEngineId: String = "google",
     val searchSuggestionsEnabled: Boolean = true,
     val addressBarSuggestionsEnabled: Boolean = true,
     val autocompleteEnabled: Boolean = true,
