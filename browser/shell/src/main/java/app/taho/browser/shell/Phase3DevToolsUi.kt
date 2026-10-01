@@ -415,11 +415,11 @@ private fun Phase3PanelContent(
         Phase3DevToolsPanel.LIGHTHOUSE -> Phase3AuditPanel(state)
         Phase3DevToolsPanel.RECORDER -> Phase3RecorderPanel(state, onRequest)
         Phase3DevToolsPanel.ISSUES -> Phase3IssuesPanel(state)
-        Phase3DevToolsPanel.RENDERING -> Phase3StructuredPanel("Rendering", state)
-        Phase3DevToolsPanel.SENSORS -> Phase3StructuredPanel("Sensors", state)
+        Phase3DevToolsPanel.RENDERING -> Phase3RenderingPanel(state)
+        Phase3DevToolsPanel.SENSORS -> Phase3SensorsPanel(state)
         Phase3DevToolsPanel.COVERAGE -> Phase3CoveragePanel(state)
         Phase3DevToolsPanel.CHANGES -> Phase3ChangesPanel(state, onRequest)
-        Phase3DevToolsPanel.ANIMATIONS -> Phase3StructuredPanel("Animations", state)
+        Phase3DevToolsPanel.ANIMATIONS -> Phase3AnimationsPanel(state)
     }
 }
 
@@ -902,6 +902,107 @@ private fun Phase3IssuesPanel(state: DevToolsUiState) {
         obj?.optString("note")?.takeIf { it.isNotBlank() }?.let { Phase3Note(it) }
     }
 }
+
+@Composable
+private fun Phase3RenderingPanel(state: DevToolsUiState) {
+    val obj = phase3Object(state)
+    val viewport = obj?.optJSONObject("viewport")
+    val media = obj?.optJSONObject("media")
+    val scroll = obj?.optJSONObject("scroll")
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Phase3Metric("Width", viewport?.optInt("innerWidth")?.toString() ?: "—", Modifier.weight(1f))
+            Phase3Metric("Height", viewport?.optInt("innerHeight")?.toString() ?: "—", Modifier.weight(1f))
+            Phase3Metric("DPR", viewport?.optDouble("devicePixelRatio")?.toString() ?: "—", Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(10.dp))
+        Phase3SectionLabel("Rendering state")
+        Phase3KeyValue("Scroll X", scroll?.optDouble("x")?.toString() ?: "0")
+        Phase3KeyValue("Scroll Y", scroll?.optDouble("y")?.toString() ?: "0")
+        Phase3KeyValue("Dark mode", if (media?.optBoolean("darkMode") == true) "Active" else "Inactive")
+        Phase3KeyValue("Reduced motion", if (media?.optBoolean("reducedMotion") == true) "Active" else "Inactive")
+        Phase3KeyValue("Forced colors", if (media?.optBoolean("forcedColors") == true) "Active" else "Inactive")
+        Phase3KeyValue("Hover capability", if (media?.optBoolean("hover") == true) "Available" else "Unavailable")
+        Phase3KeyValue("Animations", (obj?.optInt("animationCount") ?: 0).toString())
+    }
+}
+
+@Composable
+private fun Phase3SensorsPanel(state: DevToolsUiState) {
+    val obj = phase3Object(state)
+    val orientation = obj?.optJSONObject("orientation")
+    val screen = obj?.optJSONObject("screen")
+    val touch = obj?.optJSONObject("touch")
+    val device = obj?.optJSONObject("device")
+    val apis = obj?.optJSONObject("apis")
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Phase3Metric("Screen", (screen?.optInt("width") ?: 0).toString() + "×" + (screen?.optInt("height") ?: 0), Modifier.weight(1f))
+            Phase3Metric("Orientation", orientation?.optString("type").orEmpty().ifBlank { "Unknown" }, Modifier.weight(1f))
+            Phase3Metric("Touch points", (touch?.optInt("maxTouchPoints") ?: 0).toString(), Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(10.dp))
+        Phase3SectionLabel("Device")
+        Phase3KeyValue("Platform", device?.optString("platform").orEmpty().ifBlank { "Unknown" })
+        Phase3KeyValue("CPU threads", device?.optInt("hardwareConcurrency")?.takeIf { it > 0 }?.toString() ?: "Unavailable")
+        Phase3KeyValue("Device memory", device?.optDouble("deviceMemory")?.takeIf { it > 0 }?.toString()?.plus(" GB") ?: "Unavailable")
+        Phase3KeyValue("Geolocation API", if (apis?.optBoolean("geolocation") == true) "Available" else "Unavailable")
+        Phase3KeyValue("Orientation API", if (apis?.optBoolean("deviceOrientation") == true) "Available" else "Unavailable")
+        Phase3KeyValue("Motion API", if (apis?.optBoolean("deviceMotion") == true) "Available" else "Unavailable")
+        Spacer(Modifier.height(8.dp))
+        Phase3Note(
+            obj?.optString("emulationNote").orEmpty().ifBlank {
+                "Synthetic sensor injection is not exposed by the current GeckoView embedding API."
+            },
+        )
+    }
+}
+
+@Composable
+private fun Phase3AnimationsPanel(state: DevToolsUiState) {
+    val obj = phase3Object(state)
+    val animations = obj?.optJSONArray("animations")
+    Column(Modifier.fillMaxSize().padding(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Web Animations", color = D3Text, fontFamily = TahoBody, fontWeight = FontWeight.Medium, fontSize = 11.sp, modifier = Modifier.weight(1f))
+            Text((animations?.length() ?: 0).toString(), color = D3Muted, fontFamily = TahoMono, fontSize = 9.sp)
+        }
+        Spacer(Modifier.height(8.dp))
+        if (animations == null || animations.length() == 0) {
+            Phase3Note("No active Web Animations were reported by the page.")
+        } else {
+            LazyColumn(Modifier.weight(1f)) {
+                items((0 until animations.length()).toList()) { i ->
+                    val item = animations.optJSONObject(i)
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("≈", color = D3Blue, modifier = Modifier.width(22.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                item?.optString("target").orEmpty().ifBlank { "Animation " + i },
+                                color = D3Text,
+                                fontFamily = TahoMono,
+                                fontSize = 8.5.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                "state " + item?.optString("playState").orEmpty() +
+                                    " · rate " + item?.optDouble("playbackRate").toString(),
+                                color = D3Muted,
+                                fontFamily = TahoMono,
+                                fontSize = 7.5.sp,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 @Composable
 private fun Phase3CoveragePanel(state: DevToolsUiState) {
