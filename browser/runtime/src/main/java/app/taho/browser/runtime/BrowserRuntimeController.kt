@@ -3,8 +3,11 @@ package app.taho.browser.runtime
 import android.Manifest
 import android.content.Context
 import android.os.Handler
+import android.os.HandlerThread
 import android.os.Looper
 import org.mozilla.geckoview.AllowOrDeny
+import org.mozilla.geckoview.ContentBlocking
+import org.mozilla.geckoview.GeckoPreferenceController
 import org.mozilla.geckoview.GeckoResult
 import org.mozilla.geckoview.GeckoRuntimeSettings
 import org.mozilla.geckoview.GeckoSession
@@ -12,6 +15,27 @@ import org.mozilla.geckoview.GeckoSessionSettings
 import org.mozilla.geckoview.PageExtractionController
 import org.mozilla.geckoview.StorageController
 import java.util.UUID
+
+enum class BrowserTrackingProtectionLevel {
+    STANDARD,
+    STRICT,
+    CUSTOM,
+}
+
+data class BrowserPrivacyRuntimeSettings(
+    val trackingProtectionLevel: BrowserTrackingProtectionLevel = BrowserTrackingProtectionLevel.STRICT,
+    val blockTrackers: Boolean = true,
+    val blockThirdPartyCookies: Boolean = true,
+    val fingerprintingProtection: Boolean = true,
+    val cryptominingProtection: Boolean = true,
+    val httpsOnlyMode: Boolean = true,
+    val safeBrowsingEnabled: Boolean = true,
+    val popupBlockerEnabled: Boolean = true,
+    val redirectBlockingEnabled: Boolean = true,
+    val doNotTrack: Boolean = true,
+    val globalPrivacyControl: Boolean = true,
+    val perSiteTrackingExceptions: Set<String> = emptySet(),
+)
 
 enum class BrowserSitePermissionKind {
     LOCATION,
@@ -111,6 +135,7 @@ class BrowserRuntimeController(context: Context) {
         var security: BrowserSecuritySnapshot? = null,
         var sessionState: GeckoSession.SessionState? = null,
         var lastAccessedAtEpochMs: Long = System.currentTimeMillis(),
+        val redirectTargets: MutableSet<String> = linkedSetOf(),
     )
 
     private sealed interface PendingSitePermission {
@@ -143,6 +168,8 @@ class BrowserRuntimeController(context: Context) {
     private val runtime = GeckoRuntimeHolder.get(context)
     private val sessionStore = BrowserSessionStore(context.applicationContext)
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val preferenceThread = HandlerThread("taho-gecko-preferences").apply { start() }
+    private val preferenceHandler = Handler(preferenceThread.looper)
     private val tabs = mutableListOf<RuntimeTab>()
     private lateinit var selectedTabId: String
     private var listener: ((BrowserSnapshot) -> Unit)? = null
@@ -151,6 +178,7 @@ class BrowserRuntimeController(context: Context) {
     private var pendingAndroidPermission: PendingAndroidPermission? = null
     private var pendingExternalNavigation: PendingExternalNavigation? = null
     private var notice: String? = null
+    private var privacySettings = BrowserPrivacyRuntimeSettings()
 
     private val persistRunnable = Runnable { persistNow() }
 
@@ -517,6 +545,113 @@ class BrowserRuntimeController(context: Context) {
         )
     }
 
+    fun applyPrivacySettings(settings: BrowserPrivacyRuntimeSettings) {
+        privacySettings = settings
+
+        val runtimeSettings = runtime.settings
+        val contentBlocking = runtimeSettings.contentBlocking
+
+        val antiTracking = when {
+            !settings.blockTrackers &&
+                !settings.fingerprintingProtection &&
+                !settings.cryptominingProtection ->
+                ContentBlocking.AntiTracking.NONE
+
+            settings.trackingProtectionLevel == BrowserTrackingProtectionLevel.STRICT ->
+                ContentBlocking.AntiTracking.STRICT
+
+            settings.trackingProtectionLevel == BrowserTrackingProtectionLevel.STANDARD ->
+                ContentBlocking.AntiTracking.DEFAULT or
+                    (if (settings.fingerprintingProtection) ContentBlocking.AntiTracking.FINGERPRINTING else 0) or
+                    (if (settings.cryptominingProtection) ContentBlocking.AntiTracking.CRYPTOMINING else 0)
+
+            else -> {
+                (if (settings.blockTrackers) ContentBlocking.AntiTracking.DEFAULT else 0) or
+                    (if (settings.fingerprintingProtection) ContentBlocking.AntiTracking.FINGERPRINTING else 0) or
+                    (if (settings.cryptominingProtection) ContentBlocking.AntiTracking.CRYPTOMINING else 0)
+            }
+        }
+
+        contentBlocking.setAntiTracking(antiTracking)
+        contentBlocking.setEnhancedTrackingProtectionCategory(
+            when (settings.trackingProtectionLevel) {
+                BrowserTrackingProtectionLevel.STANDARD -> ContentBlocking.EtpCategory.STANDARD
+                BrowserTrackingProtectionLevel.STRICT -> ContentBlocking.EtpCategory.STRICT
+                BrowserTrackingProtectionLevel.CUSTOM -> ContentBlocking.EtpCategory.CUSTOM
+            },
+        )
+        contentBlocking.setEnhancedTrackingProtectionLevel(
+            when (settings.trackingProtectionLevel) {
+                BrowserTrackingProtectionLevel.STRICT -> ContentBlocking.EtpLevel.STRICT
+                else -> ContentBlocking.EtpLevel.DEFAULT
+            },
+        )
+        contentBlocking.setCookieBehavior(
+            when {
+                settings.blockThirdPartyCookies ->
+                    ContentBlocking.CookieBehavior.ACCEPT_FIRST_PARTY_AND_ISOLATE_OTHERS
+                settings.blockTrackers ->
+                    ContentBlocking.CookieBehavior.ACCEPT_NON_TRACKERS
+                else -> ContentBlocking.CookieBehavior.ACCEPT_ALL
+            },
+        )
+        contentBlocking.setCookieBehaviorPrivateMode(
+            ContentBlocking.CookieBehavior.ACCEPT_FIRST_PARTY_AND_ISOLATE_OTHERS,
+        )
+        contentBlocking.setSafeBrowsing(
+            if (settings.safeBrowsingEnabled) {
+                ContentBlocking.SafeBrowsing.DEFAULT
+            } else {
+                ContentBlocking.SafeBrowsing.NONE
+            },
+        )
+
+        runtimeSettings.setAllowInsecureConnections(
+            if (settings.httpsOnlyMode) {
+                GeckoRuntimeSettings.HTTPS_ONLY
+            } else {
+                GeckoRuntimeSettings.ALLOW_ALL
+            },
+        )
+        runtimeSettings.setFingerprintingProtection(settings.fingerprintingProtection)
+        runtimeSettings.setFingerprintingProtectionPrivateBrowsing(
+            settings.fingerprintingProtection,
+        )
+        runtimeSettings.setGlobalPrivacyControl(settings.globalPrivacyControl)
+
+        preferenceHandler.post {
+            GeckoPreferenceController.setGeckoPref(
+                "privacy.donottrackheader.enabled",
+                settings.doNotTrack,
+                GeckoPreferenceController.PREF_BRANCH_USER,
+            )
+            GeckoPreferenceController.setGeckoPref(
+                "dom.disable_open_during_load",
+                settings.popupBlockerEnabled,
+                GeckoPreferenceController.PREF_BRANCH_USER,
+            )
+        }
+
+        tabs.forEach(::applyTrackingProtectionForTab)
+    }
+
+    fun closePrivateTabs(): Int {
+        val privateIds = tabs.filter { it.isPrivate }.map { it.id }
+        if (privateIds.isEmpty()) return 0
+
+        if (tabs.none { !it.isPrivate }) {
+            val normalTabId = createTab(privateMode = false)
+            selectTab(normalTabId)
+        }
+
+        privateIds.forEach { tabId ->
+            if (tabs.any { it.id == tabId }) {
+                closeTab(tabId)
+            }
+        }
+        return privateIds.size
+    }
+
     fun printCurrentPage(): Boolean {
         val tab = requireSelected()
         if (tab.crashed || tab.location.isNullOrBlank()) return false
@@ -710,7 +845,7 @@ class BrowserRuntimeController(context: Context) {
     private fun newSession(privateMode: Boolean): GeckoSession {
         val settings = GeckoSessionSettings.Builder()
             .usePrivateMode(privateMode)
-            .useTrackingProtection(true)
+            .useTrackingProtection(privacySettings.blockTrackers)
             .build()
         return GeckoSession(settings)
     }
@@ -771,6 +906,29 @@ class BrowserRuntimeController(context: Context) {
                 session: GeckoSession,
                 request: GeckoSession.NavigationDelegate.LoadRequest,
             ): GeckoResult<AllowOrDeny>? {
+                applyTrackingProtectionForUri(tab, request.uri)
+
+                if (!request.isRedirect) {
+                    tab.redirectTargets.clear()
+                } else if (
+                    privacySettings.redirectBlockingEnabled &&
+                    !tab.redirectTargets.add(request.uri)
+                ) {
+                    notice = "Redirect loop blocked."
+                    notifyChangedIfReady()
+                    return GeckoResult.fromValue(AllowOrDeny.DENY)
+                }
+
+                if (
+                    request.target == GeckoSession.NavigationDelegate.TARGET_WINDOW_NEW &&
+                    !request.hasUserGesture &&
+                    !privacySettings.popupBlockerEnabled
+                ) {
+                    val newTabId = newTab(privateMode = tab.isPrivate)
+                    load(tabId = newTabId, uri = request.uri)
+                    return GeckoResult.fromValue(AllowOrDeny.DENY)
+                }
+
                 val decision = BrowserNavigationPolicy.decide(
                     uri = request.uri,
                     targetNewWindow =
@@ -813,6 +971,7 @@ class BrowserRuntimeController(context: Context) {
                 hasUserGesture: Boolean,
             ) {
                 tab.location = url
+                applyTrackingProtectionForUri(tab, url)
                 persistSoon()
                 notifyChangedIfReady()
             }
@@ -1049,6 +1208,24 @@ class BrowserRuntimeController(context: Context) {
             pendingAndroidPermission = null
             android.callback.reject()
         }
+    }
+
+    private fun applyTrackingProtectionForTab(tab: RuntimeTab) {
+        applyTrackingProtectionForUri(tab, tab.location)
+    }
+
+    private fun applyTrackingProtectionForUri(tab: RuntimeTab, rawUrl: String?) {
+        if (tab.crashed) return
+        val origin = rawUrl
+            ?.let(BrowserNavigationPolicy::displayOrigin)
+            ?.takeUnless { it == "Unknown origin" }
+
+        val exception = origin != null && privacySettings.perSiteTrackingExceptions.any { saved ->
+            BrowserNavigationPolicy.displayOrigin(saved) == origin || saved == origin
+        }
+        tab.session.settings.setUseTrackingProtection(
+            privacySettings.blockTrackers && !exception,
+        )
     }
 
     private fun requireSelected(): RuntimeTab =
