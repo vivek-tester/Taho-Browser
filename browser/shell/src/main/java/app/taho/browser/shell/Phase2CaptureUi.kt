@@ -242,6 +242,7 @@ internal fun Phase2CapturedPacketsScreen(
 ) {
     var selectedIds by remember { mutableStateOf(emptySet<String>()) }
     val selectionMode = selectedIds.isNotEmpty()
+    val haptic = LocalHapticFeedback.current
     val visible = remember(requests, searchQuery, methodFilter, statusFilter, domainFilter, thirdPartyOnly, failedOnly, webSocketOnly, currentHost) {
         requests.filter { r ->
             val method = r.method.uppercase()
