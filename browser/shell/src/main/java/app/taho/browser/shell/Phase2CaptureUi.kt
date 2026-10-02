@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,6 +45,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -92,7 +95,9 @@ internal fun Phase2PacketCaptureScreen(
     }) {
         Spacer(Modifier.height(10.dp))
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(P2Surface)
+            Modifier.fillMaxWidth()
+                .tahoElevated(RoundedCornerShape(18.dp), elevation = 8.dp)
+                .clip(RoundedCornerShape(18.dp)).background(P2Surface)
                 .border(1.dp, if (enabled) P2Blue.copy(alpha = .58f) else P2Hairline, RoundedCornerShape(18.dp))
                 .padding(16.dp),
         ) {
@@ -130,7 +135,9 @@ internal fun Phase2PacketCaptureScreen(
         if (enabled) {
             Spacer(Modifier.height(12.dp))
             Column(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(P2Surface)
+                Modifier.fillMaxWidth()
+                    .tahoElevated(RoundedCornerShape(18.dp), elevation = 6.dp)
+                    .clip(RoundedCornerShape(18.dp)).background(P2Surface)
                     .border(1.dp, P2Hairline, RoundedCornerShape(18.dp)).padding(16.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -300,7 +307,10 @@ internal fun Phase2CapturedPacketsScreen(
                                 selectedIds = if (request.id in selectedIds) selectedIds - request.id else selectedIds + request.id
                             } else onInspect(request.id)
                         },
-                        onLongClick = { selectedIds = selectedIds + request.id },
+                        onLongClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            selectedIds = selectedIds + request.id
+                        },
                     )
                 }
             }
@@ -344,7 +354,9 @@ internal fun Phase2PacketDetailsScreen(
     val path = runCatching { URI(request.url).rawPath.ifBlank { "/" } }.getOrDefault("/")
     Phase2Screen("Packet Details", onBack, trailing = { Phase2IconButton("↗", "Share request", onShare) }) {
         Row(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(P2Surface).padding(12.dp),
+            Modifier.fillMaxWidth()
+                .tahoElevated(RoundedCornerShape(14.dp), elevation = 6.dp)
+                .clip(RoundedCornerShape(14.dp)).background(P2Surface).padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Phase2MethodBadge(request.method)
@@ -753,7 +765,9 @@ private fun Phase2PacketRow(
     val host = runCatching { URI(request.url).host ?: request.url }.getOrDefault(request.url)
     val path = runCatching { URI(request.url).rawPath.ifBlank { "/" } }.getOrDefault("/")
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(if (selected) P2Blue.copy(alpha = .12f) else P2Surface)
+        Modifier.fillMaxWidth()
+            .tahoElevated(RoundedCornerShape(12.dp), elevation = if (selected) 5.dp else 2.dp)
+            .clip(RoundedCornerShape(12.dp)).background(if (selected) P2Blue.copy(alpha = .12f) else P2Surface)
             .border(1.dp, if (selected) P2Blue.copy(alpha = .5f) else P2Hairline, RoundedCornerShape(12.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongClick).padding(horizontal = 10.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -844,9 +858,20 @@ private fun Phase2PrimaryButton(
     modifier: Modifier = Modifier.fillMaxWidth(),
     onClick: () -> Unit,
 ) {
+    val interaction = remember { MutableInteractionSource() }
     Box(
-        modifier.height(48.dp).clip(RoundedCornerShape(12.dp)).background(if (enabled) P2Blue else P2SurfaceHi)
-            .clickable(enabled = enabled, onClick = onClick),
+        modifier
+            .height(48.dp)
+            .then(if (enabled) Modifier.tahoPressScale(interaction, target = .975f) else Modifier)
+            .tahoElevated(RoundedCornerShape(12.dp), elevation = if (enabled) 5.dp else 0.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (enabled) P2Blue else P2SurfaceHi)
+            .clickable(
+                enabled = enabled,
+                interactionSource = interaction,
+                indication = null,
+                onClick = onClick,
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Text(label, color = if (enabled) Color.White else P2Muted, fontFamily = TahoBody, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
