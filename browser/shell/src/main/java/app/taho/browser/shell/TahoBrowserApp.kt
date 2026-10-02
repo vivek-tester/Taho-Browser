@@ -1829,10 +1829,7 @@ private fun TahoFloatingCaptureCompanion(
             Box(
                 modifier = Modifier
                     .size(visualSize)
-                    .tahoElevated(RoundedCornerShape(14.dp), elevation = 8.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color(0xFF07111B).copy(alpha = .97f))
-                    .border(1.dp, Color(0xFF21D4FD).copy(alpha = .68f), RoundedCornerShape(14.dp)),
+                    .tahoElevated(CircleShape, elevation = 5.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 TahoCaptureMascot()
@@ -1869,6 +1866,13 @@ private fun TahoCaptureMascot() {
         val shell = Color(0xFF2A3744)
         val shellHi = Color(0xFF536474)
         val dark = Color(0xFF07111B)
+
+        // Soft cyan halo keeps the mascot readable without adding a card behind it.
+        drawCircle(
+            color = cyan.copy(alpha = .13f),
+            radius = size.width * .49f,
+            center = Offset(size.width * .50f, size.height * .51f),
+        )
 
         // Antenna and halo-like head ring from the approved floating robot mockup.
         drawLine(
