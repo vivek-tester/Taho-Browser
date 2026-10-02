@@ -366,6 +366,7 @@ internal fun TahoMockupToolbar(
     isLoading: Boolean,
     isPrivate: Boolean,
     tabCount: Int,
+    isBottom: Boolean,
     onDraftChange: (String) -> Unit,
     onBeginEdit: () -> Unit,
     onSubmit: () -> Unit,
@@ -474,88 +475,105 @@ internal fun TahoMockupToolbar(
             TahoMockupMenuButton(onMenuClick)
         }
 
-        if (editing && draft.isNotBlank()) {
-            val q = draft.trim()
-            val historySuggestions = (
-                TahoBrowserStateStore.bookmarks.map { it.title to it.url } +
-                    TahoBrowserStateStore.history.map { it.title to it.url }
-                )
-                .asSequence()
-                .filter { (title, url) ->
-                    title.contains(q, ignoreCase = true) || url.contains(q, ignoreCase = true)
-                }
-                .distinctBy { it.second }
-                .take(4)
-                .toList()
-            val localSuggestions = if (historySuggestions.isNotEmpty()) {
-                historySuggestions
-            } else {
-                listOf(
-                    q to q,
-                    "$q download" to "$q download",
-                    "$q github" to "$q github",
-                    "$q features" to "$q features",
-                    "$q android" to "$q android",
-                )
-            }
-
+        if (isBottom && editing && draft.isNotBlank()) {
             Spacer(Modifier.height(6.dp))
-            Column(
+            MockupToolbarSuggestions(
+                draft = draft,
+                onSuggestionSelected = onSuggestionSelected,
+            )
+        }
+        if (!isBottom && editing && draft.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
+            MockupToolbarSuggestions(
+                draft = draft,
+                onSuggestionSelected = onSuggestionSelected,
+            )
+        }
+    }
+}
+
+@Composable
+private fun MockupToolbarSuggestions(
+    draft: String,
+    onSuggestionSelected: (String) -> Unit,
+) {
+    val q = draft.trim()
+    val historySuggestions = (
+        TahoBrowserStateStore.bookmarks.map { it.title to it.url } +
+            TahoBrowserStateStore.history.map { it.title to it.url }
+        )
+        .asSequence()
+        .filter { (title, url) ->
+            title.contains(q, ignoreCase = true) || url.contains(q, ignoreCase = true)
+        }
+        .distinctBy { it.second }
+        .take(4)
+        .toList()
+    val localSuggestions = if (historySuggestions.isNotEmpty()) {
+        historySuggestions
+    } else {
+        listOf(
+            q to q,
+            "$q download" to "$q download",
+            "$q github" to "$q github",
+            "$q features" to "$q features",
+            "$q android" to "$q android",
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .tahoElevated(RoundedCornerShape(14.dp), elevation = 10.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(MockupChromeElevated)
+            .border(1.dp, TahoHairlineStrong, RoundedCornerShape(14.dp)),
+    ) {
+        localSuggestions.forEach { (title, url) ->
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .animateContentSize()
-                    .tahoElevated(RoundedCornerShape(14.dp), elevation = 8.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(MockupChromeElevated)
-                    .border(1.dp, TahoHairlineStrong, RoundedCornerShape(14.dp)),
+                    .clickable { onSuggestionSelected(url) }
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                localSuggestions.forEach { (title, url) ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onSuggestionSelected(url) }
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("⌕", color = TahoText.copy(alpha = 0.5f))
-                        Spacer(Modifier.width(10.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                title,
-                                color = TahoText,
-                                fontFamily = TahoBody,
-                                fontSize = 12.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                compactMockupUrl(url),
-                                color = TahoText.copy(alpha = 0.5f),
-                                fontFamily = TahoMono,
-                                fontSize = 9.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onSuggestionSelected(q) }
-                        .padding(horizontal = 12.dp, vertical = 11.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("↗", color = MockupAccent)
-                    Spacer(Modifier.width(10.dp))
+                Text("⌕", color = TahoText.copy(alpha = 0.5f))
+                Spacer(Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "Search for “$q”",
+                        title,
                         color = TahoText,
                         fontFamily = TahoBody,
                         fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        compactMockupUrl(url),
+                        color = TahoText.copy(alpha = 0.5f),
+                        fontFamily = TahoMono,
+                        fontSize = 9.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onSuggestionSelected(q) }
+                .padding(horizontal = 12.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("↗", color = MockupAccent)
+            Spacer(Modifier.width(10.dp))
+            Text(
+                "Search for “$q”",
+                color = TahoText,
+                fontFamily = TahoBody,
+                fontSize = 12.sp,
+            )
         }
     }
 }
