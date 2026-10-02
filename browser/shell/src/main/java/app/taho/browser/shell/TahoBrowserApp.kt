@@ -567,6 +567,7 @@ fun TahoBrowserApp(
                         isLoading = state.isLoading,
                         isPrivate = state.isPrivate,
                         tabCount = state.tabCount,
+                        isBottom = false,
                         onDraftChange = { draft = it },
                         onBeginEdit = {
                             draft = state.omniboxText
@@ -707,6 +708,7 @@ fun TahoBrowserApp(
                         isLoading = state.isLoading,
                         isPrivate = state.isPrivate,
                         tabCount = state.tabCount,
+                        isBottom = true,
                         onDraftChange = { draft = it },
                         onBeginEdit = {
                             draft = state.omniboxText
