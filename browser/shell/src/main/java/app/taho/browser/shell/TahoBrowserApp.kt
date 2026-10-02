@@ -1458,10 +1458,13 @@ fun TahoBrowserApp(
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .height(resolvedBottomHeight.dp)
+                    .navigationBarsPadding()
                 Phase3DevToolsMode.SIDE -> Modifier
                     .align(Alignment.CenterEnd)
                     .width(resolvedSideWidth.dp)
                     .fillMaxHeight()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
                 Phase3DevToolsMode.FLOATING -> Modifier
                     .align(Alignment.Center)
                     .fillMaxWidth(.84f)
@@ -1472,7 +1475,10 @@ fun TahoBrowserApp(
                             devToolsFloatingY.coerceIn(-maxFloatingY, maxFloatingY).roundToInt(),
                         )
                     }
-                Phase3DevToolsMode.FULLSCREEN -> Modifier.fillMaxSize()
+                Phase3DevToolsMode.FULLSCREEN -> Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
             }
 
             Box(
