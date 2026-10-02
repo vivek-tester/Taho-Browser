@@ -34,6 +34,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
@@ -41,6 +42,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.taho.browser.shell.R
@@ -122,8 +124,15 @@ internal val TahoSheetShape = RoundedCornerShape(26.dp)
 internal val TahoCardShape = RoundedCornerShape(16.dp)
 internal val TahoBlockShape = RoundedCornerShape(14.dp)
 internal val TahoNoteShape = RoundedCornerShape(12.dp)
+internal val TahoChromeShape = RoundedCornerShape(24.dp)
+internal val TahoPopupShape = RoundedCornerShape(18.dp)
 internal val TahoPillShape = RoundedCornerShape(999.dp)
 internal val TahoBadgeShape = RoundedCornerShape(6.dp)
+
+internal val TahoToolbarOuterPadding = 12.dp
+internal val TahoToolbarVerticalPadding = 8.dp
+internal val TahoToolbarVisualHeight = 54.dp
+internal val TahoTouchTarget = 48.dp
 
 // ---------- motion (spec §2.6 / §15) ----------
 internal val TahoEasing = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
@@ -153,6 +162,15 @@ internal fun TahoReducedMotion(): Boolean {
  * Disabled under reduced motion.
  */
 @Composable
+internal fun Modifier.tahoElevated(
+    shape: Shape,
+    elevation: Dp = 10.dp,
+): Modifier = shadow(
+    elevation = elevation,
+    shape = shape,
+    clip = false,
+)
+
 internal fun Modifier.tahoPulse(trigger: Any?): Modifier {
     val reduced = TahoReducedMotion()
     val scale = remember { Animatable(1f) }
