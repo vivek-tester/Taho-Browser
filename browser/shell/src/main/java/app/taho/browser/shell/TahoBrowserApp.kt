@@ -768,6 +768,7 @@ fun TahoBrowserApp(
                 selectedCaptureId == null
             ) {
                 TahoFloatingCaptureCompanion(
+                    captureState = state.captureState,
                     relevantCount = state.relevantCount,
                     onClick = { showCaptureQuickPanel = true },
                 )
@@ -1771,6 +1772,7 @@ private fun ChromeAction(
 
 @Composable
 private fun TahoFloatingCaptureCompanion(
+    captureState: CaptureState,
     relevantCount: Int,
     onClick: () -> Unit,
 ) {
@@ -1800,6 +1802,13 @@ private fun TahoFloatingCaptureCompanion(
             relevantCount > 0 -> relevantCount.toString()
             else -> ""
         }
+        val stateAccent = when (captureState) {
+            CaptureState.OBSERVING, CaptureState.CAPTURING -> Color(0xFF21D4FD)
+            CaptureState.PAUSED -> TahoMuted
+            CaptureState.LIMITED -> TahoWarn
+            CaptureState.ERROR -> TahoError
+            CaptureState.OFF -> TahoMuted
+        }
 
         Box(
             modifier = Modifier
@@ -1815,8 +1824,11 @@ private fun TahoFloatingCaptureCompanion(
                     }
                 }
                 .then(
-                    if (animationStyle == "Subtle") Modifier.tahoPulse(trigger = relevantCount)
-                    else Modifier,
+                    if (animationStyle == "Subtle") {
+                        Modifier.tahoPulse(trigger = captureState.name + ":" + relevantCount)
+                    } else {
+                        Modifier
+                    },
                 )
                 .semantics {
                     role = Role.Button
@@ -1833,7 +1845,7 @@ private fun TahoFloatingCaptureCompanion(
                     .tahoElevated(CircleShape, elevation = 5.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                TahoCaptureMascot()
+                TahoCaptureMascot(captureState = captureState)
             }
 
             if (countLabel.isNotEmpty()) {
@@ -1860,10 +1872,16 @@ private fun TahoFloatingCaptureCompanion(
 }
 
 @Composable
-private fun TahoCaptureMascot() {
+private fun TahoCaptureMascot(captureState: CaptureState) {
     Canvas(modifier = Modifier.size(31.dp)) {
         val outline = 1.2.dp.toPx()
-        val cyan = Color(0xFF45D9FF)
+        val cyan = when (captureState) {
+            CaptureState.OBSERVING, CaptureState.CAPTURING -> Color(0xFF45D9FF)
+            CaptureState.PAUSED -> Color(0xFF9DA9B4)
+            CaptureState.LIMITED -> TahoWarn
+            CaptureState.ERROR -> TahoError
+            CaptureState.OFF -> Color(0xFF9DA9B4)
+        }
         val shell = Color(0xFF2A3744)
         val shellHi = Color(0xFF536474)
         val dark = Color(0xFF07111B)
