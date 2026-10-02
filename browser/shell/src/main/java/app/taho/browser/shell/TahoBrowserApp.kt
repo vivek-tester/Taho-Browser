@@ -1443,24 +1443,33 @@ fun TahoBrowserApp(
         }
 
         if (showDevToolsPanel && state.sitePermission == null) {
-            Box(modifier = Modifier.fillMaxSize()) {
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val bottomMin = maxHeight.value * .32f
+            val bottomMax = maxHeight.value * .78f
+            val sideMin = maxWidth.value * .42f
+            val sideMax = maxWidth.value * .68f
+            val resolvedBottomHeight = devToolsBottomHeightDp.coerceIn(bottomMin, bottomMax)
+            val resolvedSideWidth = devToolsSideWidthDp.coerceIn(sideMin, sideMax)
+            val maxFloatingX = with(density) { (maxWidth * .08f).toPx() }
+            val maxFloatingY = with(density) { (maxHeight * .16f).toPx() }
+
             val devToolsModifier = when (phase3DevToolsMode) {
                 Phase3DevToolsMode.BOTTOM -> Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .height(devToolsBottomHeightDp.dp)
+                    .height(resolvedBottomHeight.dp)
                 Phase3DevToolsMode.SIDE -> Modifier
                     .align(Alignment.CenterEnd)
-                    .width(devToolsSideWidthDp.dp)
+                    .width(resolvedSideWidth.dp)
                     .fillMaxHeight()
                 Phase3DevToolsMode.FLOATING -> Modifier
                     .align(Alignment.Center)
-                    .fillMaxWidth(.90f)
-                    .fillMaxHeight(.74f)
+                    .fillMaxWidth(.84f)
+                    .fillMaxHeight(.68f)
                     .offset {
                         IntOffset(
-                            devToolsFloatingX.roundToInt(),
-                            devToolsFloatingY.roundToInt(),
+                            devToolsFloatingX.coerceIn(-maxFloatingX, maxFloatingX).roundToInt(),
+                            devToolsFloatingY.coerceIn(-maxFloatingY, maxFloatingY).roundToInt(),
                         )
                     }
                 Phase3DevToolsMode.FULLSCREEN -> Modifier.fillMaxSize()
@@ -1474,6 +1483,7 @@ fun TahoBrowserApp(
                         } else {
                             Modifier
                                 .padding(6.dp)
+                                .tahoElevated(RoundedCornerShape(14.dp), elevation = 14.dp)
                                 .clip(RoundedCornerShape(14.dp))
                         },
                     )
@@ -1507,20 +1517,20 @@ fun TahoBrowserApp(
                     },
                     onClose = { showDevToolsPanel = false },
                     onFloatingDrag = { dx, dy ->
-                        devToolsFloatingX += dx
-                        devToolsFloatingY += dy
+                        devToolsFloatingX = (devToolsFloatingX + dx).coerceIn(-maxFloatingX, maxFloatingX)
+                        devToolsFloatingY = (devToolsFloatingY + dy).coerceIn(-maxFloatingY, maxFloatingY)
                     },
                     onResize = { dx, dy ->
                         when (phase3DevToolsMode) {
                             Phase3DevToolsMode.BOTTOM -> {
                                 devToolsBottomHeightDp =
                                     (devToolsBottomHeightDp - (dy / density.density))
-                                        .coerceIn(220f, 720f)
+                                        .coerceIn(bottomMin, bottomMax)
                             }
                             Phase3DevToolsMode.SIDE -> {
                                 devToolsSideWidthDp =
                                     (devToolsSideWidthDp - (dx / density.density))
-                                        .coerceIn(280f, 720f)
+                                        .coerceIn(sideMin, sideMax)
                             }
                             else -> Unit
                         }
