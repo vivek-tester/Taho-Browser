@@ -1,7 +1,7 @@
 # Port the NeedMCP `tactical-ops-console` direction into the Taho Browser Compose shell
 
 **Date:** 2026-10-03
-**Status:** Draft spec — awaiting review
+**Status:** Approved — all four design decisions settled (§11)
 **Author:** orchestrated under the Taho Lead Orchestrator persona (AGENTS.md)
 
 ---
@@ -120,28 +120,23 @@ Today's `TahoWarn #E0A64A` and `TahoGold #E2B44A` are already nearly identical,
 so this ambiguity partly exists today; the port would make it worse by collapsing
 them fully.
 
-**Decision required — three options, recommend (a):**
-
-- **(a) Keep amber for both, and make the state unmistakable structurally.**
-  Warning surfaces always carry a `WARN` tag plus a 4px amber status bar, so
-  colour is never the only signal. Zero new hue, honours the style's discipline.
-- **(b) Introduce a second state hue** (`#D96A5E`-adjacent amber-red) for
-  warnings, documented as a named exception to the Single Amber Rule.
-- **(c) Drop `TahoWarn` entirely** and route warnings through `danger`. Cheapest,
-  but conflates warning with error.
+**Decision (approved 2026-10-03): option (a).** Amber serves both roles, so every
+warning surface carries a `WARN` tag **and** a 4px amber status bar. Colour is
+never the only signal, which satisfies WCAG 1.4.1 without adding a hue and keeps
+the style's Single Amber Rule intact. `TahoWarn` is retained as an alias of
+`amber` so existing call sites keep compiling, with the structural tag/bar added
+at each warning site during Stage 3.
 
 ### 4.3 Conflict 2 — JSON syntax highlighting
 
 `TahoJsonNum #C9B2F0` is used in exactly one place, `M7ProductUx.kt:782`, to
 colour numbers in the JSON body viewer. The new palette has no violet.
 
-**Decision required — recommend (a):**
-
-- **(a) Monochrome numbers.** Numbers take `body`, keys keep `info`, punctuation
-  keeps `amber`. Collapses to the style's palette; syntax still readable by
-  structure (digits vs quotes vs braces).
-- **(b) Keep violet as a documented exception.** Preserves the current
-  three-colour distinction; costs the style's chroma discipline in one view.
+**Decision (approved 2026-10-03): option (a).** Numbers take `body`; keys keep
+`info`; punctuation keeps `amber`. Syntax stays legible by structure — digits,
+quotes and braces remain visually distinct even without a third hue.
+`TahoJsonNum` is deleted. This keeps the style's collapsed chroma intact and
+removes the last non-semantic colour from the system.
 
 ### 4.4 Deleting `TahoFaint`
 
@@ -182,10 +177,10 @@ The style mandates machined corners; the app is built on large soft radii.
 | `TahoBadgeShape` | 6dp | badge | 4dp |
 | `TahoPillShape` | 999dp | pill | 999dp (unchanged) |
 
-**This is the highest-visual-impact change in the port.** Every bottom sheet loses
-its rounded silhouette and becomes a hard-edged slab with a hairline top rule.
-That is correct for the style and will read as a significant departure. Flagging
-it so it is a decision, not a surprise.
+**Confirmed (approved 2026-10-03).** This is the highest-visual-impact change in
+the port: every bottom sheet loses its rounded silhouette and becomes a
+hard-edged slab with a hairline top rule. That is correct for the style, whose
+depth model is hairline rules and luminance steps rather than soft shapes.
 
 ### 4.7 Motion
 
@@ -302,17 +297,19 @@ these five stages, each gated on a successful build plus the shell unit tests:
 Each stage must leave the app buildable and the 33 tests green, so a failure
 rolls back one stage rather than the whole port.
 
-## 11. Open decisions blocking implementation
+## 11. Resolved decisions
 
-1. **§4.2 warning hue** — (a) amber + structural tags, (b) second state hue,
-   (c) fold into danger. *Recommend (a).*
-2. **§4.3 JSON numbers** — (a) monochrome, (b) keep violet as exception.
-   *Recommend (a).*
-3. **§4.6 radii** — accept 0dp panels as the intended look? *Recommend yes.*
-4. **§2.1 authority** — confirm the new prototype is promoted to source of truth
-   and the old one is marked superseded rather than deleted.
+All four were put to the reviewer and approved on 2026-10-03. No open questions
+remain; the spec is executable as written.
+
+| # | Question | Decision |
+|---|---|---|
+| 1 | Warning hue under the Single Amber Rule | Amber for both, with a mandatory `WARN` tag **and** 4px status bar (§4.2) |
+| 2 | JSON viewer violet | Monochrome numbers; `TahoJsonNum` deleted (§4.3) |
+| 3 | Panel and sheet radii | Accept 0dp panels and sheets (§4.6) |
+| 4 | Visual source of truth | Promote the NeedMCP prototype, rewrite spec §2/§13/§15, mark the old prototype superseded (§2.1) |
 
 ---
 
-*Awaiting review. On approval, the next step is the `writing-plans` skill to
-produce the sequenced implementation plan.*
+*Approved. Next step is the `writing-plans` skill to produce the sequenced
+implementation plan across the five stages in §10.1.*
