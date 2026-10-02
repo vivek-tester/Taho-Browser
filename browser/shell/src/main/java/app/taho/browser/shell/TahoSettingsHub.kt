@@ -334,7 +334,7 @@ private fun SettingsAppearancePage() {
     ) {
         SettingsSectionTitle("THEME MODE")
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(TahoThemeMode.DARK to "Dark (OLED)", TahoThemeMode.LIGHT to "Light", TahoThemeMode.SYSTEM to "System").forEach { (m, label) ->
+            listOf(TahoThemeMode.DARK to "Dark", TahoThemeMode.LIGHT to "Light", TahoThemeMode.AMOLED to "AMOLED").forEach { (m, label) ->
                 val sel = settings.themeMode == m
                 Box(
                     modifier = Modifier
@@ -352,29 +352,13 @@ private fun SettingsAppearancePage() {
         }
 
         Spacer(Modifier.height(18.dp))
-        SettingsSectionTitle("BROWSER ACCENT COLOR")
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(
-                0xFFE2B44A to "Taho Gold",
-                0xFF4FBFA3 to "Cyan Cyber",
-                0xFF5FBF8A to "Emerald",
-                0xFFE06A5A to "Coral",
-                0xFFC9B2F0 to "Lavender",
-            ).forEach { (hex, name) ->
-                val sel = settings.accentColorHex == hex
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(Color(hex))
-                        .border(2.dp, if (sel) Color.White else Color.Transparent, CircleShape)
-                        .clickable { TahoBrowserStateStore.updateSettings { it.copy(accentColorHex = hex) } },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (sel) Text("✓", color = Color.Black, fontSize = 14.sp)
-                }
-            }
-        }
+        SettingsSectionTitle("COLOR SYSTEM")
+        Text(
+            text = "Monochrome accents follow the selected theme automatically.",
+            color = TahoMuted,
+            fontFamily = TahoMono,
+            fontSize = 10.sp,
+        )
 
         Spacer(Modifier.height(18.dp))
         SettingsSectionTitle("TOOLBAR & ADDRESS BAR POSITION")
@@ -601,7 +585,22 @@ private fun SettingsPrivacySecurityPage() {
                         .weight(1f)
                         .clip(TahoPillShape)
                         .background(if (sel) TahoGold else TahoSurfaceControl)
-                        .clickable { TahoBrowserStateStore.updateSettings { it.copy(trackingProtectionLevel = level) } }
+                        .clickable {
+                            TahoBrowserStateStore.updateSettings {
+                                when (level) {
+                                    TahoTrackingProtectionLevel.STANDARD,
+                                    TahoTrackingProtectionLevel.STRICT -> it.copy(
+                                        trackingProtectionLevel = level,
+                                        blockTrackers = true,
+                                        blockThirdPartyCookies = true,
+                                        fingerprintingProtection = true,
+                                        cryptominingProtection = true,
+                                    )
+                                    TahoTrackingProtectionLevel.CUSTOM ->
+                                        it.copy(trackingProtectionLevel = level)
+                                }
+                            }
+                        }
                         .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -613,25 +612,58 @@ private fun SettingsPrivacySecurityPage() {
         Spacer(Modifier.height(16.dp))
         SettingsSectionTitle("PROTECTION GUARDS")
         SettingsToggleRow("Cross-Site Tracker Blocking", "Block known ad and telemetry trackers", settings.blockTrackers) {
-            TahoBrowserStateStore.updateSettings { it.copy(blockTrackers = !it.blockTrackers) }
+            TahoBrowserStateStore.updateSettings {
+                it.copy(
+                    trackingProtectionLevel = TahoTrackingProtectionLevel.CUSTOM,
+                    blockTrackers = !it.blockTrackers,
+                )
+            }
         }
         SettingsToggleRow("Third-Party Cookie Isolation", "Prevent multi-site identity graphing", settings.blockThirdPartyCookies) {
-            TahoBrowserStateStore.updateSettings { it.copy(blockThirdPartyCookies = !it.blockThirdPartyCookies) }
+            TahoBrowserStateStore.updateSettings {
+                it.copy(
+                    trackingProtectionLevel = TahoTrackingProtectionLevel.CUSTOM,
+                    blockThirdPartyCookies = !it.blockThirdPartyCookies,
+                )
+            }
         }
         SettingsToggleRow("Fingerprinting Protection", "Mask canvas, audio & hardware indicators", settings.fingerprintingProtection) {
-            TahoBrowserStateStore.updateSettings { it.copy(fingerprintingProtection = !it.fingerprintingProtection) }
+            TahoBrowserStateStore.updateSettings {
+                it.copy(
+                    trackingProtectionLevel = TahoTrackingProtectionLevel.CUSTOM,
+                    fingerprintingProtection = !it.fingerprintingProtection,
+                )
+            }
         }
         SettingsToggleRow("Cryptomining Defense", "Terminate in-browser mining scripts", settings.cryptominingProtection) {
-            TahoBrowserStateStore.updateSettings { it.copy(cryptominingProtection = !it.cryptominingProtection) }
+            TahoBrowserStateStore.updateSettings {
+                it.copy(
+                    trackingProtectionLevel = TahoTrackingProtectionLevel.CUSTOM,
+                    cryptominingProtection = !it.cryptominingProtection,
+                )
+            }
         }
         SettingsToggleRow("HTTPS-Only Mode", "Enforce encrypted transport across all hosts", settings.httpsOnlyMode) {
             TahoBrowserStateStore.updateSettings { it.copy(httpsOnlyMode = !it.httpsOnlyMode) }
         }
         SettingsToggleRow("Safe Browsing & Phishing Shield", "Block malware & dangerous downloads", settings.safeBrowsingEnabled) {
-            TahoBrowserStateStore.updateSettings { it.copy(safeBrowsingEnabled = !it.safeBrowsingEnabled) }
+            TahoBrowserStateStore.updateSettings {
+                val enabled = !it.safeBrowsingEnabled
+                it.copy(
+                    safeBrowsingEnabled = enabled,
+                    dangerousDownloadProtection = enabled,
+                    phishingProtection = enabled,
+                )
+            }
         }
         SettingsToggleRow("Pop-Up & Redirect Blocker", "Suppress intrusive modals & redirect loops", settings.popupBlockerEnabled) {
-            TahoBrowserStateStore.updateSettings { it.copy(popupBlockerEnabled = !it.popupBlockerEnabled) }
+            TahoBrowserStateStore.updateSettings {
+                val enabled = !it.popupBlockerEnabled
+                it.copy(
+                    popupBlockerEnabled = enabled,
+                    redirectBlockingEnabled = enabled,
+                )
+            }
         }
         SettingsToggleRow("Do Not Track (DNT) Header", "Transmit RFC DNT=1 signal", settings.doNotTrack) {
             TahoBrowserStateStore.updateSettings { it.copy(doNotTrack = !it.doNotTrack) }
@@ -662,10 +694,23 @@ private fun SettingsPrivacySecurityPage() {
         Spacer(Modifier.height(16.dp))
         SettingsSectionTitle("PRIVATE BROWSING GUARDS")
         SettingsToggleRow("Private Tab PIN / Biometric Lock", "Require authentication when switching to private session", settings.privateTabLock) {
-            TahoBrowserStateStore.updateSettings { it.copy(privateTabLock = !it.privateTabLock) }
+            TahoBrowserStateStore.updateSettings {
+                val enabled = !it.privateTabLock
+                it.copy(
+                    privateTabLock = enabled,
+                    biometricLockForPrivateTabs =
+                        if (enabled) it.biometricLockForPrivateTabs else false,
+                )
+            }
         }
         SettingsToggleRow("Biometric Lock for Private Tabs", "Unlock private sessions using fingerprint or device biometrics", settings.biometricLockForPrivateTabs) {
-            TahoBrowserStateStore.updateSettings { it.copy(biometricLockForPrivateTabs = !it.biometricLockForPrivateTabs) }
+            TahoBrowserStateStore.updateSettings {
+                val enabled = !it.biometricLockForPrivateTabs
+                it.copy(
+                    biometricLockForPrivateTabs = enabled,
+                    privateTabLock = if (enabled) true else it.privateTabLock,
+                )
+            }
         }
         SettingsToggleRow("Clear Private Tabs on Exit", "Automatically purge all private tabs and session cookies on close", settings.clearPrivateTabsOnExit) {
             TahoBrowserStateStore.updateSettings { it.copy(clearPrivateTabsOnExit = !it.clearPrivateTabsOnExit) }

@@ -1,6 +1,7 @@
 package app.taho.browser
 
 import android.Manifest
+import android.app.KeyguardManager
 import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
@@ -9,12 +10,15 @@ import android.content.Intent
 import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
 import android.graphics.drawable.Icon
+import android.hardware.biometrics.BiometricPrompt
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.CancellationSignal
 import android.os.Handler
 import android.os.PersistableBundle
 import android.os.Looper
@@ -31,6 +35,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,9 +58,12 @@ import app.taho.browser.capture.persist.CaptureMaintenance
 import app.taho.browser.capture.persist.RoomCaptureRepository
 import app.taho.browser.observation.M4CaptureRuntime
 import app.taho.browser.observation.M4CaptureRuntimeSnapshot
+import app.taho.browser.observation.MobileDevToolsRuntime
 import app.taho.browser.observation.ObservedBrowserSession
 import app.taho.browser.observation.ProductionCaptureGate
+import app.taho.browser.runtime.BrowserPrivacyRuntimeSettings
 import app.taho.browser.runtime.BrowserRuntimeController
+import app.taho.browser.runtime.BrowserTrackingProtectionLevel
 import app.taho.browser.runtime.BrowserRuntimeStore
 import app.taho.browser.runtime.BrowserSitePermissionKind
 import app.taho.browser.runtime.BrowserSnapshot
@@ -64,6 +72,7 @@ import app.taho.browser.runtime.GeckoRuntimeHolder
 import app.taho.browser.runtime.NavigationInput
 import app.taho.browser.shell.BrowserTabUiState
 import app.taho.browser.shell.BrowserUiState
+import app.taho.browser.shell.DevToolsUiState
 import app.taho.browser.shell.M4CaptureHeaderUiState
 import app.taho.browser.shell.M4CaptureRequestUiState
 import app.taho.browser.shell.M4CompletenessUi
@@ -75,6 +84,7 @@ import app.taho.browser.shell.SiteSecurityUiState
 import app.taho.browser.shell.TahoBrowserApp
 import app.taho.browser.shell.TahoBrowserStateStore
 import app.taho.browser.shell.TahoStartupBehavior
+import app.taho.browser.shell.TahoSecureDns
 import app.taho.browser.shell.TahoAutoCloseTabs
 import app.taho.browser.transfer.android.TahoDirectTransferIntentFactory
 import app.taho.browser.transfer.android.TahoDirectTransferTarget
@@ -86,6 +96,7 @@ import app.taho.browser.transfer.core.M4PreparationBlock
 import app.taho.browser.transfer.core.M4PreparationResult
 import app.taho.browser.transfer.core.M4TransferPreparer
 import java.net.URI
+import java.util.concurrent.Executor
 
 class MainActivity : ComponentActivity() {
     private companion object {
@@ -95,6 +106,7 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var controller: BrowserRuntimeController
     private lateinit var captureRuntime: M4CaptureRuntime
+    private lateinit var devToolsRuntime: MobileDevToolsRuntime
     private lateinit var captureRepository: RoomCaptureRepository
     private lateinit var transferCoordinator: TahoSecureTransferCoordinator
     private var activeAndroidPermissionRequestId: String? = null
@@ -105,8 +117,14 @@ class MainActivity : ComponentActivity() {
     private var transferPreparationInFlight: Boolean = false
     private var isOffline by mutableStateOf(false)
     private var originatingTabId: String? = null
+    private var pendingPrivateAction: (() -> Unit)? = null
+    private var privateBiometricCancellation: CancellationSignal? = null
+    private var privateBiometricFallingBack: Boolean = false
     private var pendingExternalNavDialog by mutableStateOf<Triple<String, String, Intent>?>(null)
     private var captureRetentionMode by mutableStateOf("Session only")
+    private var appliedSecureDnsKey: String? = null
+    private var appliedPrivacyKey: String? = null
+    private var pendingCaptureExportText: String? = null
     private val committedHistoryLocationByTab = mutableMapOf<String, String?>()
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
@@ -115,6 +133,37 @@ class MainActivity : ComponentActivity() {
         }
         override fun onLost(network: Network) {
             runOnUiThread { isOffline = true }
+        }
+    }
+
+    private val captureExportLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/octet-stream"),
+    ) { uri ->
+        val text = pendingCaptureExportText
+        pendingCaptureExportText = null
+        if (uri == null || text == null) return@registerForActivityResult
+
+        runCatching {
+            contentResolver.openOutputStream(uri, "w")?.use { output ->
+                output.write(text.toByteArray(Charsets.UTF_8))
+            } ?: error("Unable to open export destination")
+        }.onSuccess {
+            transferNotice = "Captured packets exported."
+        }.onFailure {
+            transferNotice = "Unable to export captured packets."
+        }
+    }
+
+    private val privateTabCredentialLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        privateBiometricFallingBack = false
+        val action = pendingPrivateAction
+        pendingPrivateAction = null
+        if (result.resultCode == RESULT_OK) {
+            action?.invoke()
+        } else {
+            transferNotice = "Private tabs remain locked."
         }
     }
 
@@ -152,6 +201,8 @@ class MainActivity : ComponentActivity() {
 
         TahoBrowserStateStore.initialize(this)
         controller = BrowserRuntimeStore.get(this)
+        applySecureDnsSetting(reloadSelectedPage = false)
+        applyPrivacySettings(reloadSelectedPage = false)
         if (savedInstanceState == null && !isIncomingWebIntent(intent)) {
             applyStartupBehavior()
         }
@@ -186,13 +237,14 @@ class MainActivity : ComponentActivity() {
         } else if (transferCoordinator.recoverExpiredAttempts().isNotEmpty()) {
             transferNotice = "A previous Taho transfer expired. The source capture is still available."
         }
+        val captureGate = if (BuildConfig.M1_ATTRIBUTION_VERIFIED) {
+            ProductionCaptureGate.ENABLED
+        } else {
+            ProductionCaptureGate.BLOCKED_M1_DEVICE_EVIDENCE
+        }
         captureRuntime = M4CaptureRuntime(
             runtime = GeckoRuntimeHolder.get(this),
-            gate = if (BuildConfig.M1_ATTRIBUTION_VERIFIED) {
-                ProductionCaptureGate.ENABLED
-            } else {
-                ProductionCaptureGate.BLOCKED_M1_DEVICE_EVIDENCE
-            },
+            gate = captureGate,
             appVersion = BuildConfig.VERSION_NAME,
             engineVersion = BuildConfig.GECKOVIEW_VERSION,
             captureSessionId = CapturePersistenceStore.captureSessionId(),
@@ -205,24 +257,66 @@ class MainActivity : ComponentActivity() {
             },
             clearStorage = captureRepository::clearCaptureData,
         )
+        captureRuntime.setEnabled(TahoBrowserStateStore.captureEnabled)
         captureRuntime.start()
+
+        devToolsRuntime = MobileDevToolsRuntime(
+            runtime = GeckoRuntimeHolder.get(this),
+            gate = captureGate,
+        )
+        devToolsRuntime.setEnabled(TahoBrowserStateStore.captureEnabled)
 
         setContent {
             var snapshot by remember { mutableStateOf(controller.snapshot()) }
             var captureSnapshot by remember {
                 mutableStateOf(captureRuntime.snapshot())
             }
+            var devToolsConnections by remember {
+                mutableStateOf(devToolsRuntime.connectedTabs())
+            }
+            var devToolsUi by remember {
+                mutableStateOf(DevToolsUiState())
+            }
+            val captureEnabled = TahoBrowserStateStore.captureEnabled
+            val secureDns = TahoBrowserStateStore.settings.secureDns
+            val customDnsProvider = TahoBrowserStateStore.settings.customDnsProvider
+            val privacySettings = TahoBrowserStateStore.settings
+            val privacyRuntimeKey = buildString {
+                append(privacySettings.trackingProtectionLevel.name)
+                append('|').append(privacySettings.blockTrackers)
+                append('|').append(privacySettings.blockThirdPartyCookies)
+                append('|').append(privacySettings.fingerprintingProtection)
+                append('|').append(privacySettings.cryptominingProtection)
+                append('|').append(privacySettings.httpsOnlyMode)
+                append('|').append(privacySettings.safeBrowsingEnabled)
+                append('|').append(privacySettings.popupBlockerEnabled)
+                append('|').append(privacySettings.redirectBlockingEnabled)
+                append('|').append(privacySettings.doNotTrack)
+                append('|').append(privacySettings.globalPrivacyControl)
+                append('|').append(privacySettings.perSiteTrackingExceptions.sorted().joinToString(","))
+            }
 
-            DisposableEffect(controller, captureRuntime) {
+            LaunchedEffect(secureDns, customDnsProvider) {
+                applySecureDnsSetting(reloadSelectedPage = true)
+            }
+            LaunchedEffect(privacyRuntimeKey) {
+                applyPrivacySettings(reloadSelectedPage = true)
+            }
+
+            DisposableEffect(controller, captureRuntime, devToolsRuntime) {
                 controller.setListener { next ->
                     snapshot = next
                     syncCaptureSessions(next)
                     syncBrowserHistory(next)
                 }
                 captureRuntime.setListener { captureSnapshot = it }
+                devToolsRuntime.setListener { connected ->
+                    devToolsConnections = connected
+                }
                 onDispose {
                     controller.setListener(null)
                     captureRuntime.setListener(null)
+                    devToolsRuntime.setListener(null)
                 }
             }
 
@@ -244,6 +338,12 @@ class MainActivity : ComponentActivity() {
                 captureSnapshot = captureSnapshot,
                 targetHostsByTab = targetHostsByTab,
             )
+
+            androidx.compose.runtime.LaunchedEffect(selectedTabId) {
+                devToolsUi = DevToolsUiState(
+                    connected = captureEnabled && selectedTabId in devToolsConnections,
+                )
+            }
 
             androidx.compose.runtime.LaunchedEffect(androidPermission?.id) {
                 val request = androidPermission ?: return@LaunchedEffect
@@ -328,6 +428,7 @@ class MainActivity : ComponentActivity() {
             TahoBrowserApp(
                 state = BrowserUiState(
                     captureState = captureSnapshot.state,
+                    captureEnabled = captureEnabled,
                     relevantCount = captureRequests.count { it.relevantByDefault },
                     omniboxText = visibleLocation,
                     tabCount = snapshot.tabCount,
@@ -335,6 +436,7 @@ class MainActivity : ComponentActivity() {
                     loadFailed = snapshot.loadFailed,
                     crashed = snapshot.crashed,
                     isPrivate = snapshot.isPrivate,
+                    isFullScreen = snapshot.isFullScreen,
                     canGoBack = snapshot.canGoBack,
                     canGoForward = snapshot.canGoForward,
                     securityInfo = snapshot.security?.let { security ->
@@ -389,7 +491,45 @@ class MainActivity : ComponentActivity() {
                         )
                     },
                     captureRequests = captureRequests,
+                    devTools = devToolsUi.copy(
+                        connected = captureEnabled && selectedTabId in devToolsConnections,
+                    ),
                 ),
+                onCaptureEnabledChange = { enabled ->
+                    TahoBrowserStateStore.updateCaptureEnabled(enabled)
+                    captureRuntime.setEnabled(enabled)
+                    devToolsRuntime.setEnabled(enabled)
+                    if (!enabled) {
+                        devToolsUi = DevToolsUiState(connected = false)
+                    }
+                },
+                onDevToolsRequest = { command, argument ->
+                    devToolsUi = DevToolsUiState(
+                        connected = selectedTabId in devToolsConnections,
+                        loading = true,
+                        command = command,
+                    )
+                    devToolsRuntime.request(
+                        tabId = selectedTabId,
+                        command = command,
+                        argument = argument,
+                    ) { result ->
+                        devToolsUi = DevToolsUiState(
+                            connected = selectedTabId in devToolsConnections,
+                            loading = false,
+                            command = result.command,
+                            payloadJson = result.payloadJson,
+                            error = result.error,
+                        )
+                    }
+                },
+                onDevToolsReloadPage = {
+                    if (snapshot.crashed) {
+                        controller.recoverCrashedTab(snapshot.selectedTabId)
+                    } else {
+                        controller.reload()
+                    }
+                },
                 onNavigate = { input ->
                     val searchTemplate = TahoBrowserStateStore.searchEngines
                         .firstOrNull { it.id == TahoBrowserStateStore.settings.defaultSearchEngineId }
@@ -411,9 +551,29 @@ class MainActivity : ComponentActivity() {
                         controller.reload()
                     }
                 },
+                onExitFullScreen = controller::exitFullScreen,
                 onNewTab = { controller.newTab(privateMode = false) },
-                onNewPrivateTab = { controller.newTab(privateMode = true) },
-                onSelectTab = controller::selectTab,
+                onNewPrivateTab = {
+                    val current = controller.snapshot()
+                    if (current.isPrivate) {
+                        controller.newTab(privateMode = true)
+                    } else {
+                        requestPrivateTabAccess {
+                            controller.newTab(privateMode = true)
+                        }
+                    }
+                },
+                onSelectTab = { tabId ->
+                    val current = controller.snapshot()
+                    val target = current.tabs.firstOrNull { it.id == tabId }
+                    if (target?.isPrivate == true && !current.isPrivate) {
+                        requestPrivateTabAccess {
+                            controller.selectTab(tabId)
+                        }
+                    } else {
+                        controller.selectTab(tabId)
+                    }
+                },
                 onCloseTab = { tabId ->
                     snapshot.tabs.firstOrNull { it.id == tabId }?.let { tab ->
                         if (!tab.isPrivate) {
@@ -430,6 +590,7 @@ class MainActivity : ComponentActivity() {
                 onSitePermissionDecision = controller::resolveSitePermission,
                 onCopyCurl = ::copyMaskedCurl,
                 onShare = ::shareMaskedRequest,
+                onExportCaptureFile = ::exportCaptureFile,
                 onDismissNotice = {
                     if (transferNotice != null) {
                         transferNotice = null
@@ -510,11 +671,15 @@ class MainActivity : ComponentActivity() {
                     AndroidView(
                         factory = { context ->
                             BrowserSurfaceView(context).also { surface ->
+                                surface.onRefresh = { controller.reload() }
                                 controller.bind(selectedTabId, surface)
+                                surface.onPageLoadingChanged(snapshot.isLoading)
                             }
                         },
                         update = { surface ->
+                            surface.onRefresh = { controller.reload() }
                             controller.bind(selectedTabId, surface)
+                            surface.onPageLoadingChanged(snapshot.isLoading)
                         },
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -525,6 +690,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (
+            ::captureRuntime.isInitialized &&
+            TahoBrowserStateStore.captureEnabled &&
+            !TahoBrowserStateStore.captureInBackground
+        ) {
+            captureRuntime.setEnabled(true)
+            devToolsRuntime.setEnabled(true)
+        }
         originatingTabId?.let { tabId ->
             originatingTabId = null
             if (controller.snapshot().tabs.any { it.id == tabId }) {
@@ -595,15 +768,35 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        if (
+            ::captureRuntime.isInitialized &&
+            TahoBrowserStateStore.captureEnabled &&
+            !TahoBrowserStateStore.captureInBackground
+        ) {
+            captureRuntime.setEnabled(false)
+            devToolsRuntime.setEnabled(false)
+        }
+        if (
+            isFinishing &&
+            !isChangingConfigurations &&
+            TahoBrowserStateStore.settings.clearPrivateTabsOnExit
+        ) {
+            controller.closePrivateTabs()
+        }
         TahoBrowserStateStore.persistNow()
         controller.persistNow()
         super.onStop()
     }
 
     override fun onDestroy() {
+        privateBiometricCancellation?.cancel()
+        privateBiometricCancellation = null
+        privateBiometricFallingBack = false
+        pendingPrivateAction = null
         runCatching {
             getSystemService(ConnectivityManager::class.java)?.unregisterNetworkCallback(networkCallback)
         }
+        devToolsRuntime.close()
         captureRuntime.close()
         super.onDestroy()
     }
@@ -672,6 +865,7 @@ class MainActivity : ComponentActivity() {
             )
         }
         captureRuntime.syncSessions(observed)
+        devToolsRuntime.syncSessions(observed)
     }
 
     private fun relevantCaptureCounts(
@@ -1018,6 +1212,173 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun requestPrivateTabAccess(action: () -> Unit) {
+        val settings = TahoBrowserStateStore.settings
+        if (!settings.privateTabLock && !settings.biometricLockForPrivateTabs) {
+            action()
+            return
+        }
+        if (pendingPrivateAction != null) {
+            transferNotice = "Private-tab authentication is already in progress."
+            return
+        }
+
+        pendingPrivateAction = action
+
+        if (settings.biometricLockForPrivateTabs && Build.VERSION.SDK_INT >= 28) {
+            showPrivateTabBiometricPrompt()
+            return
+        }
+
+        launchPrivateTabDeviceCredential()
+    }
+
+    private fun launchPrivateTabDeviceCredential() {
+        val keyguard = getSystemService(KeyguardManager::class.java)
+        val intent = keyguard?.createConfirmDeviceCredentialIntent(
+            "Unlock private tabs",
+            "Authenticate to enter Taho private browsing.",
+        )
+        if (intent == null) {
+            pendingPrivateAction = null
+            transferNotice = "Set a device screen lock before enabling private-tab protection."
+            return
+        }
+        privateTabCredentialLauncher.launch(intent)
+    }
+
+    @androidx.annotation.RequiresApi(28)
+    private fun showPrivateTabBiometricPrompt() {
+        privateBiometricCancellation?.cancel()
+        privateBiometricFallingBack = false
+        val cancellation = CancellationSignal()
+        privateBiometricCancellation = cancellation
+        val executor = Executor { command -> runOnUiThread(command) }
+
+        val prompt = BiometricPrompt.Builder(this)
+            .setTitle("Unlock private tabs")
+            .setSubtitle("Authenticate to enter Taho private browsing.")
+            .setNegativeButton("Use device lock", executor) { _, _ ->
+                privateBiometricCancellation = null
+                privateBiometricFallingBack = true
+                launchPrivateTabDeviceCredential()
+            }
+            .build()
+
+        prompt.authenticate(
+            cancellation,
+            executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(
+                    result: BiometricPrompt.AuthenticationResult,
+                ) {
+                    privateBiometricCancellation = null
+                    privateBiometricFallingBack = false
+                    val action = pendingPrivateAction
+                    pendingPrivateAction = null
+                    action?.invoke()
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    privateBiometricCancellation = null
+                    if (privateBiometricFallingBack) {
+                        return
+                    }
+                    if (pendingPrivateAction != null) {
+                        transferNotice = "Private tabs remain locked."
+                        pendingPrivateAction = null
+                    }
+                }
+
+                override fun onAuthenticationFailed() {
+                    transferNotice = "Biometric authentication was not recognized."
+                }
+            },
+        )
+    }
+
+    private fun applyPrivacySettings(reloadSelectedPage: Boolean) {
+        val settings = TahoBrowserStateStore.settings
+        val runtimeSettings = BrowserPrivacyRuntimeSettings(
+            trackingProtectionLevel = when (settings.trackingProtectionLevel) {
+                app.taho.browser.shell.TahoTrackingProtectionLevel.STANDARD ->
+                    BrowserTrackingProtectionLevel.STANDARD
+                app.taho.browser.shell.TahoTrackingProtectionLevel.STRICT ->
+                    BrowserTrackingProtectionLevel.STRICT
+                app.taho.browser.shell.TahoTrackingProtectionLevel.CUSTOM ->
+                    BrowserTrackingProtectionLevel.CUSTOM
+            },
+            blockTrackers = settings.blockTrackers,
+            blockThirdPartyCookies = settings.blockThirdPartyCookies,
+            fingerprintingProtection = settings.fingerprintingProtection,
+            cryptominingProtection = settings.cryptominingProtection,
+            httpsOnlyMode = settings.httpsOnlyMode,
+            safeBrowsingEnabled = settings.safeBrowsingEnabled,
+            popupBlockerEnabled = settings.popupBlockerEnabled,
+            redirectBlockingEnabled = settings.redirectBlockingEnabled,
+            doNotTrack = settings.doNotTrack,
+            globalPrivacyControl = settings.globalPrivacyControl,
+            perSiteTrackingExceptions = settings.perSiteTrackingExceptions,
+        )
+        val key = runtimeSettings.toString()
+        if (key == appliedPrivacyKey) return
+
+        val hadPreviousSetting = appliedPrivacyKey != null
+        val shouldReload =
+            reloadSelectedPage &&
+                hadPreviousSetting &&
+                controller.snapshot().location
+                    ?.takeUnless { it == "about:blank" }
+                    .isNullOrBlank()
+                    .not()
+
+        runCatching {
+            controller.applyPrivacySettings(runtimeSettings) {
+                if (shouldReload) {
+                    controller.reload()
+                }
+            }
+        }.onSuccess {
+            appliedPrivacyKey = key
+        }.onFailure {
+            transferNotice = "Privacy protection settings could not be applied."
+        }
+    }
+
+    private fun applySecureDnsSetting(reloadSelectedPage: Boolean) {
+        val browserSettings = TahoBrowserStateStore.settings
+        val resolverUri = when (browserSettings.secureDns) {
+            TahoSecureDns.CLOUDFLARE -> "https://cloudflare-dns.com/dns-query"
+            TahoSecureDns.QUAD9 -> "https://dns.quad9.net/dns-query"
+            TahoSecureDns.GOOGLE -> "https://dns.google/dns-query"
+            TahoSecureDns.CUSTOM -> browserSettings.customDnsProvider
+                .trim()
+                .takeIf { it.startsWith("https://", ignoreCase = true) }
+            TahoSecureDns.OFF -> null
+        }
+        val key = browserSettings.secureDns.name + "|" + resolverUri.orEmpty()
+        if (key == appliedSecureDnsKey) return
+
+        val hadPreviousSetting = appliedSecureDnsKey != null
+        runCatching {
+            controller.setSecureDns(resolverUri)
+        }.onSuccess {
+            appliedSecureDnsKey = key
+            if (
+                reloadSelectedPage &&
+                hadPreviousSetting &&
+                controller.snapshot().location
+                    ?.takeUnless { it == "about:blank" }
+                    .isNullOrBlank()
+                    .not()
+            ) {
+                controller.reload()
+            }
+        }.onFailure {
+            transferNotice = "Secure DNS could not be applied. Check the resolver configuration."
+        }
+    }
+
     private fun hostOf(location: String?): String? =
         location
             ?.takeIf { it.startsWith("http://") || it.startsWith("https://") }
@@ -1077,6 +1438,20 @@ class MainActivity : ComponentActivity() {
             "Masked cURL copied."
         } else {
             "Unable to copy the masked cURL."
+        }
+    }
+
+    private fun exportCaptureFile(
+        fileName: String,
+        mimeType: String,
+        text: String,
+    ) {
+        pendingCaptureExportText = text
+        runCatching {
+            captureExportLauncher.launch(fileName)
+        }.onFailure {
+            pendingCaptureExportText = null
+            transferNotice = "Unable to open the export destination."
         }
     }
 

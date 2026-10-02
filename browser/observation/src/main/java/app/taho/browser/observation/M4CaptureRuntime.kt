@@ -65,6 +65,8 @@ class M4CaptureRuntime(
     private val mainHandler = Handler(Looper.getMainLooper())
     private var drainScheduled = false
     private var ingressLimited = false
+    private var started = false
+    private var userEnabled = true
     private var captureGateBlocked = gate != ProductionCaptureGate.ENABLED
     private var storageDegradedReason: StorageDegradationReason? = null
     private var persistedRecords: List<DurableTransactionSummary> = emptyList()
@@ -82,19 +84,61 @@ class M4CaptureRuntime(
     }
 
     fun start() {
+        if (started) return
+        started = true
+
         if (sessionInitializer != null || historyLoader != null) {
             persistenceExecutor.execute {
-                val init = sessionInitializer?.invoke(captureSessionId)
+                val init = if (userEnabled) sessionInitializer?.invoke(captureSessionId) else null
                 if (init is CaptureRepositoryResult.Degraded) {
                     reportStorageDegraded(init.reason)
                 }
                 loadHistoryOnPersistenceThread()
             }
         }
-        coordinator.start()
+
+        if (userEnabled) {
+            coordinator.start()
+        } else {
+            publish(CaptureState.OFF)
+        }
+    }
+
+    fun setEnabled(enabled: Boolean) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            mainHandler.post { setEnabled(enabled) }
+            return
+        }
+        if (userEnabled == enabled) {
+            if (!enabled) publish(CaptureState.OFF)
+            return
+        }
+
+        userEnabled = enabled
+        if (!started) {
+            publish(if (enabled) derivedActiveState() else CaptureState.OFF)
+            return
+        }
+
+        if (enabled) {
+            if (sessionInitializer != null) {
+                persistenceExecutor.execute {
+                    val init = sessionInitializer.invoke(captureSessionId)
+                    if (init is CaptureRepositoryResult.Degraded) {
+                        reportStorageDegraded(init.reason)
+                    }
+                }
+            }
+            coordinator.start()
+            publish(derivedActiveState())
+        } else {
+            coordinator.stop()
+            publish(CaptureState.OFF)
+        }
     }
 
     fun close() {
+        coordinator.stop()
         persistenceExecutor.shutdown()
     }
 
@@ -231,6 +275,7 @@ class M4CaptureRuntime(
             mainHandler.post { onObservation(event) }
             return
         }
+        if (!userEnabled) return
 
         if (event is ProductionObservationEvent.Bulk) {
             when (val result = ingress.offer(event)) {
@@ -277,6 +322,7 @@ class M4CaptureRuntime(
 
     private fun derivedActiveState(): CaptureState =
         when {
+            !userEnabled -> CaptureState.OFF
             captureGateBlocked -> CaptureState.OFF
             storageDegradedReason == StorageDegradationReason.KEY_INVALIDATED ||
                 storageDegradedReason == StorageDegradationReason.DATABASE_CORRUPT ->

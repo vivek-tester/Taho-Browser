@@ -130,7 +130,7 @@ fun TahoTabsOverviewSheet(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(
                     modifier = Modifier
-                        .height(34.dp)
+                        .height(48.dp)
                         .clip(TahoPillShape)
                         .background(TahoGold.copy(alpha = 0.15f))
                         .border(1.dp, TahoGold.copy(alpha = 0.35f), TahoPillShape)
@@ -143,7 +143,7 @@ fun TahoTabsOverviewSheet(
 
                 Box(
                     modifier = Modifier
-                        .height(34.dp)
+                        .height(48.dp)
                         .clip(TahoPillShape)
                         .background(TahoSurfaceControl)
                         .border(1.dp, TahoHairline, TahoPillShape)
@@ -639,8 +639,8 @@ private fun TabGroupChip(
             Text(
                 text = name,
                 color = if (isSelected) color else TahoMuted,
-                fontFamily = TahoMono,
-                fontSize = 9.sp,
+                fontFamily = TahoBody,
+                fontSize = 11.sp,
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
             )
         }
@@ -770,7 +770,7 @@ private fun DetailedTabCard(
                 TabActionButton(label = "📥 Archive", onClick = onArchive)
             }
             if (canCloseOthers) {
-                TabActionButton(label = "Close Others", color = TahoError, onClick = onCloseOthers)
+                TabActionButton(label = "Close others", color = TahoError, onClick = onCloseOthers)
             }
         }
     }

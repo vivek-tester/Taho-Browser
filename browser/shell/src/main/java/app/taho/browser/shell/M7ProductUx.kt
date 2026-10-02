@@ -2,7 +2,9 @@ package app.taho.browser.shell
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -277,6 +279,9 @@ internal fun M7CaptureSummarySheet(
 ) {
     val relevantCount = requests.count { it.relevantByDefault }
     val visible = filterByQuery(M7CaptureUx.filtered(requests, filter), searchQuery)
+    var selectedIds by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    val selectionMode = selectedIds.isNotEmpty()
+
 
     Column(
         modifier = Modifier
@@ -291,15 +296,19 @@ internal fun M7CaptureSummarySheet(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Captured",
+                    text = if (selectionMode) selectedIds.size.toString() + " selected" else "Captured",
                     color = TahoText,
                     fontFamily = TahoDisplay,
                     fontWeight = FontWeight.Medium,
                     fontSize = 17.sp,
                 )
                 Text(
-                    text = relevantCount.toString() +
-                        if (relevantCount == 1) " relevant request · filtered" else " relevant requests · filtered",
+                    text = if (selectionMode) {
+                        "Tap more requests to select · back to finish"
+                    } else {
+                        relevantCount.toString() +
+                            if (relevantCount == 1) " relevant request · filtered" else " relevant requests · filtered"
+                    },
                     color = TahoMuted,
                     fontFamily = TahoMono,
                     fontSize = 10.sp,
@@ -309,8 +318,13 @@ internal fun M7CaptureSummarySheet(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .semantics { role = Role.Button; contentDescription = "Close captured requests" }
-                    .clickable(onClick = onClose),
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = if (selectionMode) "Exit selection mode" else "Close captured requests"
+                    }
+                    .clickable {
+                        if (selectionMode) selectedIds = emptyList() else onClose()
+                    },
                 contentAlignment = Alignment.Center,
             ) {
                 Text("×", color = TahoMuted, fontSize = 18.sp)
@@ -392,7 +406,21 @@ internal fun M7CaptureSummarySheet(
                         request = request,
                         inspectable = inspectable,
                         selected = request.id == selectedId,
+                        selectionMode = selectionMode,
+                        checked = request.id in selectedIds,
                         onClick = { if (inspectable) onSelect(request.id) },
+                        onLongPress = {
+                            if (inspectable && request.id !in selectedIds) {
+                                selectedIds = selectedIds + request.id
+                            }
+                        },
+                        onToggleSelection = {
+                            selectedIds = if (request.id in selectedIds) {
+                                selectedIds - request.id
+                            } else {
+                                selectedIds + request.id
+                            }
+                        },
                     )
                 }
             }
@@ -446,12 +474,17 @@ private fun M7FilterChip(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun M7SummaryRow(
     request: M4CaptureRequestUiState,
     inspectable: Boolean,
     selected: Boolean,
+    selectionMode: Boolean,
+    checked: Boolean,
     onClick: () -> Unit,
+    onLongPress: () -> Unit,
+    onToggleSelection: () -> Unit,
 ) {
     val parsed = runCatching { URI(request.url) }.getOrNull()
     val path = parsed?.rawPath?.takeIf { it.isNotBlank() } ?: "/"
@@ -486,10 +519,37 @@ private fun M7SummaryRow(
                     if (bodyFlag != null) append(", ").append(bodyFlag.removePrefix("△ "))
                 }
             }
-            .clickable(enabled = inspectable, onClick = onClick)
+            .combinedClickable(
+                enabled = inspectable,
+                onClick = {
+                    if (selectionMode) onToggleSelection() else onClick()
+                },
+                onLongClick = onLongPress,
+            )
             .padding(horizontal = 14.dp, vertical = 11.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            if (selectionMode) {
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(RoundedCornerShape(5.dp))
+                        .background(if (checked) TahoText else Color.Transparent)
+                        .border(1.dp, if (checked) TahoText else TahoHairlineStrong, RoundedCornerShape(5.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (checked) {
+                        Text(
+                            text = "✓",
+                            color = TahoBg,
+                            fontFamily = TahoBody,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp,
+                        )
+                    }
+                }
+                Spacer(Modifier.width(8.dp))
+            }
             M7MethodBadge(request.method)
             Spacer(Modifier.width(8.dp))
             Text(

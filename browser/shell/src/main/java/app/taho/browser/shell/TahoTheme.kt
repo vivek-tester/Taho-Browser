@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,9 +31,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
@@ -40,35 +43,64 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.taho.browser.shell.R
 
 /*
- * Taho design tokens — extracted 1:1 from Doc/TAHO_BROWSER_UI_UX_SPEC.md §2/§15
- * (source of truth: TAHO_BROWSER_UI_PROTOTYPE.html).
+ * Taho design tokens.
+ *
+ * The approved product mockups are the visual source of truth. These tokens
+ * intentionally stay monochrome across Dark, Light and AMOLED while the
+ * browser-shell geometry is matched screen-by-screen to those mockups.
  */
 
-// ---------- color (spec §2.1) ----------
-internal val TahoBg = Color(0xFF050505)
-internal val TahoSheet = Color(0xFF0D0D10)
-internal val TahoGold = Color(0xFFE2B44A)
-internal val TahoGoldHi = Color(0xFFF0CD7E)
-internal val TahoText = Color(0xFFF3F0E9)
-internal val TahoMuted = Color(0xFF98948A)
-internal val TahoFaint = Color(0xFF6B675F)
-internal val TahoOk = Color(0xFF5FBF8A)
-internal val TahoWarn = Color(0xFFE0A64A)
-internal val TahoInfo = Color(0xFF4FBFA3)
-internal val TahoError = Color(0xFFE06A5A)
-internal val TahoNeutral = Color(0xFFC9C5BB)
-internal val TahoJsonNum = Color(0xFFC9B2F0)
+// ---------- monochrome color system ----------
+private val TahoIsLight: Boolean
+    get() = TahoBrowserStateStore.settings.themeMode == TahoThemeMode.LIGHT
 
-internal val TahoHairline = Color.White.copy(alpha = .08f)
-internal val TahoHairlineStrong = Color.White.copy(alpha = .14f)
-internal val TahoSurfaceRow = Color.White.copy(alpha = .028f)
-internal val TahoSurfaceRowHover = Color.White.copy(alpha = .055f)
-internal val TahoSurfaceControl = Color.White.copy(alpha = .035f)
+private val TahoIsAmoled: Boolean
+    get() = TahoBrowserStateStore.settings.themeMode == TahoThemeMode.AMOLED
+
+internal val TahoBg: Color
+    get() = when {
+        TahoIsLight -> Color(0xFFFFFFFF)
+        TahoIsAmoled -> Color(0xFF000000)
+        else -> Color(0xFF111315)
+    }
+
+internal val TahoSheet: Color
+    get() = when {
+        TahoIsLight -> Color(0xFFF7F7F7)
+        TahoIsAmoled -> Color(0xFF050505)
+        else -> Color(0xFF191C1F)
+    }
+
+// Legacy semantic token names intentionally resolve to grayscale so every surface
+// remains monochromatic across Dark, Light and AMOLED modes.
+internal val TahoGold: Color get() = if (TahoIsLight) Color.Black else Color.White
+internal val TahoGoldHi: Color get() = if (TahoIsLight) Color(0xFF111111) else Color(0xFFF7F7F7)
+internal val TahoText: Color get() = if (TahoIsLight) Color(0xFF111111) else Color(0xFFF5F5F5)
+internal val TahoMuted: Color get() = if (TahoIsLight) Color(0xFF5F5F5F) else Color(0xFFB0B0B0)
+internal val TahoFaint: Color get() = if (TahoIsLight) Color(0xFF7A7A7A) else Color(0xFF7E7E7E)
+internal val TahoOk: Color get() = TahoText
+internal val TahoWarn: Color get() = TahoMuted
+internal val TahoInfo: Color get() = TahoText
+internal val TahoError: Color get() = TahoText
+internal val TahoNeutral: Color get() = TahoMuted
+internal val TahoJsonNum: Color get() = TahoMuted
+
+internal val TahoHairline: Color
+    get() = if (TahoIsLight) Color.Black.copy(alpha = .10f) else Color.White.copy(alpha = .08f)
+internal val TahoHairlineStrong: Color
+    get() = if (TahoIsLight) Color.Black.copy(alpha = .16f) else Color.White.copy(alpha = .14f)
+internal val TahoSurfaceRow: Color
+    get() = if (TahoIsLight) Color.Black.copy(alpha = .035f) else Color.White.copy(alpha = .028f)
+internal val TahoSurfaceRowHover: Color
+    get() = if (TahoIsLight) Color.Black.copy(alpha = .065f) else Color.White.copy(alpha = .055f)
+internal val TahoSurfaceControl: Color
+    get() = if (TahoIsLight) Color.Black.copy(alpha = .05f) else Color.White.copy(alpha = .045f)
 
 // ---------- typography (spec §2.2) ----------
 internal val TahoMono = FontFamily(
@@ -93,8 +125,15 @@ internal val TahoSheetShape = RoundedCornerShape(26.dp)
 internal val TahoCardShape = RoundedCornerShape(16.dp)
 internal val TahoBlockShape = RoundedCornerShape(14.dp)
 internal val TahoNoteShape = RoundedCornerShape(12.dp)
+internal val TahoChromeShape = RoundedCornerShape(24.dp)
+internal val TahoPopupShape = RoundedCornerShape(18.dp)
 internal val TahoPillShape = RoundedCornerShape(999.dp)
 internal val TahoBadgeShape = RoundedCornerShape(6.dp)
+
+internal val TahoToolbarOuterPadding = 12.dp
+internal val TahoToolbarVerticalPadding = 8.dp
+internal val TahoToolbarVisualHeight = 54.dp
+internal val TahoTouchTarget = 48.dp
 
 // ---------- motion (spec §2.6 / §15) ----------
 internal val TahoEasing = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
@@ -123,6 +162,15 @@ internal fun TahoReducedMotion(): Boolean {
  * entry, matching the prototype (the pill is quiet until an event lands).
  * Disabled under reduced motion.
  */
+internal fun Modifier.tahoElevated(
+    shape: Shape,
+    elevation: Dp = 10.dp,
+): Modifier = shadow(
+    elevation = elevation,
+    shape = shape,
+    clip = false,
+)
+
 @Composable
 internal fun Modifier.tahoPulse(trigger: Any?): Modifier {
     val reduced = TahoReducedMotion()
@@ -226,25 +274,48 @@ internal fun TahoStatusDot(color: Color, modifier: Modifier = Modifier, glow: Bo
 }
 
 // ---------- theme ----------
-private val TahoColorScheme = darkColorScheme(
-    background = TahoBg,
-    surface = TahoSheet,
-    primary = TahoGold,
-    onPrimary = TahoBg,
-    primaryContainer = TahoGold.copy(alpha = .16f),
-    onPrimaryContainer = TahoGoldHi,
-    secondary = TahoGoldHi,
-    onSecondary = TahoBg,
-    tertiary = TahoInfo,
-    error = TahoError,
-    onError = TahoBg,
-    onBackground = TahoText,
-    onSurface = TahoText,
-    onSurfaceVariant = TahoMuted,
-    outline = TahoHairlineStrong,
-    outlineVariant = TahoHairline,
-    scrim = Color.Black.copy(alpha = .5f),
-)
+private val TahoColorScheme
+    get() = if (TahoIsLight) {
+        lightColorScheme(
+            background = TahoBg,
+            surface = TahoSheet,
+            primary = TahoGold,
+            onPrimary = TahoBg,
+            primaryContainer = TahoSurfaceControl,
+            onPrimaryContainer = TahoText,
+            secondary = TahoGoldHi,
+            onSecondary = TahoBg,
+            tertiary = TahoInfo,
+            error = TahoError,
+            onError = TahoBg,
+            onBackground = TahoText,
+            onSurface = TahoText,
+            onSurfaceVariant = TahoMuted,
+            outline = TahoHairlineStrong,
+            outlineVariant = TahoHairline,
+            scrim = Color.Black.copy(alpha = .42f),
+        )
+    } else {
+        darkColorScheme(
+            background = TahoBg,
+            surface = TahoSheet,
+            primary = TahoGold,
+            onPrimary = TahoBg,
+            primaryContainer = TahoSurfaceControl,
+            onPrimaryContainer = TahoText,
+            secondary = TahoGoldHi,
+            onSecondary = TahoBg,
+            tertiary = TahoInfo,
+            error = TahoError,
+            onError = TahoBg,
+            onBackground = TahoText,
+            onSurface = TahoText,
+            onSurfaceVariant = TahoMuted,
+            outline = TahoHairlineStrong,
+            outlineVariant = TahoHairline,
+            scrim = Color.Black.copy(alpha = .55f),
+        )
+    }
 
 private val TahoTypography = Typography(
     displaySmall = TextStyle(fontFamily = TahoDisplay, fontWeight = FontWeight.SemiBold, fontSize = 19.sp),

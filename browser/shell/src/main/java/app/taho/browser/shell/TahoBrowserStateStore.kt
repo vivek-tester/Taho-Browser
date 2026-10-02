@@ -11,12 +11,23 @@ object TahoBrowserStateStore {
     private var persistence: TahoBrowserPersistence? = null
     private var uiMetaPreferences: android.content.SharedPreferences? = null
 
+    var captureEnabled by mutableStateOf(false)
+        private set
+    var captureInBackground by mutableStateOf(true)
+        private set
+    var captureFloatingCharacterEnabled by mutableStateOf(true)
+        private set
+    var captureAnimationStyle by mutableStateOf("Subtle")
+        private set
+    var captureDefaultPosition by mutableStateOf("Right side")
+        private set
+
     var settings by mutableStateOf(BrowserSettingsState())
 
     var searchEngines by mutableStateOf(
         listOf(
-            SearchEngineItem("duckduckgo", "DuckDuckGo", "https://duckduckgo.com/?q=%s", "⌕", isDefault = true),
-            SearchEngineItem("google", "Google", "https://www.google.com/search?q=%s", "G"),
+            SearchEngineItem("duckduckgo", "DuckDuckGo", "https://duckduckgo.com/?q=%s", "D"),
+            SearchEngineItem("google", "Google", "https://www.google.com/search?q=%s", "G", isDefault = true),
             SearchEngineItem("brave", "Brave Search", "https://search.brave.com/search?q=%s", "B"),
             SearchEngineItem("bing", "Bing", "https://www.bing.com/search?q=%s", "b"),
             SearchEngineItem("ecosia", "Ecosia", "https://www.ecosia.org/search?q=%s", "E"),
@@ -73,6 +84,21 @@ object TahoBrowserStateStore {
             "taho_browser_ui_meta",
             Context.MODE_PRIVATE,
         )
+        captureEnabled = uiMetaPreferences
+            ?.getBoolean("capture_enabled", false)
+            ?: false
+        captureInBackground = uiMetaPreferences
+            ?.getBoolean("capture_in_background", true)
+            ?: true
+        captureFloatingCharacterEnabled = uiMetaPreferences
+            ?.getBoolean("capture_floating_character", true)
+            ?: true
+        captureAnimationStyle = uiMetaPreferences
+            ?.getString("capture_animation_style", "Subtle")
+            ?: "Subtle"
+        captureDefaultPosition = uiMetaPreferences
+            ?.getString("capture_default_position", "Right side")
+            ?: "Right side"
         pinnedTabIds = uiMetaPreferences
             ?.getStringSet("pinned_tab_ids", emptySet())
             ?.toSet()
@@ -152,8 +178,8 @@ object TahoBrowserStateStore {
         persistence = null
         settings = BrowserSettingsState()
         searchEngines = listOf(
-            SearchEngineItem("duckduckgo", "DuckDuckGo", "https://duckduckgo.com/?q=%s", "⌕", isDefault = true),
-            SearchEngineItem("google", "Google", "https://www.google.com/search?q=%s", "G"),
+            SearchEngineItem("duckduckgo", "DuckDuckGo", "https://duckduckgo.com/?q=%s", "D"),
+            SearchEngineItem("google", "Google", "https://www.google.com/search?q=%s", "G", isDefault = true),
             SearchEngineItem("brave", "Brave Search", "https://search.brave.com/search?q=%s", "B"),
             SearchEngineItem("bing", "Bing", "https://www.bing.com/search?q=%s", "b"),
             SearchEngineItem("ecosia", "Ecosia", "https://www.ecosia.org/search?q=%s", "E"),
@@ -181,6 +207,7 @@ object TahoBrowserStateStore {
         syncedDevices = emptyList()
         tabGroups = emptyList()
         pinnedTabIds = emptySet()
+        captureEnabled = false
         uiMetaPreferences = null
         sitePermissions = emptyList()
         siteData = emptyList()
@@ -194,6 +221,46 @@ object TahoBrowserStateStore {
     }
 
     // --- State mutation helpers ---
+    fun updateCaptureEnabled(enabled: Boolean) {
+        captureEnabled = enabled
+        uiMetaPreferences
+            ?.edit()
+            ?.putBoolean("capture_enabled", enabled)
+            ?.apply()
+    }
+
+    fun updateCaptureInBackground(enabled: Boolean) {
+        captureInBackground = enabled
+        uiMetaPreferences
+            ?.edit()
+            ?.putBoolean("capture_in_background", enabled)
+            ?.apply()
+    }
+
+    fun updateCaptureFloatingCharacterEnabled(enabled: Boolean) {
+        captureFloatingCharacterEnabled = enabled
+        uiMetaPreferences
+            ?.edit()
+            ?.putBoolean("capture_floating_character", enabled)
+            ?.apply()
+    }
+
+    fun updateCaptureAnimationStyle(value: String) {
+        captureAnimationStyle = value
+        uiMetaPreferences
+            ?.edit()
+            ?.putString("capture_animation_style", value)
+            ?.apply()
+    }
+
+    fun updateCaptureDefaultPosition(value: String) {
+        captureDefaultPosition = value
+        uiMetaPreferences
+            ?.edit()
+            ?.putString("capture_default_position", value)
+            ?.apply()
+    }
+
     fun updateSettings(updater: (BrowserSettingsState) -> BrowserSettingsState) {
         settings = updater(settings)
     }
