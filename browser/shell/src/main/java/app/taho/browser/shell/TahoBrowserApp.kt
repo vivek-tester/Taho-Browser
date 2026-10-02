@@ -265,7 +265,7 @@ fun TahoBrowserApp(
     val density = LocalDensity.current
     val topSystemInset = with(density) { WindowInsets.statusBars.getTop(this).toDp() }
     val bottomSystemInset = with(density) { WindowInsets.navigationBars.getBottom(this).toDp() }
-    val toolbarReserve = 64.dp
+    val toolbarReserve = 72.dp
 
     val selectedCapture = state.captureRequests.firstOrNull { it.id == selectedCaptureId }
     val darkSystemChromeVisible =
@@ -549,9 +549,13 @@ fun TahoBrowserApp(
                     .fillMaxWidth(
                         if (showDevToolsPanel && phase3DevToolsMode == Phase3DevToolsMode.SIDE) .42f else 1f,
                     )
-                    .background(TahoSheet)
                     .then(if (isTopToolbar) Modifier.statusBarsPadding() else Modifier.navigationBarsPadding())
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = TahoToolbarOuterPadding, vertical = TahoToolbarVerticalPadding)
+                    .tahoElevated(TahoChromeShape, elevation = 9.dp)
+                    .clip(TahoChromeShape)
+                    .background(TahoSheet)
+                    .border(1.dp, TahoHairlineStrong, TahoChromeShape)
+                    .padding(horizontal = 6.dp, vertical = 3.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 if (!isStartPage && isTopToolbar) {
@@ -1368,9 +1372,10 @@ fun TahoBrowserApp(
                         bottom = if (isTopToolbar) 12.dp else 68.dp,
                     )
                     .widthIn(min = 292.dp, max = 332.dp)
-                    .clip(RoundedCornerShape(18.dp))
+                    .tahoElevated(TahoPopupShape, elevation = 18.dp)
+                    .clip(TahoPopupShape)
                     .background(TahoSheet)
-                    .border(1.dp, TahoHairlineStrong, RoundedCornerShape(18.dp))
+                    .border(1.dp, TahoHairlineStrong, TahoPopupShape)
                     .clickable(
                         indication = null,
                         interactionSource = remember { MutableInteractionSource() },
@@ -1808,9 +1813,10 @@ private fun TahoFloatingCaptureCompanion(
             Box(
                 modifier = Modifier
                     .size(visualSize)
+                    .tahoElevated(RoundedCornerShape(14.dp), elevation = 8.dp)
                     .clip(RoundedCornerShape(14.dp))
                     .background(Color(0xFF07111B).copy(alpha = .97f))
-                    .border(1.dp, Color(0xFF21D4FD).copy(alpha = .55f), RoundedCornerShape(14.dp)),
+                    .border(1.dp, Color(0xFF21D4FD).copy(alpha = .68f), RoundedCornerShape(14.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 TahoCaptureMascot()
@@ -1841,27 +1847,83 @@ private fun TahoFloatingCaptureCompanion(
 
 @Composable
 private fun TahoCaptureMascot() {
-    Canvas(modifier = Modifier.size(30.dp)) {
-        val line = 1.6.dp.toPx()
-        val faceWidth = size.width * 0.66f
-        val faceHeight = size.height * 0.46f
-        val faceLeft = (size.width - faceWidth) / 2f
-        val faceTop = size.height * 0.10f
-        drawRoundRect(
-            color = TahoText,
-            topLeft = Offset(faceLeft, faceTop),
-            size = Size(faceWidth, faceHeight),
-            cornerRadius = CornerRadius(6.dp.toPx(), 6.dp.toPx()),
-            style = Stroke(width = line),
+    Canvas(modifier = Modifier.size(31.dp)) {
+        val outline = 1.2.dp.toPx()
+        val cyan = Color(0xFF45D9FF)
+        val shell = Color(0xFF2A3744)
+        val shellHi = Color(0xFF536474)
+        val dark = Color(0xFF07111B)
+
+        // Antenna and halo-like head ring from the approved floating robot mockup.
+        drawLine(
+            color = shellHi,
+            start = Offset(size.width * .50f, size.height * .05f),
+            end = Offset(size.width * .50f, size.height * .13f),
+            strokeWidth = outline,
         )
-        drawCircle(TahoText, 1.5.dp.toPx(), Offset(size.width * 0.41f, size.height * 0.30f))
-        drawCircle(TahoText, 1.5.dp.toPx(), Offset(size.width * 0.59f, size.height * 0.30f))
-        drawLine(TahoText, Offset(size.width * 0.42f, size.height * 0.43f), Offset(size.width * 0.58f, size.height * 0.43f), line)
-        drawLine(TahoText, Offset(size.width * 0.50f, size.height * 0.57f), Offset(size.width * 0.50f, size.height * 0.78f), line)
-        drawLine(TahoText, Offset(size.width * 0.50f, size.height * 0.64f), Offset(size.width * 0.27f, size.height * 0.72f), line)
-        drawLine(TahoText, Offset(size.width * 0.50f, size.height * 0.64f), Offset(size.width * 0.73f, size.height * 0.72f), line)
-        drawLine(TahoText, Offset(size.width * 0.50f, size.height * 0.78f), Offset(size.width * 0.36f, size.height * 0.94f), line)
-        drawLine(TahoText, Offset(size.width * 0.50f, size.height * 0.78f), Offset(size.width * 0.64f, size.height * 0.94f), line)
+        drawCircle(
+            color = cyan,
+            radius = size.width * .035f,
+            center = Offset(size.width * .50f, size.height * .045f),
+        )
+
+        val headLeft = size.width * .18f
+        val headTop = size.height * .13f
+        val headWidth = size.width * .64f
+        val headHeight = size.height * .39f
+        drawRoundRect(
+            color = shell,
+            topLeft = Offset(headLeft, headTop),
+            size = Size(headWidth, headHeight),
+            cornerRadius = CornerRadius(size.width * .15f, size.width * .15f),
+        )
+        drawRoundRect(
+            color = shellHi,
+            topLeft = Offset(headLeft, headTop),
+            size = Size(headWidth, headHeight),
+            cornerRadius = CornerRadius(size.width * .15f, size.width * .15f),
+            style = Stroke(width = outline),
+        )
+        drawRoundRect(
+            color = dark,
+            topLeft = Offset(size.width * .25f, size.height * .20f),
+            size = Size(size.width * .50f, size.height * .23f),
+            cornerRadius = CornerRadius(size.width * .10f, size.width * .10f),
+        )
+        drawCircle(cyan, size.width * .035f, Offset(size.width * .41f, size.height * .315f))
+        drawCircle(cyan, size.width * .035f, Offset(size.width * .59f, size.height * .315f))
+        drawLine(
+            color = cyan.copy(alpha = .72f),
+            start = Offset(size.width * .45f, size.height * .39f),
+            end = Offset(size.width * .55f, size.height * .39f),
+            strokeWidth = .9.dp.toPx(),
+        )
+
+        // Compact armored body and limbs.
+        drawRoundRect(
+            color = shell,
+            topLeft = Offset(size.width * .31f, size.height * .54f),
+            size = Size(size.width * .38f, size.height * .26f),
+            cornerRadius = CornerRadius(size.width * .09f, size.width * .09f),
+        )
+        drawRoundRect(
+            color = shellHi,
+            topLeft = Offset(size.width * .31f, size.height * .54f),
+            size = Size(size.width * .38f, size.height * .26f),
+            cornerRadius = CornerRadius(size.width * .09f, size.width * .09f),
+            style = Stroke(width = outline),
+        )
+        drawCircle(
+            color = cyan.copy(alpha = .88f),
+            radius = size.width * .035f,
+            center = Offset(size.width * .50f, size.height * .66f),
+        )
+        drawLine(shellHi, Offset(size.width * .31f, size.height * .61f), Offset(size.width * .16f, size.height * .72f), outline)
+        drawLine(shellHi, Offset(size.width * .69f, size.height * .61f), Offset(size.width * .84f, size.height * .72f), outline)
+        drawLine(shellHi, Offset(size.width * .41f, size.height * .79f), Offset(size.width * .34f, size.height * .94f), outline)
+        drawLine(shellHi, Offset(size.width * .59f, size.height * .79f), Offset(size.width * .66f, size.height * .94f), outline)
+        drawCircle(shellHi, size.width * .055f, Offset(size.width * .14f, size.height * .74f))
+        drawCircle(shellHi, size.width * .055f, Offset(size.width * .86f, size.height * .74f))
     }
 }
 
