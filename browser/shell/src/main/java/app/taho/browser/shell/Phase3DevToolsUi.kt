@@ -17,8 +17,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -104,7 +106,12 @@ internal fun Phase3DevToolsHub(
     onDismiss: () -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxSize().background(D3Bg).padding(horizontal = 14.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(D3Bg)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(horizontal = 14.dp),
     ) {
         Phase3Header(
             title = "Developer tools",
@@ -112,7 +119,9 @@ internal fun Phase3DevToolsHub(
             onClose = onDismiss,
         )
         Row(
-            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(D3Surface)
+            modifier = Modifier.fillMaxWidth()
+                .tahoElevated(RoundedCornerShape(14.dp), elevation = 8.dp)
+                .clip(RoundedCornerShape(14.dp)).background(D3Surface)
                 .border(1.dp, if (enabled) D3Blue.copy(alpha = .5f) else D3Border, RoundedCornerShape(14.dp))
                 .padding(horizontal = 14.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -187,6 +196,7 @@ internal fun Phase3DevToolsHub(
             ).forEach { panel ->
                 Column(
                     modifier = Modifier.widthIn(min = 104.dp).height(62.dp)
+                        .tahoElevated(RoundedCornerShape(12.dp), elevation = 4.dp)
                         .clip(RoundedCornerShape(12.dp)).background(D3Surface)
                         .border(1.dp, D3Border, RoundedCornerShape(12.dp))
                         .clickable(enabled = enabled) { onOpenPanel(panel) }
@@ -210,7 +220,9 @@ private fun Phase3ModeCard(
     onClick: () -> Unit,
 ) {
     Column(
-        modifier = modifier.height(70.dp).clip(RoundedCornerShape(12.dp))
+        modifier = modifier.height(70.dp)
+            .tahoElevated(RoundedCornerShape(12.dp), elevation = if (selected) 7.dp else 3.dp)
+            .clip(RoundedCornerShape(12.dp))
             .background(if (selected) D3Blue.copy(alpha = .14f) else D3Surface)
             .border(1.dp, if (selected) D3Blue else D3Border, RoundedCornerShape(12.dp))
             .clickable(enabled = enabled, onClick = onClick).padding(10.dp),
@@ -285,7 +297,7 @@ internal fun Phase3DevToolsPanelSurface(
             .border(1.dp, D3Border, RoundedCornerShape(if (mode == Phase3DevToolsMode.FULLSCREEN) 0.dp else 14.dp)),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().height(48.dp).background(D3Surface)
+            modifier = Modifier.fillMaxWidth().height(50.dp).background(D3Surface)
                 .then(
                     when (mode) {
                         Phase3DevToolsMode.FLOATING -> Modifier.pointerInput(mode) {
@@ -350,7 +362,7 @@ internal fun Phase3DevToolsPanelSurface(
             Phase3DevToolsPanel.entries.forEach { item ->
                 val selected = item == panel
                 Column(
-                    modifier = Modifier.clickable(enabled = enabled) { onPanelChange(item) }.padding(horizontal = 10.dp, vertical = 7.dp),
+                    modifier = Modifier.clickable(enabled = enabled) { onPanelChange(item) }.padding(horizontal = 11.dp, vertical = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(item.label, color = if (selected) D3Text else D3Muted, fontFamily = TahoBody, fontSize = 10.5.sp)
