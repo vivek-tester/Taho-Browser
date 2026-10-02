@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -161,7 +162,6 @@ internal fun TahoReducedMotion(): Boolean {
  * entry, matching the prototype (the pill is quiet until an event lands).
  * Disabled under reduced motion.
  */
-@Composable
 internal fun Modifier.tahoElevated(
     shape: Shape,
     elevation: Dp = 10.dp,
@@ -171,6 +171,7 @@ internal fun Modifier.tahoElevated(
     clip = false,
 )
 
+@Composable
 internal fun Modifier.tahoPulse(trigger: Any?): Modifier {
     val reduced = TahoReducedMotion()
     val scale = remember { Animatable(1f) }
