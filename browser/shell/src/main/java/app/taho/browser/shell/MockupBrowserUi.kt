@@ -1,5 +1,6 @@
 package app.taho.browser.shell
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -412,8 +413,10 @@ internal fun TahoMockupToolbar(
                 modifier = Modifier
                     .weight(1f)
                     .heightIn(min = 46.dp)
+                    .tahoElevated(TahoPillShape, elevation = 3.dp)
                     .clip(TahoPillShape)
                     .background(MockupControl)
+                    .border(1.dp, TahoHairlineStrong, TahoPillShape)
                     .clickable(enabled = !editing, onClick = onBeginEdit)
                     .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -500,8 +503,11 @@ internal fun TahoMockupToolbar(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .animateContentSize()
+                    .tahoElevated(RoundedCornerShape(14.dp), elevation = 8.dp)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(MockupChromeElevated),
+                    .background(MockupChromeElevated)
+                    .border(1.dp, TahoHairlineStrong, RoundedCornerShape(14.dp)),
             ) {
                 localSuggestions.forEach { (title, url) ->
                     Row(
