@@ -403,6 +403,14 @@ internal fun TahoMockupToolbar(
             Spacer(Modifier.height(4.dp))
         }
 
+        if (isBottom && editing && draft.isNotBlank()) {
+            MockupToolbarSuggestions(
+                draft = draft,
+                onSuggestionSelected = onSuggestionSelected,
+            )
+            Spacer(Modifier.height(6.dp))
+        }
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -475,13 +483,6 @@ internal fun TahoMockupToolbar(
             TahoMockupMenuButton(onMenuClick)
         }
 
-        if (isBottom && editing && draft.isNotBlank()) {
-            Spacer(Modifier.height(6.dp))
-            MockupToolbarSuggestions(
-                draft = draft,
-                onSuggestionSelected = onSuggestionSelected,
-            )
-        }
         if (!isBottom && editing && draft.isNotBlank()) {
             Spacer(Modifier.height(6.dp))
             MockupToolbarSuggestions(
