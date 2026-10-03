@@ -433,6 +433,7 @@ class TahoFeaturesTest {
         assertEquals(Color(0xFF1A1F25), raised)   // raised
         assertEquals(Color(0xFF040607), well)     // well
         assertEquals(Color(0xFFEDF0F3), ink)      // ink
+        assertEquals(Color(0xFFBCC5CE), body)     // body — must also be referenced by name in the contrast test
         assertEquals(Color(0xFF95A0AC), charcoal) // charcoal
         assertEquals(Color(0xFF828D99), mute)     // mute
         assertEquals(Color(0xFF666F7A), ash)      // ash — non-text only
@@ -452,7 +453,7 @@ class TahoFeaturesTest {
     fun everyTextTierClearsWcagAaOnEverySurfaceItSitsOn() {
         val textTiers = mapOf(
             "ink" to ink,
-            "body" to Color(0xFFBCC5CE),
+            "body" to body,
             "charcoal" to charcoal,
             "mute" to mute,
         )
@@ -463,6 +464,10 @@ class TahoFeaturesTest {
             "raised" to raised,
             "well" to well,
         )
+        // Tripwires: dropping a tier or a surface would otherwise shrink the loop
+        // and the emptyList() assertion would still pass vacuously.
+        assertEquals(4, textTiers.size, "a text tier was dropped from the guard")
+        assertEquals(5, surfaces.size, "a surface was dropped from the guard")
         val offenders = mutableListOf<String>()
         for ((tn, tf) in textTiers) {
             for ((sn, sf) in surfaces) {

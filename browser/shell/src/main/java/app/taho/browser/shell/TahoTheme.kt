@@ -45,13 +45,20 @@ import androidx.compose.ui.unit.sp
 import app.taho.browser.shell.R
 
 /*
- * Taho design tokens — extracted 1:1 from Doc/TAHO_BROWSER_UI_UX_SPEC.md §2/§15
- * (source of truth: TAHO_BROWSER_UI_PROTOTYPE.html).
+ * Taho design tokens — the NeedMCP `tactical-ops-console` direction (dark field).
+ *
+ * Colours, type, shape and motion are defined here and nowhere else. Plan 5
+ * makes this file the visual source of truth for the shell; the human-readable
+ * mirror is Doc/TAHO_BROWSER_UI_UX_SPEC.md §2.
+ *
+ * Approved spec: docs/superpowers/specs/2026-10-03-tactical-console-port-design.md.
+ * TAHO_BROWSER_UI_PROTOTYPE.html is superseded and retained for history only.
  */
 
 // ---------- colour (spec §2.1 — tactical-ops-console, dark field) ----------
-// Depth is luminance-stepped. No hue is cast on any panel; the only chromatic
-// accent is amber, reserved for the armed state and the primary action.
+// Depth is luminance-stepped; no hue is cast on any panel. The only chromatic
+// accent on an interactive control is amber, reserved for the armed state and
+// the primary action — tertiary/info, ok and danger are state encodings only.
 internal val canvas = Color(0xFF080A0D)
 internal val bone = Color(0xFF0E1216)
 internal val panel = Color(0xFF12161A)
@@ -63,10 +70,10 @@ internal val body = Color(0xFFBCC5CE)
 internal val charcoal = Color(0xFF95A0AC)
 internal val mute = Color(0xFF828D99)
 
-/** Non-text marks only — chevrons, rest-state icon strokes, rules. Fails 4.5:1. */
+/** Non-text marks only — chevrons, rest-state icon strokes, rules. Fails 4.5:1. See spec §4.4. */
 internal val ash = Color(0xFF666F7A)
 
-/** Disabled text only. WCAG 1.4.3 exempts disabled controls; nothing else may use it. */
+/** Disabled text only. WCAG 1.4.3 exempts disabled controls; nothing else may use it. See spec §4.4. */
 internal val stone = Color(0xFF4F5861)
 
 // The Single Amber Rule. Also carries warning state — every warning surface
@@ -75,6 +82,13 @@ internal val stone = Color(0xFF4F5861)
 internal val amber = Color(0xFFE8AE55)
 internal val amberHover = Color(0xFFEFC06C)
 internal val amberDeep = Color(0xFFD89A3C)
+
+/**
+ * Retained legacy name for call sites that read as warnings. Aliases [amber]
+ * because the style gives amber to both the primary action and warning state;
+ * every warning surface must also carry a tag and a 4dp bar (WCAG 1.4.1).
+ * See spec §4.2.
+ */
 internal val TahoWarn = amber
 
 internal val ok = Color(0xFF5BC088)
@@ -83,6 +97,9 @@ internal val danger = Color(0xFFD96A5E)
 
 internal val hairline = Color(0xFF1E242B)
 internal val hairlineStrong = Color(0xFF2C343C)
+
+/** Dimming veil behind modals and sheets — the one non-token value in the scheme. */
+internal val scrim = Color.Black.copy(alpha = .72f)
 
 // ---------- typography (spec §2.2) ----------
 internal val TahoMono = FontFamily(
@@ -257,7 +274,7 @@ private val TahoColorScheme = darkColorScheme(
     onSurfaceVariant = mute,
     outline = hairlineStrong,
     outlineVariant = hairline,
-    scrim = Color.Black.copy(alpha = .72f),
+    scrim = scrim,
 )
 
 private val TahoTypography = Typography(
