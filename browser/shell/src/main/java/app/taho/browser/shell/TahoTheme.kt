@@ -3,12 +3,8 @@ package app.taho.browser.shell
 import android.provider.Settings
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -16,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +30,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
@@ -70,7 +68,7 @@ internal val body = Color(0xFFBCC5CE)
 internal val charcoal = Color(0xFF95A0AC)
 internal val mute = Color(0xFF828D99)
 
-/** Non-text marks only — chevrons, rest-state icon strokes, rules. Fails 4.5:1. See spec §4.4. */
+/** Non-text marks only — chevrons, rest-state icon strokes, rules. Fails 4.5:1. See spec §4.1. */
 internal val ash = Color(0xFF666F7A)
 
 /** Disabled text only. WCAG 1.4.3 exempts disabled controls; nothing else may use it. See spec §4.1. */
@@ -102,38 +100,38 @@ internal val hairlineStrong = Color(0xFF2C343C)
 internal val scrim = Color.Black.copy(alpha = .72f)
 
 // ---------- typography (spec §2.2) ----------
+// Two registers, not three. Archivo carries display, heading and body;
+// JetBrains Mono carries every metric, identifier, timestamp and label value.
 internal val TahoMono = FontFamily(
     Font(R.font.jetbrains_mono_regular, FontWeight.Normal),
     Font(R.font.jetbrains_mono_medium, FontWeight.Medium),
     Font(R.font.jetbrains_mono_semibold, FontWeight.SemiBold),
 )
 
-internal val TahoDisplay = FontFamily(
-    Font(R.font.clash_display_medium, FontWeight.Medium),
-    Font(R.font.clash_display_semibold, FontWeight.SemiBold),
-)
-
 internal val TahoBody = FontFamily(
-    Font(R.font.general_sans_regular, FontWeight.Normal),
-    Font(R.font.general_sans_medium, FontWeight.Medium),
-    Font(R.font.general_sans_semibold, FontWeight.SemiBold),
+    Font(R.font.archivo_regular, FontWeight.Normal),
+    Font(R.font.archivo_medium, FontWeight.Medium),
+    Font(R.font.archivo_semibold, FontWeight.SemiBold),
+    Font(R.font.archivo_bold, FontWeight.Bold),
 )
 
 // ---------- shape (spec §2.3) ----------
-internal val TahoSheetShape = RoundedCornerShape(26.dp)
-internal val TahoCardShape = RoundedCornerShape(16.dp)
-internal val TahoBlockShape = RoundedCornerShape(14.dp)
-internal val TahoNoteShape = RoundedCornerShape(12.dp)
+// Machined, not inflated: panels and tables hold at 0, controls at 2dp, and the
+// pill is reserved for tags, switches and progress.
+internal val TahoSheetShape = RoundedCornerShape(0.dp)
+internal val TahoCardShape = RoundedCornerShape(0.dp)
+internal val TahoBlockShape = RoundedCornerShape(2.dp)
+internal val TahoNoteShape = RoundedCornerShape(2.dp)
 internal val TahoPillShape = RoundedCornerShape(999.dp)
-internal val TahoBadgeShape = RoundedCornerShape(6.dp)
+internal val TahoBadgeShape = RoundedCornerShape(4.dp)
 
 // ---------- motion (spec §2.6 / §15) ----------
-internal val TahoEasing = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
+internal val TahoEasing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
 internal val TahoSpringEasing = CubicBezierEasing(0.34f, 1.4f, 0.44f, 1f)
 
-internal const val TahoDurationScreen = 600
-internal const val TahoDurationSheet = 750
-internal const val TahoDurationVeil = 550
+internal const val TahoDurationScreen = 300
+internal const val TahoDurationSheet = 300
+internal const val TahoDurationVeil = 200
 
 /** True when the user has disabled system animations (animator scale 0). */
 @Composable
@@ -149,7 +147,8 @@ internal fun TahoReducedMotion(): Boolean {
 }
 
 /**
- * Spec §15/A1 — capture-pill content pulse: scale 1 → 1.07 @35% → 1 over 800ms.
+ * Spec §15/A1 — capture-pill content pulse: scale 1 → 1.07 → 1, split 120/180 so
+ * the whole beat closes inside one [TahoDurationScreen] transition.
  * Plays only when [trigger] *changes* after initial composition — never on first
  * entry, matching the prototype (the pill is quiet until an event lands).
  * Disabled under reduced motion.
@@ -170,8 +169,8 @@ internal fun Modifier.tahoPulse(trigger: Any?): Modifier {
             return@LaunchedEffect
         }
         scale.snapTo(1f)
-        scale.animateTo(1.07f, tween(280, easing = TahoSpringEasing))
-        scale.animateTo(1f, tween(520, easing = TahoEasing))
+        scale.animateTo(1.07f, tween(120, easing = TahoSpringEasing))
+        scale.animateTo(1f, tween(180, easing = TahoEasing))
     }
     return graphicsLayer {
         scaleX = scale.value
@@ -204,32 +203,44 @@ internal fun Modifier.tahoPressScale(
     }
 }
 
-/** Spec §15/F1 — handoff ring pulse: expanding, fading outline over 1.6s. */
+/**
+ * Spec §15/A1 — the Single Amber Rule made physical: four 1dp corner ticks that
+ * draw in when [trigger] changes. This is the only authored entrance motion in
+ * the shell; nothing else animates on arrival.
+ *
+ * Ticks are absolutely positioned inside a `Box` scoped to the focused panel, so
+ * the composable imposes no layout of its own. Fully suppressed under reduced
+ * motion, where it snaps straight to the armed state.
+ */
 @Composable
-internal fun TahoRingPulse(color: Color, modifier: Modifier = Modifier) {
+internal fun TahoReticle(trigger: Any?, modifier: Modifier = Modifier) {
     val reduced = TahoReducedMotion()
-    val transition = rememberInfiniteTransition(label = "tahoRing")
-    val progress by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1600, easing = LinearOutSlowInEasing),
-        ),
-        label = "ringProgress",
+    var seenFirst by remember { mutableStateOf(false) }
+    var armed by remember { mutableStateOf(false) }
+
+    LaunchedEffect(trigger, reduced) {
+        if (!seenFirst) { seenFirst = true; return@LaunchedEffect }
+        if (reduced) { armed = true; return@LaunchedEffect }
+        armed = false
+        armed = true
+    }
+
+    val len by animateFloatAsState(
+        targetValue = if (armed) 11f else 0f,
+        animationSpec = tween(if (reduced) 0 else 220, easing = TahoEasing),
+        label = "reticle",
     )
-    Canvas(modifier = modifier) {
-        val radius = size.minDimension / 2f
-        drawCircle(
-            color = color,
-            radius = radius,
-            style = Stroke(width = 1.dp.toPx()),
-        )
-        if (!reduced) {
-            drawCircle(
-                color = color.copy(alpha = (1f - progress) * .65f),
-                radius = radius * (1f + progress * .7f),
-                style = Stroke(width = 1.dp.toPx()),
-            )
+
+    Box(modifier = modifier) {
+        Canvas(Modifier.fillMaxSize()) {
+            val t = 1.dp.toPx()
+            val p = Path()
+            p.moveTo(0f, t); p.lineTo(0f, 0f); p.lineTo(t, 0f)
+            p.moveTo(size.width - t, 0f); p.lineTo(size.width, 0f); p.lineTo(size.width, t)
+            p.moveTo(size.width, size.height - t); p.lineTo(size.width, size.height)
+            p.lineTo(size.width - t, size.height)
+            p.moveTo(t, size.height); p.lineTo(0f, size.height); p.lineTo(0f, size.height - t)
+            drawPath(p, color = amber, style = Stroke(width = t))
         }
     }
 }
@@ -278,13 +289,19 @@ private val TahoColorScheme = darkColorScheme(
 )
 
 private val TahoTypography = Typography(
-    displaySmall = TextStyle(fontFamily = TahoDisplay, fontWeight = FontWeight.SemiBold, fontSize = 19.sp),
-    titleMedium = TextStyle(fontFamily = TahoDisplay, fontWeight = FontWeight.Medium, fontSize = 18.sp),
-    titleSmall = TextStyle(fontFamily = TahoBody, fontWeight = FontWeight.Medium, fontSize = 15.sp),
+    displaySmall = TextStyle(fontFamily = TahoBody, fontWeight = FontWeight.Bold, fontSize = 19.sp),
+    titleMedium = TextStyle(fontFamily = TahoBody, fontWeight = FontWeight.SemiBold, fontSize = 18.sp),
+    titleSmall = TextStyle(fontFamily = TahoBody, fontWeight = FontWeight.SemiBold, fontSize = 15.sp),
     bodyMedium = TextStyle(fontFamily = TahoBody, fontWeight = FontWeight.Normal, fontSize = 13.sp),
     bodySmall = TextStyle(fontFamily = TahoBody, fontWeight = FontWeight.Normal, fontSize = 11.sp),
-    labelMedium = TextStyle(fontFamily = TahoMono, fontWeight = FontWeight.Normal, fontSize = 10.sp),
-    labelSmall = TextStyle(fontFamily = TahoMono, fontWeight = FontWeight.Normal, fontSize = 9.sp),
+    labelMedium = TextStyle(
+        fontFamily = TahoMono, fontWeight = FontWeight.Medium,
+        fontSize = 10.sp, letterSpacing = 0.8.sp,
+    ),
+    labelSmall = TextStyle(
+        fontFamily = TahoMono, fontWeight = FontWeight.Medium,
+        fontSize = 9.sp, letterSpacing = 0.72.sp,
+    ),
 )
 
 @Composable
