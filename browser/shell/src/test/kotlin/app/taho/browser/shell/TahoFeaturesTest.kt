@@ -446,6 +446,7 @@ class TahoFeaturesTest {
         assertEquals(Color(0xFFD96A5E), danger)
         assertEquals(Color(0xFF1E242B), hairline)
         assertEquals(Color(0xFF2C343C), hairlineStrong)
+        assertEquals(Color.Black.copy(alpha = .72f), scrim) // scrim — translucent veil, excluded from the contrast test
         assertEquals(amber, TahoWarn)
     }
 

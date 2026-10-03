@@ -73,7 +73,7 @@ internal val mute = Color(0xFF828D99)
 /** Non-text marks only — chevrons, rest-state icon strokes, rules. Fails 4.5:1. See spec §4.4. */
 internal val ash = Color(0xFF666F7A)
 
-/** Disabled text only. WCAG 1.4.3 exempts disabled controls; nothing else may use it. See spec §4.4. */
+/** Disabled text only. WCAG 1.4.3 exempts disabled controls; nothing else may use it. See spec §4.1. */
 internal val stone = Color(0xFF4F5861)
 
 // The Single Amber Rule. Also carries warning state — every warning surface
@@ -98,7 +98,7 @@ internal val danger = Color(0xFFD96A5E)
 internal val hairline = Color(0xFF1E242B)
 internal val hairlineStrong = Color(0xFF2C343C)
 
-/** Dimming veil behind modals and sheets — the one non-token value in the scheme. */
+/** Dimming veil behind modals and sheets. */
 internal val scrim = Color.Black.copy(alpha = .72f)
 
 // ---------- typography (spec §2.2) ----------
