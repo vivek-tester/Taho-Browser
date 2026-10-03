@@ -337,73 +337,47 @@ Delete `TahoRingPulse` and replace `tahoPulse`'s timing with the shortened scale
 
 ```kotlin
 /**
- * Spec §15/A1 — the Single Amber Rule made physical: four 1dp corner ticks that
- * draw in when [trigger] changes. This is the only authored entrance motion in
- * the shell; nothing else animates on arrival.
+ * Spec §15/A1 — the Single Amber Rule made physical: four corner ticks with a
+ * 1dp stroke and an 11dp arm that draw in when [trigger] changes. This is the
+ * only authored entrance motion in the shell; nothing else animates on arrival.
  *
- * Ticks are absolutely positioned inside a `Box` scoped to the focused panel, so
- * the composable imposes no layout of its own. Fully suppressed under reduced
- * motion, where it snaps straight to the armed state.
+ * Scoped to the focused panel via a `Box`, so the composable imposes no layout
+ * of its own. Under reduced motion it snaps straight to the armed state.
+ *
+ * `snapTo(0f)` before `animateTo(11f)` is load-bearing, not incidental: two
+ * synchronous writes to a plain `mutableStateOf` in one coroutine body are
+ * coalesced by Compose, so `armed` would never be observably `false` and the
+ * ticks would arm once and never re-arm. `Animatable`'s suspending mutations are
+ * sequential on the same `MutatorMutex`, so the reset is genuinely applied
+ * before the tween starts. This mirrors `tahoPulse` above.
  */
 @Composable
 internal fun TahoReticle(trigger: Any?, modifier: Modifier = Modifier) {
     val reduced = TahoReducedMotion()
     var seenFirst by remember { mutableStateOf(false) }
-    var armed by remember { mutableStateOf false }
+    val lenDp = remember { Animatable(0f) }
 
     LaunchedEffect(trigger, reduced) {
         if (!seenFirst) { seenFirst = true; return@LaunchedEffect }
-        if (reduced) { armed = true; return@LaunchedEffect }
-        armed = false
-        armed = true
+        if (reduced) { lenDp.snapTo(11f); return@LaunchedEffect }
+        lenDp.snapTo(0f)
+        lenDp.animateTo(11f, tween(220, easing = TahoEasing))
     }
-
-    val lenDp by animateFloatAsState(
-        targetValue = if (armed) 11f else 0f,
-        animationSpec = tween(if (reduced) 0 else 220, easing = TahoEasing),
-        label = "reticle",
-    )
 
     Box(modifier = modifier) {
-        val w = with(density) { len.dp.toPx() }
-        Canvas(Modifier.fillMaxSize()) {
+        Canvas(Modifier.fillMaxSize().clipToBounds()) {
             val t = 1.dp.toPx()
+            // The arm length is what animates, and it must be consumed here.
+            val arm = lenDp.value.dp.toPx()
             val p = Path()
-            // top-left
-            p.moveTo(0f, t); p.lineTo(0f, 0f); p.lineTo(t, 0f)
-            // top-right
-            p.moveTo(size.width - t, 0f); p.lineTo(size.width, 0f); p.lineTo(size.width, t)
-            // bottom-right
-            p.moveTo(size.width, size.height - t); p.lineTo(size.width, size.height)
-            p.lineTo(size.width - t, size.height)
-            // bottom-left
-            p.moveTo(t, size.height); p.lineTo(0f, size.height); p.lineTo(0f, size.height - t)
-            drawPath(p, color = amber, style = Stroke(width = t))
-            @Suppress("UNUSED_EXPRESSION") w
-        }
-    }
-}
-```
-
-Add the imports this needs: `androidx.compose.foundation.layout.fillMaxSize`, `androidx.compose.ui.graphics.Path`, and `androidx.compose.ui.graphics.drawscope.Stroke` (already imported). No `LocalDensity` import is required — the conversion happens inside the draw scope.
-
-**Write this version — the tick arm IS the animation:**
-
-```kotlin
-Box(modifier = modifier) {
-    Canvas(Modifier.fillMaxSize()) {
-        val t = 1.dp.toPx()
-        // The arm length is what animates. It must be consumed here.
-        val arm = lenDp.dp.toPx()
-        val p = Path()
-        p.moveTo(0f, arm); p.lineTo(0f, 0f); p.lineTo(arm, 0f)
-        p.moveTo(size.width - arm, 0f); p.lineTo(size.width, 0f)
-        p.lineTo(size.width, arm)
-        p.moveTo(size.width, size.height - arm); p.lineTo(size.width, size.height)
-        p.lineTo(size.width - arm, size.height)
-        p.moveTo(arm, size.height); p.lineTo(0f, size.height)
-        p.lineTo(0f, size.height - arm)
-        drawPath(p, color = amber, style = Stroke(width = t))
+            p.moveTo(0f, arm); p.lineTo(0f, 0f); p.lineTo(arm, 0f)
+            p.moveTo(size.width - arm, 0f); p.lineTo(size.width, 0f)
+            p.lineTo(size.width, arm)
+            p.moveTo(size.width, size.height - arm); p.lineTo(size.width, size.height)
+            p.lineTo(size.width - arm, size.height)
+            p.moveTo(arm, size.height); p.lineTo(0f, size.height)
+            p.lineTo(0f, size.height - arm)
+            drawPath(p, color = amber, style = Stroke(width = t, cap = StrokeCap.Butt))
     }
 }
 ```
@@ -414,8 +388,22 @@ Box(modifier = modifier) {
 > available directly inside the `Canvas` draw scope, so this needs no
 > `LocalDensity` plumbing and no `w` variable.
 
-Name the animated value `lenDp`, not `len`, so its unit is obvious at the use
-site: `lenDp.dp.toPx()` reads correctly where `len.toPx()` would not compile.
+Two details that are load-bearing rather than cosmetic:
+
+- **`cap = StrokeCap.Butt` is explicit, not default.** At `arm == 0` each
+  subpath collapses to three coincident points. Skia drops zero-length stroked
+  segments under a butt cap (correct: an unarmed reticle draws nothing), but a
+  round or square cap would paint a stray 1dp dot at each corner for one frame.
+  Pinning the cap makes that guarantee local instead of dependent on a default.
+- **Clip the canvas.** A foundation `Canvas` does not clip to bounds, and an arm
+  of 11dp on each side means a panel narrower than 22dp would draw outside its
+  own `Box`. Add `.clipToBounds()` to the `Canvas` so that fails closed.
+
+Imports this needs: `androidx.compose.foundation.layout.fillMaxSize`,
+`androidx.compose.ui.graphics.Path`,
+`androidx.compose.ui.graphics.StrokeCap`, and
+`androidx.compose.ui.draw.clipToBounds`. `Stroke` and `Animatable` are already
+imported.
 
 - [ ] **Step 6: Verify the reduced-motion guard is intact**
 
