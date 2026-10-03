@@ -441,11 +441,14 @@ new comments do not, and one header overstates a rule the scheme contradicts.
 Correct all four:
 
 ```kotlin
-/** Non-text marks only — chevrons, rest-state icon strokes, rules. Fails 4.5:1. See spec §4.4. */
+/** Non-text marks only — chevrons, rest-state icon strokes, rules. Fails 4.5:1. See spec §4.1. */
 internal val ash = Color(0xFF666F7A)
 
-/** Disabled text only. WCAG 1.4.3 exempts disabled controls; nothing else may use it. See spec §4.4. */
+/** Disabled text only. WCAG 1.4.3 exempts disabled controls; nothing else may use it. See spec §4.1. */
 internal val stone = Color(0xFF4F5861)
+
+/** Dimming veil behind modals and sheets. */
+internal val scrim = Color.Black.copy(alpha = .72f)
 
 /**
  * Retained legacy name for call sites that read as warnings. Aliases [amber]
@@ -689,7 +692,19 @@ fileTree("browser/shell/src/main") {
 Run `gradle verifyArchitecture` once more and confirm it still passes. The rule is
 self-erasing once Task 3 lands and the names are gone for good.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 9: Add `scrim` to the palette test**
+
+`consoleTokensMatchApprovedPalette` enumerates 19 colours; `scrim` makes 20. Add
+one assertion alongside the others so no token is unguarded:
+
+```kotlin
+assertEquals(Color.Black.copy(alpha = .72f), scrim)
+```
+
+Do **not** add `scrim` to the contrast test — a translucent veil is neither a text
+tier nor a surface, so it has no meaningful ratio.
+
+- [ ] **Step 10: Commit**
 
 ```bash
 git add browser/shell/src/main/java/app/taho/browser/shell/ browser/shell/src/test/kotlin/app/taho/browser/shell/
