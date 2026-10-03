@@ -225,21 +225,25 @@ internal fun TahoReticle(trigger: Any?, modifier: Modifier = Modifier) {
         armed = true
     }
 
-    val len by animateFloatAsState(
+    val lenDp by animateFloatAsState(
         targetValue = if (armed) 11f else 0f,
         animationSpec = tween(if (reduced) 0 else 220, easing = TahoEasing),
-        label = "reticle",
+        label = "reticleArm",
     )
 
     Box(modifier = modifier) {
         Canvas(Modifier.fillMaxSize()) {
             val t = 1.dp.toPx()
+            // The arm length is what animates. It must be consumed here.
+            val arm = lenDp.dp.toPx()
             val p = Path()
-            p.moveTo(0f, t); p.lineTo(0f, 0f); p.lineTo(t, 0f)
-            p.moveTo(size.width - t, 0f); p.lineTo(size.width, 0f); p.lineTo(size.width, t)
-            p.moveTo(size.width, size.height - t); p.lineTo(size.width, size.height)
-            p.lineTo(size.width - t, size.height)
-            p.moveTo(t, size.height); p.lineTo(0f, size.height); p.lineTo(0f, size.height - t)
+            p.moveTo(0f, arm); p.lineTo(0f, 0f); p.lineTo(arm, 0f)
+            p.moveTo(size.width - arm, 0f); p.lineTo(size.width, 0f)
+            p.lineTo(size.width, arm)
+            p.moveTo(size.width, size.height - arm); p.lineTo(size.width, size.height)
+            p.lineTo(size.width - arm, size.height)
+            p.moveTo(arm, size.height); p.lineTo(0f, size.height)
+            p.lineTo(0f, size.height - arm)
             drawPath(p, color = amber, style = Stroke(width = t))
         }
     }
