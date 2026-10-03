@@ -96,8 +96,10 @@ Dark field only. The app is a single-theme AMOLED surface today; that stays.
 | `TahoNeutral` | `#C9C5BB` | `charcoal` | `#95A0AC` | icon strokes |
 | `TahoMuted` | `#98948A` | `mute` | `#828D99` | small secondary text |
 | `TahoFaint` | `#6B675F` | `mute` | `#828D99` | **deleted** — see §4.4 |
-| — | — | `ash` | `#666F7A` | non-text marks only — see §4.4 |
+| — | — | `body` | `#BCC5CE` | Material3 `onBackground`/`onSurface`; §4.6 |
+| — | — | `ash` | `#666F7A` | non-text marks only |
 | — | — | `stone` | `#4F5861` | disabled text only |
+| — | — | `scrim` | `Black@.72` | modal/sheet veil |
 | `TahoOk` | `#5FBF8A` | `ok` | `#5BC088` | |
 | `TahoWarn` | `#E0A64A` | — | — | **conflict**, see §4.2 |
 | `TahoInfo` | `#4FBFA3` | `info` | `#82B4D6` | |
