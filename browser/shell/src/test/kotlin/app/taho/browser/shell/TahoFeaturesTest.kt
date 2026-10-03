@@ -1,5 +1,7 @@
 package app.taho.browser.shell
 
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -421,5 +423,57 @@ class TahoFeaturesTest {
 
         store.togglePinnedTab("normal-tab", isPrivate = false)
         assertFalse("normal-tab" in store.pinnedTabIds)
+    }
+
+    @Test
+    fun consoleTokensMatchApprovedPalette() {
+        assertEquals(Color(0xFF080A0D), canvas)   // canvas
+        assertEquals(Color(0xFF0E1216), bone)     // bone
+        assertEquals(Color(0xFF12161A), panel)    // panel
+        assertEquals(Color(0xFF1A1F25), raised)   // raised
+        assertEquals(Color(0xFF040607), well)     // well
+        assertEquals(Color(0xFFEDF0F3), ink)      // ink
+        assertEquals(Color(0xFF95A0AC), charcoal) // charcoal
+        assertEquals(Color(0xFF828D99), mute)     // mute
+        assertEquals(Color(0xFF666F7A), ash)      // ash — non-text only
+        assertEquals(Color(0xFF4F5861), stone)    // stone — disabled only
+        assertEquals(Color(0xFFE8AE55), amber)    // amber
+        assertEquals(Color(0xFFEFC06C), amberHover)
+        assertEquals(Color(0xFFD89A3C), amberDeep)
+        assertEquals(Color(0xFF5BC088), ok)
+        assertEquals(Color(0xFF82B4D6), info)
+        assertEquals(Color(0xFFD96A5E), danger)
+        assertEquals(Color(0xFF1E242B), hairline)
+        assertEquals(Color(0xFF2C343C), hairlineStrong)
+        assertEquals(amber, TahoWarn)
+    }
+
+    @Test
+    fun everyTextTierClearsWcagAaOnEverySurfaceItSitsOn() {
+        val textTiers = mapOf(
+            "ink" to ink,
+            "body" to Color(0xFFBCC5CE),
+            "charcoal" to charcoal,
+            "mute" to mute,
+        )
+        val surfaces = mapOf(
+            "canvas" to canvas,
+            "bone" to bone,
+            "panel" to panel,
+            "raised" to raised,
+            "well" to well,
+        )
+        val offenders = mutableListOf<String>()
+        for ((tn, tf) in textTiers) {
+            for ((sn, sf) in surfaces) {
+                val l1 = tf.luminance()
+                val l2 = sf.luminance()
+                val ratio = (maxOf(l1, l2) + 0.05f) / (minOf(l1, l2) + 0.05f)
+                if (ratio < 4.5f) offenders += "$tn on $sn = ${"%.2f".format(ratio)}:1"
+            }
+        }
+        // ash and stone are deliberately excluded: they are non-text and disabled
+        // tiers. See spec §4.4 — both fail 4.5:1 and must never carry body text.
+        assertEquals(emptyList(), offenders, "text tiers below WCAG AA 4.5:1")
     }
 }

@@ -49,26 +49,40 @@ import app.taho.browser.shell.R
  * (source of truth: TAHO_BROWSER_UI_PROTOTYPE.html).
  */
 
-// ---------- color (spec §2.1) ----------
-internal val TahoBg = Color(0xFF050505)
-internal val TahoSheet = Color(0xFF0D0D10)
-internal val TahoGold = Color(0xFFE2B44A)
-internal val TahoGoldHi = Color(0xFFF0CD7E)
-internal val TahoText = Color(0xFFF3F0E9)
-internal val TahoMuted = Color(0xFF98948A)
-internal val TahoFaint = Color(0xFF6B675F)
-internal val TahoOk = Color(0xFF5FBF8A)
-internal val TahoWarn = Color(0xFFE0A64A)
-internal val TahoInfo = Color(0xFF4FBFA3)
-internal val TahoError = Color(0xFFE06A5A)
-internal val TahoNeutral = Color(0xFFC9C5BB)
-internal val TahoJsonNum = Color(0xFFC9B2F0)
+// ---------- colour (spec §2.1 — tactical-ops-console, dark field) ----------
+// Depth is luminance-stepped. No hue is cast on any panel; the only chromatic
+// accent is amber, reserved for the armed state and the primary action.
+internal val canvas = Color(0xFF080A0D)
+internal val bone = Color(0xFF0E1216)
+internal val panel = Color(0xFF12161A)
+internal val raised = Color(0xFF1A1F25)
+internal val well = Color(0xFF040607)
 
-internal val TahoHairline = Color.White.copy(alpha = .08f)
-internal val TahoHairlineStrong = Color.White.copy(alpha = .14f)
-internal val TahoSurfaceRow = Color.White.copy(alpha = .028f)
-internal val TahoSurfaceRowHover = Color.White.copy(alpha = .055f)
-internal val TahoSurfaceControl = Color.White.copy(alpha = .035f)
+internal val ink = Color(0xFFEDF0F3)
+internal val body = Color(0xFFBCC5CE)
+internal val charcoal = Color(0xFF95A0AC)
+internal val mute = Color(0xFF828D99)
+
+/** Non-text marks only — chevrons, rest-state icon strokes, rules. Fails 4.5:1. */
+internal val ash = Color(0xFF666F7A)
+
+/** Disabled text only. WCAG 1.4.3 exempts disabled controls; nothing else may use it. */
+internal val stone = Color(0xFF4F5861)
+
+// The Single Amber Rule. Also carries warning state — every warning surface
+// must additionally render a WARN tag and a 4px status bar so colour is never
+// the only signal (WCAG 1.4.1). See spec §4.2.
+internal val amber = Color(0xFFE8AE55)
+internal val amberHover = Color(0xFFEFC06C)
+internal val amberDeep = Color(0xFFD89A3C)
+internal val TahoWarn = amber
+
+internal val ok = Color(0xFF5BC088)
+internal val info = Color(0xFF82B4D6)
+internal val danger = Color(0xFFD96A5E)
+
+internal val hairline = Color(0xFF1E242B)
+internal val hairlineStrong = Color(0xFF2C343C)
 
 // ---------- typography (spec §2.2) ----------
 internal val TahoMono = FontFamily(
@@ -227,23 +241,23 @@ internal fun TahoStatusDot(color: Color, modifier: Modifier = Modifier, glow: Bo
 
 // ---------- theme ----------
 private val TahoColorScheme = darkColorScheme(
-    background = TahoBg,
-    surface = TahoSheet,
-    primary = TahoGold,
-    onPrimary = TahoBg,
-    primaryContainer = TahoGold.copy(alpha = .16f),
-    onPrimaryContainer = TahoGoldHi,
-    secondary = TahoGoldHi,
-    onSecondary = TahoBg,
-    tertiary = TahoInfo,
-    error = TahoError,
-    onError = TahoBg,
-    onBackground = TahoText,
-    onSurface = TahoText,
-    onSurfaceVariant = TahoMuted,
-    outline = TahoHairlineStrong,
-    outlineVariant = TahoHairline,
-    scrim = Color.Black.copy(alpha = .5f),
+    background = canvas,
+    surface = panel,
+    primary = amber,
+    onPrimary = canvas,
+    primaryContainer = amberDeep,
+    onPrimaryContainer = amber,
+    secondary = amberHover,
+    onSecondary = canvas,
+    tertiary = info,
+    error = danger,
+    onError = canvas,
+    onBackground = body,
+    onSurface = body,
+    onSurfaceVariant = mute,
+    outline = hairlineStrong,
+    outlineVariant = hairline,
+    scrim = Color.Black.copy(alpha = .72f),
 )
 
 private val TahoTypography = Typography(
