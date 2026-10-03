@@ -45,7 +45,11 @@ Failure modes the spec implies that no task's tests naturally exercise. Each has
 **Interfaces:**
 - Consumes: nothing. This is the first task.
 - Produces: the token names every later task and plan depends on —
-  `canvas`, `bone`, `panel`, `raised`, `well`, `amber`, `amberHover`, `amberDeep`, `ink`, `charcoal`, `mute`, `ash`, `stone`, `ok`, `info`, `danger`, `hairline`, `hairlineStrong`, plus `TahoWarn` retained as an alias of `amber`.
+  `canvas`, `bone`, `panel`, `raised`, `well`, `ink`, `body`, `charcoal`, `mute`,
+  `ash`, `stone`, `amber`, `amberHover`, `amberDeep`, `ok`, `info`, `danger`,
+  `hairline`, `hairlineStrong`, plus `TahoWarn` retained as an alias of `amber`.
+  **19 tokens.** `body` is the Material3 default foreground via
+  `onBackground`/`onSurface`, so it must be referenced by name in both tests.
   Legacy names `TahoBg`, `TahoSheet`, `TahoGold`, `TahoGoldHi`, `TahoText`, `TahoMuted`, `TahoFaint`, `TahoNeutral`, `TahoOk`, `TahoInfo`, `TahoError`, `TahoJsonNum`, `TahoHairline`, `TahoHairlineStrong`, `TahoSurfaceRow`, `TahoSurfaceRowHover`, `TahoSurfaceControl` are **deleted** and replaced by these.
 
 - [ ] **Step 1: Write the failing test**
@@ -73,6 +77,11 @@ fun consoleTokensMatchApprovedPalette() {
     assertEquals(Color(0xFFD96A5E), danger)
     assertEquals(Color(0xFF1E242B), hairline)
     assertEquals(Color(0xFF2C343C), hairlineStrong)
+    // body is the Material3 default foreground (onBackground/onSurface), so it is
+    // the tier most likely to be nudged during the Task 3 migration. It must be
+    // pinned by value here AND referenced by name in the contrast test below —
+    // a hardcoded literal in either place severs the test from the token.
+    assertEquals(Color(0xFFBCC5CE), body)
     assertEquals(amber, TahoWarn)
 }
 ```
@@ -84,7 +93,7 @@ Append this contrast test in the same edit. It is the regression guard for the d
 fun everyTextTierClearsWcagAaOnEverySurfaceItSitsOn() {
     val textTiers = mapOf(
         "ink" to ink,
-        "body" to Color(0xFFBCC5CE),
+        "body" to body,
         "charcoal" to charcoal,
         "mute" to mute,
     )
@@ -95,6 +104,12 @@ fun everyTextTierClearsWcagAaOnEverySurfaceItSitsOn() {
         "raised" to raised,
         "well" to well,
     )
+    // Tripwires against silent coverage loss. Without these, deleting a tier or
+    // a surface just shrinks the loop and `emptyList()` still matches — the
+    // guard would pass while protecting nothing. mute/raised is the tightest
+    // cell in the matrix at 4.91:1, so losing it must fail loudly.
+    assertEquals(4, textTiers.size, "a text tier was dropped from the guard")
+    assertEquals(5, surfaces.size, "a surface was dropped from the guard")
     val offenders = mutableListOf<String>()
     for ((tn, tf) in textTiers) {
         for ((sn, sf) in surfaces) {
@@ -398,6 +413,60 @@ Confirm `TahoReducedMotion()` is still consulted in both `tahoPulse` and `TahoRe
 Run: `gradle :browser:shell:testDebugUnitTest --tests '*TahoThemeContractTest*'`
 Expected: FAIL on compilation only — `Unresolved reference: archivo_regular`, because Task 4 has not landed. The two assertions are otherwise satisfied. Proceed to Task 3; both land together in the Task 4 gate.
 
+- [ ] **Step 8: Refresh the stale file-level provenance header**
+
+`TahoTheme.kt` lines 47-50 still claim the tokens are *"extracted 1:1 from
+`Doc/TAHO_BROWSER_UI_UX_SPEC.md` §2/§15 (source of truth:
+`TAHO_BROWSER_UI_PROTOTYPE.html`)"*. That is now false for the colour block, and
+both cited paths are untracked, so the header points at files not in the
+repository. Replace it with the truth:
+
+```kotlin
+/*
+ * Taho design tokens — the NeedMCP `tactical-ops-console` direction (dark field).
+ *
+ * Colours, type, shape and motion are defined here and nowhere else. Plan 5
+ * makes this file the visual source of truth for the shell; the human-readable
+ * mirror is Doc/TAHO_BROWSER_UI_UX_SPEC.md §2.
+ *
+ * Approved spec: docs/superpowers/specs/2026-10-03-tactical-console-port-design.md.
+ * TAHO_BROWSER_UI_PROTOTYPE.html is superseded and retained for history only.
+ */
+```
+
+- [ ] **Step 9: Fix three comments that break the file's own convention**
+
+The shell's KDoc cites spec sections (`Spec §15/A1`, `§15/A4 + D1`, `§4.2`). Three
+new comments do not, and one header overstates a rule the scheme contradicts.
+Correct all four:
+
+```kotlin
+/** Non-text marks only — chevrons, rest-state icon strokes, rules. Fails 4.5:1. See spec §4.4. */
+internal val ash = Color(0xFF666F7A)
+
+/** Disabled text only. WCAG 1.4.3 exempts disabled controls; nothing else may use it. See spec §4.4. */
+internal val stone = Color(0xFF4F5861)
+
+/**
+ * Retained legacy name for call sites that read as warnings. Aliases [amber]
+ * because the style gives amber to both the primary action and warning state;
+ * every warning surface must also carry a tag and a 4dp bar (WCAG 1.4.1).
+ * See spec §4.2.
+ */
+internal val TahoWarn = amber
+```
+
+`TahoColorScheme.tertiary` is `info`, a blue accent, so the header's "the only
+chromatic accent is amber" is contradicted by the scheme it introduces. The
+accurate claim is about interactive controls:
+
+```kotlin
+// ---------- colour (spec §2.1 — tactical-ops-console, dark field) ----------
+// Depth is luminance-stepped; no hue is cast on any panel. The only chromatic
+// accent on an interactive control is amber, reserved for the armed state and
+// the primary action — tertiary/info, ok and danger are state encodings only.
+```
+
 ### Task 3: Migrate every call site off the legacy tokens
 
 **Files:**
@@ -581,7 +650,46 @@ Expected: 33 tests PASS, plus the new ones. Any failure in `M7ProductUxTest` or 
 Run: `gradle verifyArchitecture`
 Expected: PASS. This is the AGENTS.md boundary check and must never be weakened to accommodate a styling change.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 8: Add the retired-token rule to `verifyArchitecture`**
+
+A JVM unit test cannot enumerate package-level declarations, so nothing currently
+stops someone re-adding `internal val TahoGold = Color(0xFFE2B44A)` — verified by
+mutation: the whole suite stays green. That is precisely the shim this task's 882
+unresolved references might tempt someone into, and it is the one invariant the
+task exists to protect. `verifyArchitecture` is already a source-scanning task
+with exactly this shape; give it the rule.
+
+Read the existing `captureReachableModules` loop in `build.gradle.kts` first and
+follow its structure and error style verbatim. Then add:
+
+```kotlin
+val retiredShellTokens = listOf(
+    "TahoBg", "TahoSheet", "TahoGold", "TahoGoldHi", "TahoText", "TahoMuted",
+    "TahoFaint", "TahoNeutral", "TahoOk", "TahoInfo", "TahoError", "TahoJsonNum",
+    "TahoHairline", "TahoHairlineStrong", "TahoSurfaceRow", "TahoSurfaceRowHover",
+    "TahoSurfaceControl",
+)
+
+// TahoWarn is deliberately absent: it is a retained name aliasing amber, not a
+// retired one. The pattern requires a declaration, so a mention in prose or a
+// call site cannot trip it.
+fileTree("browser/shell/src/main") {
+    include("src/**/*.kt")
+}.forEach { source ->
+    retiredShellTokens.forEach { token ->
+        if (Regex("""\bval\s+$token\b""").containsMatchIn(source.readText())) {
+            throw GradleException(
+                "retired token $token reintroduced in ${source.relativeTo(projectDir)}"
+            )
+        }
+    }
+}
+```
+
+Run `gradle verifyArchitecture` once more and confirm it still passes. The rule is
+self-erasing once Task 3 lands and the names are gone for good.
+
+- [ ] **Step 9: Commit**
 
 ```bash
 git add browser/shell/src/main/java/app/taho/browser/shell/ browser/shell/src/test/kotlin/app/taho/browser/shell/
