@@ -358,7 +358,7 @@ internal fun TahoReticle(trigger: Any?, modifier: Modifier = Modifier) {
         armed = true
     }
 
-    val len by animateFloatAsState(
+    val lenDp by animateFloatAsState(
         targetValue = if (armed) 11f else 0f,
         animationSpec = tween(if (reduced) 0 else 220, easing = TahoEasing),
         label = "reticle",
@@ -385,24 +385,37 @@ internal fun TahoReticle(trigger: Any?, modifier: Modifier = Modifier) {
 }
 ```
 
-Add the imports this needs: `androidx.compose.foundation.layout.fillMaxSize`, `androidx.compose.ui.graphics.Path`, `androidx.compose.ui.graphics.drawscope.Stroke` (already imported), and `LocalDensity` if you keep the `w` computation — otherwise delete the `w`/`density` lines, they are not needed for a uniform tick.
+Add the imports this needs: `androidx.compose.foundation.layout.fillMaxSize`, `androidx.compose.ui.graphics.Path`, and `androidx.compose.ui.graphics.drawscope.Stroke` (already imported). No `LocalDensity` import is required — the conversion happens inside the draw scope.
 
-Simplify to the version actually needed, which avoids the unused `w`:
+**Write this version — the tick arm IS the animation:**
 
 ```kotlin
 Box(modifier = modifier) {
     Canvas(Modifier.fillMaxSize()) {
         val t = 1.dp.toPx()
+        // The arm length is what animates. It must be consumed here.
+        val arm = lenDp.dp.toPx()
         val p = Path()
-        p.moveTo(0f, t); p.lineTo(0f, 0f); p.lineTo(t, 0f)
-        p.moveTo(size.width - t, 0f); p.lineTo(size.width, 0f); p.lineTo(size.width, t)
-        p.moveTo(size.width, size.height - t); p.lineTo(size.width, size.height)
-        p.lineTo(size.width - t, size.height)
-        p.moveTo(t, size.height); p.lineTo(0f, size.height); p.lineTo(0f, size.height - t)
+        p.moveTo(0f, arm); p.lineTo(0f, 0f); p.lineTo(arm, 0f)
+        p.moveTo(size.width - arm, 0f); p.lineTo(size.width, 0f)
+        p.lineTo(size.width, arm)
+        p.moveTo(size.width, size.height - arm); p.lineTo(size.width, size.height)
+        p.lineTo(size.width - arm, size.height)
+        p.moveTo(arm, size.height); p.lineTo(0f, size.height)
+        p.lineTo(0f, size.height - arm)
         drawPath(p, color = amber, style = Stroke(width = t))
     }
 }
 ```
+
+> **Do not** substitute a fixed `t` for `arm`. A static reticle is a defect, not a
+> simplification: this is the direction's only authored entrance motion (spec
+> §4.7), so a reticle that does not grow is not performing it. `Dp.toPx()` is
+> available directly inside the `Canvas` draw scope, so this needs no
+> `LocalDensity` plumbing and no `w` variable.
+
+Name the animated value `lenDp`, not `len`, so its unit is obvious at the use
+site: `lenDp.dp.toPx()` reads correctly where `len.toPx()` would not compile.
 
 - [ ] **Step 6: Verify the reduced-motion guard is intact**
 
