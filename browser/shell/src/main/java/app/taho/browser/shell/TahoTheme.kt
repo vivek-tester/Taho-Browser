@@ -25,12 +25,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
@@ -55,7 +56,7 @@ import app.taho.browser.shell.R
 
 // ---------- colour (spec §2.1 — tactical-ops-console, dark field) ----------
 // Depth is luminance-stepped; no hue is cast on any panel. The only chromatic
-// accent on an interactive control is amber, reserved for the armed state and
+// accent on an interactive control is amber, reserved for the active state and
 // the primary action — tertiary/info, ok and danger are state encodings only.
 internal val canvas = Color(0xFF080A0D)
 internal val bone = Color(0xFF0E1216)
@@ -204,38 +205,38 @@ internal fun Modifier.tahoPressScale(
 }
 
 /**
- * Spec §15/A1 — the Single Amber Rule made physical: four 1dp corner ticks that
- * draw in when [trigger] changes. This is the only authored entrance motion in
- * the shell; nothing else animates on arrival.
+ * Spec §15/A1 — the Single Amber Rule made physical: four 11dp corner ticks
+ * stroked at 1dp, drawn in when [trigger] changes. This is the only authored
+ * entrance motion in the shell; nothing else animates on arrival.
  *
  * Ticks are absolutely positioned inside a `Box` scoped to the focused panel, so
  * the composable imposes no layout of its own. Fully suppressed under reduced
- * motion, where it snaps straight to the armed state.
+ * motion, where it snaps straight to fully extended.
+ *
+ * The arm is an [Animatable], not an `animateFloatAsState` target: the two
+ * writes must be sequential suspensions on one `MutatorMutex` so the `0f` reset
+ * is actually applied before the tween starts. Two plain state writes in one
+ * `LaunchedEffect` body land in the same snapshot, Compose coalesces them, and
+ * the tween would never relaunch — the reticle would fire once and go inert.
  */
 @Composable
 internal fun TahoReticle(trigger: Any?, modifier: Modifier = Modifier) {
     val reduced = TahoReducedMotion()
     var seenFirst by remember { mutableStateOf(false) }
-    var armed by remember { mutableStateOf(false) }
+    val lenDp = remember { Animatable(0f) }
 
     LaunchedEffect(trigger, reduced) {
         if (!seenFirst) { seenFirst = true; return@LaunchedEffect }
-        if (reduced) { armed = true; return@LaunchedEffect }
-        armed = false
-        armed = true
+        if (reduced) { lenDp.snapTo(11f); return@LaunchedEffect }
+        lenDp.snapTo(0f)
+        lenDp.animateTo(11f, tween(220, easing = TahoEasing))
     }
 
-    val lenDp by animateFloatAsState(
-        targetValue = if (armed) 11f else 0f,
-        animationSpec = tween(if (reduced) 0 else 220, easing = TahoEasing),
-        label = "reticleArm",
-    )
-
     Box(modifier = modifier) {
-        Canvas(Modifier.fillMaxSize()) {
+        Canvas(Modifier.fillMaxSize().clipToBounds()) {
             val t = 1.dp.toPx()
             // The arm length is what animates. It must be consumed here.
-            val arm = lenDp.dp.toPx()
+            val arm = lenDp.value.dp.toPx()
             val p = Path()
             p.moveTo(0f, arm); p.lineTo(0f, 0f); p.lineTo(arm, 0f)
             p.moveTo(size.width - arm, 0f); p.lineTo(size.width, 0f)
@@ -244,7 +245,15 @@ internal fun TahoReticle(trigger: Any?, modifier: Modifier = Modifier) {
             p.lineTo(size.width - arm, size.height)
             p.moveTo(arm, size.height); p.lineTo(0f, size.height)
             p.lineTo(0f, size.height - arm)
-            drawPath(p, color = amber, style = Stroke(width = t))
+            // Butt cap is pinned deliberately: at arm == 0 every subpath
+            // collapses to three coincident points, and Skia drops a
+            // zero-length stroked segment. A round or square cap would
+            // instead paint a stray 1dp dot at each corner for one frame.
+            drawPath(
+                p,
+                color = amber,
+                style = Stroke(width = t, cap = StrokeCap.Butt),
+            )
         }
     }
 }
