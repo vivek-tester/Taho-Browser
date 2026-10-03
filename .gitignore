@@ -31,3 +31,9 @@ Thumbs.db
 
 # Agents working directory
 .agents/
+
+# Superpowers SDD scratch (ledger, briefs, review packages)
+.superpowers/
+
+# Gradle wrapper (not committed; AGP 9.1.1 needs Gradle 9.3.1)
+.worktrees/
