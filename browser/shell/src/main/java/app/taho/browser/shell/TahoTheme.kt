@@ -55,7 +55,7 @@ import app.taho.browser.shell.R
 
 // ---------- colour (spec §2.1 — tactical-ops-console, dark field) ----------
 // Depth is luminance-stepped; no hue is cast on any panel. The only chromatic
-// accent on an interactive control is amber, reserved for the active state and
+// accent on an interactive control is amber, reserved for the armed state and
 // the primary action — tertiary/info, ok and danger are state encodings only.
 internal val canvas = Color(0xFF080A0D)
 internal val bone = Color(0xFF0E1216)
@@ -126,7 +126,7 @@ internal val TahoNoteShape = RoundedCornerShape(2.dp)
 internal val TahoPillShape = RoundedCornerShape(999.dp)
 internal val TahoBadgeShape = RoundedCornerShape(4.dp)
 
-// ---------- motion (spec §2.6 / §15) ----------
+// ---------- motion (spec §4.7) ----------
 internal val TahoEasing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
 internal val TahoSpringEasing = CubicBezierEasing(0.34f, 1.4f, 0.44f, 1f)
 
@@ -148,7 +148,7 @@ internal fun TahoReducedMotion(): Boolean {
 }
 
 /**
- * Spec §15/A1 — capture-pill content pulse: scale 1 → 1.07 → 1, split 120/180 so
+ * Spec §4.7 — capture-pill content pulse: scale 1 → 1.07 → 1, split 120/180 so
  * the whole beat closes inside one [TahoDurationScreen] transition.
  * Plays only when [trigger] *changes* after initial composition — never on first
  * entry, matching the prototype (the pill is quiet until an event lands).
@@ -180,7 +180,7 @@ internal fun Modifier.tahoPulse(trigger: Any?): Modifier {
 }
 
 /**
- * Spec §15/A4 + D1 — press physics: press scales to [target] (.96 primary,
+ * Spec §4.7 — press physics: press scales to [target] (.96 primary,
  * .97 controls) with a springy release. Wire [interaction] into clickable().
  */
 @Composable
@@ -205,7 +205,7 @@ internal fun Modifier.tahoPressScale(
 }
 
 /**
- * Spec §15/A1 — the Single Amber Rule made physical: four 11dp corner ticks
+ * Spec §4.7 — the Single Amber Rule made physical: four 11dp corner ticks
  * stroked at 1dp, drawn in when [trigger] changes. This is the only authored
  * entrance motion in the shell; nothing else animates on arrival.
  *
