@@ -197,9 +197,12 @@ fun TahoTabsOverviewSheet(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             item {
+                // The "All" chip carries no group colour, so it takes the ink token. Selected,
+                // its label sits on ink@20% over the sheet surface: ink reads
+                // 7.95-10.28:1, mute only 2.69-3.48:1, so mute would fail AA.
                 TabGroupChip(
                     name = "All (${tabs.size})",
-                    color = Color.White,
+                    color = ink,
                     isSelected = selectedGroupFilter == null,
                     onClick = { selectedGroupFilter = null },
                 )

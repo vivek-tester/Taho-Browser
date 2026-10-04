@@ -371,7 +371,11 @@ private fun SettingsAppearancePage() {
                         .clickable { TahoBrowserStateStore.updateSettings { it.copy(accentColorHex = hex) } },
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (sel) Text("✓", color = Color.Black, fontSize = 14.sp)
+                    // On-accent content. The swatch fill is the accent itself, a light-to-mid
+                    // saturated colour, so this pairs dark-on-light exactly as the
+                    // accent pills above do (canvas reads 6.02:1 worst case across
+                    // the five accents; ink would read 1.65:1 and fail).
+                    if (sel) Text("✓", color = canvas, fontSize = 14.sp)
                 }
             }
         }

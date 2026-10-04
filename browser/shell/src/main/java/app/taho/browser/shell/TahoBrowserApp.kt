@@ -1189,6 +1189,9 @@ private fun ChromeAction(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // The armed/rest distinction lives on the glyph only. The label stays mute
+        // in both states: this is a chrome bar on a near-black fill (mute 5.44:1,
+        // stone 2.54:1 -- stone fails AA and this label is never truly disabled).
         Text(
             glyph,
             color = if (enabled) amberHover else mute,
@@ -1197,7 +1200,7 @@ private fun ChromeAction(
         Spacer(Modifier.width(5.dp))
         Text(
             text = label,
-            color = if (enabled) mute else mute,
+            color = mute,
             fontFamily = TahoMono,
             fontSize = 9.sp,
             maxLines = 1,

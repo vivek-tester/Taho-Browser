@@ -82,28 +82,46 @@ class TahoTokenMigrationTest {
      * TahoTheme.kt is exempt because it *defines* the tokens. The brief also
      * exempted "TahoConsole.kt", which does not exist in this module -- the
      * alpha-composited washes the brief expected to find declared there are
-     * spread across seven shell files instead. Replacing them is a design
-     * decision, not a rename, so this is a ratchet rather than a zero: the count
-     * may only fall. A literal added to any file, waived or not, still fails.
+     * spread across six shell files instead. Replacing them is a design
+     * decision, not a rename, so this is a ratchet rather than a zero.
+     *
+     * The ratchet is per-file, not a total. A single scalar cannot express "no
+     * new debt in any file": neutralising a literal in one waived file would
+     * buy budget to add one to another, and the count would not move.
      */
     @Test
     fun noHardcodedColourLiteralsInProductionCode() {
         assertShellSourcesVisible()
-        val waived = mutableListOf<String>()
         val unwaived = mutableListOf<String>()
+        val outstanding = mutableMapOf<String, Int>()
         sources().forEach { file ->
             if (file.name in TOKEN_DEFINING_FILES) return@forEach
-            literalColourLines(file).forEach { line ->
-                if (file.name in PENDING_LITERAL_CLEANUP) waived += "${file.name}:${line.number}"
-                else unwaived += "${file.name}:${line.number}: ${line.text}"
+            val lines = literalColourLines(file)
+            if (lines.isEmpty()) return@forEach
+            outstanding[file.name] = lines.size
+            if (file.name !in PENDING_LITERAL_CLEANUP) {
+                lines.forEach { line -> unwaived += "${file.name}:${line.number}: ${line.text}" }
             }
         }
         assertEquals(emptyList(), unwaived, "hardcoded colour literal in shell production code")
-        assertTrue(
-            waived.size <= KNOWN_LITERAL_BASELINE,
-            "literal-colour ratchet moved: ${waived.size} outstanding literals, " +
-                "baseline $KNOWN_LITERAL_BASELINE. Tokenise them, or update the " +
-                "baseline deliberately -- never by adding to the waiver list.",
+        // Per-file ratchet, naming the file that moved in either direction.
+        val drifted = outstanding.keys.sorted().filter {
+            KNOWN_LITERAL_BASELINE[it] != outstanding[it]
+        }.map { "$it: ${outstanding[it]} literals, baseline ${KNOWN_LITERAL_BASELINE[it]}" }
+        assertEquals(
+            emptyList(),
+            drifted,
+            "literal-colour ratchet moved per file. Tokenise the literals and " +
+                "lower that file's entry, or raise it deliberately with a reason -- " +
+                "never by taking budget from another file's entry, and never by " +
+                "adding a literal to hold a count up.",
+        )
+        // The two structures gate the same set of files; if they drift apart one
+        // of them is silently inert.
+        assertEquals(
+            PENDING_LITERAL_CLEANUP.sorted(),
+            KNOWN_LITERAL_BASELINE.keys.sorted(),
+            "PENDING_LITERAL_CLEANUP and KNOWN_LITERAL_BASELINE must name the same files",
         )
         // Tripwire: a waiver naming a file that no longer has literals is dead
         // weight, and would let a later edit re-introduce one invisibly.
@@ -114,15 +132,48 @@ class TahoTokenMigrationTest {
         assertEquals(emptyList(), dead, "stale entry in PENDING_LITERAL_CLEANUP")
     }
 
+    /**
+     * Tripwire for the exemption list itself. Adding a production filename to
+     * [TOKEN_DEFINING_FILES] would move those literals out of the count
+     * entirely, with no baseline change at all -- so the exemption is pinned
+     * to the one file that actually defines tokens.
+     */
+    @Test
+    fun onlyTheTokenDefiningFileIsExemptFromTheLiteralGuard() {
+        assertEquals(
+            setOf("TahoTheme.kt"),
+            TOKEN_DEFINING_FILES,
+            "only the token-defining file may be exempt from the literal guard",
+        )
+    }
+
     // ---- helpers -------------------------------------------------------
 
     private data class TextRoleCall(val name: String, val arguments: String, val line: Int)
 
     private companion object {
+        /**
+         * Pinned by `onlyTheTokenDefiningFileIsExemptFromTheLiteralGuard`: adding a
+         * name here moves that file's literals out of the count with no baseline
+         * change, which is the same as deleting the guard for that file.
+         */
         val TOKEN_DEFINING_FILES = setOf("TahoTheme.kt")
 
-        /** Outstanding literals as of Task 3; see the KDoc on the test for why this is a ratchet. */
-        const val KNOWN_LITERAL_BASELINE = 67
+        /**
+         * Outstanding literals per file as of Task 3. Each entry pins that file's
+         * own debt, so retiring one file's literal cannot buy budget for another's
+         * increase. Populated from the measured counts, not estimated.
+         *
+         * Keys must equal [PENDING_LITERAL_CLEANUP]; the test asserts it.
+         */
+        val KNOWN_LITERAL_BASELINE = mapOf(
+            "M7ProductUx.kt" to 21,
+            "M7TransferSearch.kt" to 2,
+            "TahoBrowserApp.kt" to 21,
+            "TahoPageOverlays.kt" to 10,
+            "TahoSettingsHub.kt" to 3,
+            "TahoStartPage.kt" to 8,
+        )
 
         val PENDING_LITERAL_CLEANUP = setOf(
             "M7ProductUx.kt",
@@ -131,12 +182,17 @@ class TahoTokenMigrationTest {
             "TahoPageOverlays.kt",
             "TahoSettingsHub.kt",
             "TahoStartPage.kt",
-            "TahoTabsOverview.kt",
         )
 
         val BANNED_TEXT_COLOUR = Regex("color\\s*=\\s*(ash|stone)\\b")
 
-        val TEXT_ROLE_OPENERS = Regex("(?<![A-Za-z0-9_.])(Text|TextStyle|SpanStyle)\\s*\\(")
+        /**
+         * The lookbehind deliberately omits `.`: a qualified call such as
+         * `androidx.compose.ui.text.TextStyle(` must still be scanned, because
+         * that is exactly how a fully-qualified call site slips past. It keeps
+         * `[A-Za-z0-9_]` so an identifier like `myText(` is still excluded.
+         */
+        val TEXT_ROLE_OPENERS = Regex("(?<![A-Za-z0-9_])(Text|TextStyle|SpanStyle)\\s*\\(")
 
         val LITERAL_PATTERNS = listOf(
             Regex("Color\\(0x[0-9A-Fa-f]{6,8}\\)"),
