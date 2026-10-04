@@ -114,14 +114,14 @@ fun TahoTabsOverviewSheet(
             Column {
                 Text(
                     text = "Tabs Overview",
-                    color = TahoText,
-                    fontFamily = TahoDisplay,
+                    color = ink,
+                    fontFamily = TahoBody,
                     fontWeight = FontWeight.Medium,
                     fontSize = 18.sp,
                 )
                 Text(
                     text = "${tabs.size} open ${if (tabs.size == 1) "tab" else "tabs"}",
-                    color = TahoMuted,
+                    color = mute,
                     fontFamily = TahoMono,
                     fontSize = 10.sp,
                 )
@@ -132,26 +132,26 @@ fun TahoTabsOverviewSheet(
                     modifier = Modifier
                         .height(34.dp)
                         .clip(TahoPillShape)
-                        .background(TahoGold.copy(alpha = 0.15f))
-                        .border(1.dp, TahoGold.copy(alpha = 0.35f), TahoPillShape)
+                        .background(amber.copy(alpha = 0.15f))
+                        .border(1.dp, amber.copy(alpha = 0.35f), TahoPillShape)
                         .clickable(onClick = onNewTab)
                         .padding(horizontal = 12.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("+ New", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                    Text("+ New", color = amberHover, fontFamily = TahoMono, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                 }
 
                 Box(
                     modifier = Modifier
                         .height(34.dp)
                         .clip(TahoPillShape)
-                        .background(TahoSurfaceControl)
-                        .border(1.dp, TahoHairline, TahoPillShape)
+                        .background(bone)
+                        .border(1.dp, hairline, TahoPillShape)
                         .clickable(onClick = onNewPrivateTab)
                         .padding(horizontal = 10.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("◐ Private", color = TahoText, fontFamily = TahoMono, fontSize = 10.sp)
+                    Text("◐ Private", color = ink, fontFamily = TahoMono, fontSize = 10.sp)
                 }
             }
         }
@@ -163,28 +163,28 @@ fun TahoTabsOverviewSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(TahoPillShape)
-                .background(TahoSurfaceControl)
-                .border(1.dp, TahoHairline, TahoPillShape)
+                .background(bone)
+                .border(1.dp, hairline, TahoPillShape)
                 .padding(horizontal = 14.dp, vertical = 8.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("⌕", color = TahoFaint, fontSize = 13.sp)
+                Text("⌕", color = mute, fontSize = 13.sp)
                 Spacer(Modifier.width(8.dp))
                 Box(modifier = Modifier.weight(1f)) {
                     if (searchQuery.isEmpty()) {
-                        Text("Search open tabs…", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp)
+                        Text("Search open tabs…", color = mute, fontFamily = TahoMono, fontSize = 11.sp)
                     }
                     BasicTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 11.sp),
-                        cursorBrush = SolidColor(TahoGold),
+                        textStyle = TextStyle(color = ink, fontFamily = TahoMono, fontSize = 11.sp),
+                        cursorBrush = SolidColor(amber),
                     )
                 }
                 if (searchQuery.isNotEmpty()) {
-                    Text("×", color = TahoMuted, fontSize = 14.sp, modifier = Modifier.clickable { searchQuery = "" })
+                    Text("×", color = mute, fontSize = 14.sp, modifier = Modifier.clickable { searchQuery = "" })
                 }
             }
         }
@@ -217,13 +217,13 @@ fun TahoTabsOverviewSheet(
                     modifier = Modifier
                         .height(28.dp)
                         .clip(TahoPillShape)
-                        .background(TahoSurfaceControl)
-                        .border(1.dp, TahoHairline, TahoPillShape)
+                        .background(bone)
+                        .border(1.dp, hairline, TahoPillShape)
                         .clickable { showCreateGroupSheet = true }
                         .padding(horizontal = 10.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("+ Group", color = TahoMuted, fontFamily = TahoMono, fontSize = 9.sp)
+                    Text("+ Group", color = mute, fontFamily = TahoMono, fontSize = 9.sp)
                 }
             }
         }
@@ -239,7 +239,7 @@ fun TahoTabsOverviewSheet(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
                     text = "Recently Closed (${recentlyClosed.size})",
-                    color = TahoGoldHi,
+                    color = amberHover,
                     fontFamily = TahoMono,
                     fontSize = 9.5.sp,
                     modifier = Modifier
@@ -248,7 +248,7 @@ fun TahoTabsOverviewSheet(
                 )
                 Text(
                     text = "Archive (${archivedTabs.size})",
-                    color = TahoMuted,
+                    color = mute,
                     fontFamily = TahoMono,
                     fontSize = 9.5.sp,
                     modifier = Modifier
@@ -260,7 +260,7 @@ fun TahoTabsOverviewSheet(
             if (tabs.size > 1) {
                 Text(
                     text = "Close All Tabs",
-                    color = TahoError.copy(alpha = 0.85f),
+                    color = danger.copy(alpha = 0.85f),
                     fontFamily = TahoMono,
                     fontSize = 9.5.sp,
                     modifier = Modifier
@@ -310,8 +310,8 @@ fun TahoTabsOverviewSheet(
         ModalBottomSheet(
             onDismissRequest = { showRecentlyClosedSheet = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = TahoSheet,
-            contentColor = TahoText,
+            containerColor = bone,
+            contentColor = ink,
             shape = TahoSheetShape,
         ) {
             Column(
@@ -322,15 +322,15 @@ fun TahoTabsOverviewSheet(
             ) {
                 Text(
                     text = "Recently Closed Tabs",
-                    color = TahoText,
-                    fontFamily = TahoDisplay,
+                    color = ink,
+                    fontFamily = TahoBody,
                     fontWeight = FontWeight.Medium,
                     fontSize = 17.sp,
                 )
                 Spacer(Modifier.height(12.dp))
 
                 if (recentlyClosed.isEmpty()) {
-                    Text("No recently closed tabs.", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp)
+                    Text("No recently closed tabs.", color = mute, fontFamily = TahoMono, fontSize = 11.sp)
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxWidth(),
@@ -341,8 +341,8 @@ fun TahoTabsOverviewSheet(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(TahoBlockShape)
-                                    .background(TahoSurfaceRow)
-                                    .border(1.dp, TahoHairline, TahoBlockShape)
+                                    .background(panel)
+                                    .border(1.dp, hairline, TahoBlockShape)
                                     .padding(horizontal = 12.dp, vertical = 10.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
@@ -350,7 +350,7 @@ fun TahoTabsOverviewSheet(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = item.title,
-                                        color = TahoText,
+                                        color = ink,
                                         fontFamily = TahoMono,
                                         fontSize = 11.sp,
                                         maxLines = 1,
@@ -358,7 +358,7 @@ fun TahoTabsOverviewSheet(
                                     )
                                     Text(
                                         text = item.url,
-                                        color = TahoFaint,
+                                        color = mute,
                                         fontFamily = TahoMono,
                                         fontSize = 9.sp,
                                         maxLines = 1,
@@ -369,7 +369,7 @@ fun TahoTabsOverviewSheet(
                                 Box(
                                     modifier = Modifier
                                         .clip(TahoPillShape)
-                                        .background(TahoGold.copy(alpha = 0.2f))
+                                        .background(amber.copy(alpha = 0.2f))
                                         .clickable {
                                             TahoBrowserStateStore.restoreClosedTab(item.id)
                                             onRestoreClosedTab(item.url)
@@ -377,7 +377,7 @@ fun TahoTabsOverviewSheet(
                                         }
                                         .padding(horizontal = 10.dp, vertical = 6.dp),
                                 ) {
-                                    Text("Restore", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 9.5.sp)
+                                    Text("Restore", color = amberHover, fontFamily = TahoMono, fontSize = 9.5.sp)
                                 }
                             }
                         }
@@ -392,8 +392,8 @@ fun TahoTabsOverviewSheet(
         ModalBottomSheet(
             onDismissRequest = { showCreateGroupSheet = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = TahoSheet,
-            contentColor = TahoText,
+            containerColor = bone,
+            contentColor = ink,
             shape = TahoSheetShape,
         ) {
             Column(
@@ -404,8 +404,8 @@ fun TahoTabsOverviewSheet(
             ) {
                 Text(
                     text = "New Tab Group",
-                    color = TahoText,
-                    fontFamily = TahoDisplay,
+                    color = ink,
+                    fontFamily = TahoBody,
                     fontWeight = FontWeight.Medium,
                     fontSize = 17.sp,
                 )
@@ -413,13 +413,13 @@ fun TahoTabsOverviewSheet(
                 BasicTextField(
                     value = newGroupName,
                     onValueChange = { newGroupName = it },
-                    textStyle = TextStyle(color = TahoText, fontFamily = TahoMono, fontSize = 12.sp),
-                    cursorBrush = SolidColor(TahoGold),
+                    textStyle = TextStyle(color = ink, fontFamily = TahoMono, fontSize = 12.sp),
+                    cursorBrush = SolidColor(amber),
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(TahoBlockShape)
-                        .background(TahoSurfaceControl)
-                        .border(1.dp, TahoHairline, TahoBlockShape)
+                        .background(bone)
+                        .border(1.dp, hairline, TahoBlockShape)
                         .padding(12.dp),
                 )
                 Spacer(Modifier.height(16.dp))
@@ -448,8 +448,8 @@ fun TahoTabsOverviewSheet(
         ModalBottomSheet(
             onDismissRequest = { showArchiveSheet = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = TahoSheet,
-            contentColor = TahoText,
+            containerColor = bone,
+            contentColor = ink,
             shape = TahoSheetShape,
         ) {
             Column(
@@ -460,15 +460,15 @@ fun TahoTabsOverviewSheet(
             ) {
                 Text(
                     text = "Tab Archive",
-                    color = TahoText,
-                    fontFamily = TahoDisplay,
+                    color = ink,
+                    fontFamily = TahoBody,
                     fontWeight = FontWeight.Medium,
                     fontSize = 17.sp,
                 )
                 Spacer(Modifier.height(12.dp))
 
                 if (archivedTabs.isEmpty()) {
-                    Text("No archived tabs.", color = TahoFaint, fontFamily = TahoMono, fontSize = 11.sp)
+                    Text("No archived tabs.", color = mute, fontFamily = TahoMono, fontSize = 11.sp)
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxWidth(),
@@ -479,8 +479,8 @@ fun TahoTabsOverviewSheet(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(TahoBlockShape)
-                                    .background(TahoSurfaceRow)
-                                    .border(1.dp, TahoHairline, TahoBlockShape)
+                                    .background(panel)
+                                    .border(1.dp, hairline, TahoBlockShape)
                                     .padding(horizontal = 12.dp, vertical = 10.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
@@ -488,7 +488,7 @@ fun TahoTabsOverviewSheet(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = item.title,
-                                        color = TahoText,
+                                        color = ink,
                                         fontFamily = TahoMono,
                                         fontSize = 11.sp,
                                         maxLines = 1,
@@ -496,7 +496,7 @@ fun TahoTabsOverviewSheet(
                                     )
                                     Text(
                                         text = item.url,
-                                        color = TahoFaint,
+                                        color = mute,
                                         fontFamily = TahoMono,
                                         fontSize = 9.sp,
                                         maxLines = 1,
@@ -507,7 +507,7 @@ fun TahoTabsOverviewSheet(
                                 Box(
                                     modifier = Modifier
                                         .clip(TahoPillShape)
-                                        .background(TahoGold.copy(alpha = 0.2f))
+                                        .background(amber.copy(alpha = 0.2f))
                                         .clickable {
                                             TahoBrowserStateStore.restoreArchivedTab(item.id)
                                             onRestoreClosedTab(item.url)
@@ -515,7 +515,7 @@ fun TahoTabsOverviewSheet(
                                         }
                                         .padding(horizontal = 10.dp, vertical = 6.dp),
                                 ) {
-                                    Text("Restore", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 9.5.sp)
+                                    Text("Restore", color = amberHover, fontFamily = TahoMono, fontSize = 9.5.sp)
                                 }
                             }
                         }
@@ -530,8 +530,8 @@ fun TahoTabsOverviewSheet(
         ModalBottomSheet(
             onDismissRequest = { tabToMoveGroup = null },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = TahoSheet,
-            contentColor = TahoText,
+            containerColor = bone,
+            contentColor = ink,
             shape = TahoSheetShape,
         ) {
             Column(
@@ -542,8 +542,8 @@ fun TahoTabsOverviewSheet(
             ) {
                 Text(
                     text = "Assign to Tab Group",
-                    color = TahoText,
-                    fontFamily = TahoDisplay,
+                    color = ink,
+                    fontFamily = TahoBody,
                     fontWeight = FontWeight.Medium,
                     fontSize = 17.sp,
                 )
@@ -553,7 +553,7 @@ fun TahoTabsOverviewSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(TahoBlockShape)
-                        .background(TahoSurfaceControl)
+                        .background(bone)
                         .clickable {
                             TahoBrowserStateStore.tabGroups = tabGroups.map { grp ->
                                 grp.copy(tabIds = grp.tabIds.filterNot { it == targetTabId })
@@ -563,7 +563,7 @@ fun TahoTabsOverviewSheet(
                         .padding(horizontal = 14.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("✕ Remove from All Groups", color = TahoMuted, fontFamily = TahoMono, fontSize = 11.sp)
+                    Text("✕ Remove from All Groups", color = mute, fontFamily = TahoMono, fontSize = 11.sp)
                 }
 
                 Spacer(Modifier.height(8.dp))
@@ -574,8 +574,8 @@ fun TahoTabsOverviewSheet(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(TahoBlockShape)
-                            .background(if (isMember) TahoSurfaceRowHover else TahoSurfaceRow)
-                            .border(1.dp, if (isMember) Color(grp.colorHex) else TahoHairline, TahoBlockShape)
+                            .background(if (isMember) raised else panel)
+                            .border(1.dp, if (isMember) Color(grp.colorHex) else hairline, TahoBlockShape)
                             .clickable {
                                 TahoBrowserStateStore.tabGroups = tabGroups.map { g ->
                                     if (g.id == grp.id) {
@@ -598,7 +598,7 @@ fun TahoTabsOverviewSheet(
                                     .background(Color(grp.colorHex))
                             )
                             Spacer(Modifier.width(10.dp))
-                            Text(grp.name, color = TahoText, fontFamily = TahoMono, fontSize = 11.5.sp)
+                            Text(grp.name, color = ink, fontFamily = TahoMono, fontSize = 11.5.sp)
                         }
                         if (isMember) {
                             Text("✓ In Group", color = Color(grp.colorHex), fontFamily = TahoMono, fontSize = 9.sp)
@@ -622,8 +622,8 @@ private fun TabGroupChip(
         modifier = Modifier
             .height(28.dp)
             .clip(TahoPillShape)
-            .background(if (isSelected) color.copy(alpha = 0.2f) else TahoSurfaceControl)
-            .border(1.dp, if (isSelected) color else TahoHairline, TahoPillShape)
+            .background(if (isSelected) color.copy(alpha = 0.2f) else bone)
+            .border(1.dp, if (isSelected) color else hairline, TahoPillShape)
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp),
         contentAlignment = Alignment.Center,
@@ -638,7 +638,7 @@ private fun TabGroupChip(
             Spacer(Modifier.width(6.dp))
             Text(
                 text = name,
-                color = if (isSelected) color else TahoMuted,
+                color = if (isSelected) color else mute,
                 fontFamily = TahoMono,
                 fontSize = 9.sp,
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
@@ -661,14 +661,14 @@ private fun DetailedTabCard(
     onTogglePin: () -> Unit,
     canCloseOthers: Boolean,
 ) {
-    val borderColor = if (tab.selected) TahoGold.copy(alpha = 0.55f) else TahoHairline
+    val borderColor = if (tab.selected) amber.copy(alpha = 0.55f) else hairline
     val interaction = remember { MutableInteractionSource() }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(TahoCardShape)
-            .background(if (tab.selected) TahoSurfaceRowHover else TahoSurfaceRow)
+            .background(if (tab.selected) raised else panel)
             .border(1.dp, borderColor, TahoCardShape)
             .padding(start = 14.dp, end = 10.dp, top = 10.dp, bottom = 10.dp),
     ) {
@@ -693,10 +693,10 @@ private fun DetailedTabCard(
                         Box(
                             modifier = Modifier
                                 .clip(TahoBadgeShape)
-                                .background(TahoInfo.copy(alpha = 0.18f))
+                                .background(info.copy(alpha = 0.18f))
                                 .padding(horizontal = 4.dp, vertical = 1.dp)
                         ) {
-                            Text("PINNED", color = TahoInfo, fontFamily = TahoMono, fontSize = 7.5.sp)
+                            Text("PINNED", color = info, fontFamily = TahoMono, fontSize = 7.5.sp)
                         }
                         Spacer(Modifier.width(6.dp))
                     }
@@ -704,16 +704,16 @@ private fun DetailedTabCard(
                         Box(
                             modifier = Modifier
                                 .clip(TahoBadgeShape)
-                                .background(TahoGold.copy(alpha = 0.2f))
+                                .background(amber.copy(alpha = 0.2f))
                                 .padding(horizontal = 4.dp, vertical = 1.dp)
                         ) {
-                            Text("PRIVATE", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 7.5.sp)
+                            Text("PRIVATE", color = amberHover, fontFamily = TahoMono, fontSize = 7.5.sp)
                         }
                         Spacer(Modifier.width(6.dp))
                     }
                     Text(
                         text = tab.title?.takeIf { it.isNotBlank() } ?: (tab.location ?: "New tab"),
-                        color = TahoText,
+                        color = ink,
                         fontFamily = TahoMono,
                         fontSize = 11.5.sp,
                         maxLines = 1,
@@ -723,7 +723,7 @@ private fun DetailedTabCard(
                 Spacer(Modifier.height(3.dp))
                 Text(
                     text = tab.location ?: "about:blank",
-                    color = TahoFaint,
+                    color = mute,
                     fontFamily = TahoMono,
                     fontSize = 9.sp,
                     maxLines = 1,
@@ -742,7 +742,7 @@ private fun DetailedTabCard(
                     .semantics { role = Role.Button; contentDescription = "Close tab" },
                 contentAlignment = Alignment.Center,
             ) {
-                Text("×", color = TahoMuted, fontSize = 18.sp)
+                Text("×", color = mute, fontSize = 18.sp)
             }
         }
 
@@ -758,7 +758,7 @@ private fun DetailedTabCard(
                 if (!tab.isPrivate) {
                     TabActionButton(
                         label = if (isPinned) "📌 Unpin" else "📌 Pin",
-                        color = if (isPinned) TahoInfo else TahoMuted,
+                        color = if (isPinned) info else mute,
                         onClick = onTogglePin,
                     )
                 }
@@ -770,7 +770,7 @@ private fun DetailedTabCard(
                 TabActionButton(label = "📥 Archive", onClick = onArchive)
             }
             if (canCloseOthers) {
-                TabActionButton(label = "Close Others", color = TahoError, onClick = onCloseOthers)
+                TabActionButton(label = "Close Others", color = danger, onClick = onCloseOthers)
             }
         }
     }
@@ -779,14 +779,14 @@ private fun DetailedTabCard(
 @Composable
 private fun TabActionButton(
     label: String,
-    color: Color = TahoMuted,
+    color: Color = mute,
     onClick: () -> Unit,
 ) {
     Box(
         modifier = Modifier
             .clip(TahoPillShape)
-            .background(TahoSurfaceControl)
-            .border(1.dp, TahoHairline, TahoPillShape)
+            .background(bone)
+            .border(1.dp, hairline, TahoPillShape)
             .clickable(onClick = onClick)
             .padding(horizontal = 8.dp, vertical = 3.dp),
         contentAlignment = Alignment.Center,

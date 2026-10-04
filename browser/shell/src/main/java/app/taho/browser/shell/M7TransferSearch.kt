@@ -46,7 +46,9 @@ import androidx.compose.ui.unit.sp
 
 /**
  * S5 — Transfer in progress (prototype screen 5, PRD §66).
- * Full-screen, calm, honest: ring pulse + progress sweep + schema footnote.
+ * Full-screen, calm, honest: corner reticle + progress sweep + schema footnote.
+ * The reticle arms on each [M7TransferPhaseUi] change rather than looping —
+ * spec §4.7 permits one event-driven entrance, never an idle animation.
  * Progress bar animates via transform only; `received` cross-fades on settle.
  */
 @Composable
@@ -64,7 +66,7 @@ internal fun M7TransferProgressOverlay(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(TahoBg)
+                .background(canvas)
                 .semantics { liveRegion = LiveRegionMode.Polite },
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -73,17 +75,17 @@ internal fun M7TransferProgressOverlay(
                 modifier = Modifier.size(72.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                TahoRingPulse(color = TahoGold, modifier = Modifier.fillMaxSize())
+                TahoReticle(trigger = phase, modifier = Modifier.fillMaxSize())
                 Box(
                     modifier = Modifier
                         .size(46.dp)
                         .clip(TahoPillShape)
-                        .background(TahoGold.copy(alpha = .14f)),
+                        .background(amber.copy(alpha = .14f)),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = "↗",
-                        color = TahoGoldHi,
+                        color = amberHover,
                         fontSize = 18.sp,
                     )
                 }
@@ -91,8 +93,8 @@ internal fun M7TransferProgressOverlay(
             Spacer(Modifier.height(26.dp))
             Text(
                 text = "Sending to Taho…",
-                color = TahoText,
-                fontFamily = TahoDisplay,
+                color = ink,
+                fontFamily = TahoBody,
                 fontWeight = FontWeight.Medium,
                 fontSize = 17.sp,
             )
@@ -106,7 +108,7 @@ internal fun M7TransferProgressOverlay(
             Spacer(Modifier.height(18.dp))
             Text(
                 text = "taho.request-transfer · v1 · local intent",
-                color = TahoFaint,
+                color = mute,
                 fontFamily = TahoMono,
                 fontSize = 10.sp,
             )
@@ -134,7 +136,7 @@ private fun M7ProgressBar(fraction: Float) {
                 .fillMaxWidth(animated)
             .height(2.dp)
                 .clip(TahoPillShape)
-                .background(TahoGold),
+                .background(amber),
         )
     }
 }
@@ -193,30 +195,30 @@ internal fun M7CaptureSearchField(
             .heightIn(min = 40.dp)
             .clip(TahoPillShape)
             .background(Color.White.copy(alpha = .03f))
-            .border(1.dp, TahoHairline, TahoPillShape),
+            .border(1.dp, hairline, TahoPillShape),
     ) {
         androidx.compose.foundation.text.BasicTextField(
             value = query,
             onValueChange = onQueryChange,
             singleLine = true,
             textStyle = androidx.compose.ui.text.TextStyle(
-                color = TahoText,
+                color = ink,
                 fontFamily = TahoMono,
                 fontSize = 10.5.sp,
             ),
-            cursorBrush = androidx.compose.ui.graphics.SolidColor(TahoGold),
+            cursorBrush = androidx.compose.ui.graphics.SolidColor(amber),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             decorationBox = { inner ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("⌕", color = TahoFaint, fontSize = 12.sp)
+                    Text("⌕", color = mute, fontSize = 12.sp)
                     Spacer(Modifier.width(8.dp))
                     Box {
                         if (query.isEmpty()) {
                             Text(
                                 text = "Search captured requests",
-                                color = TahoFaint,
+                                color = mute,
                                 fontFamily = TahoMono,
                                 fontSize = 10.5.sp,
                             )

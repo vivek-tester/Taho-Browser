@@ -78,6 +78,43 @@ tasks.register("verifyArchitecture") {
                 }
             }
         }
+
+        // A JVM unit test cannot enumerate package-level declarations, so
+        // nothing else stops someone re-adding `internal val TahoGold =
+        // Color(0xFFE2B44A)` as a shim -- verified by mutation: the whole suite
+        // stays green, because no test names the old tokens and every call site
+        // already resolves. The rule requires a declaration, so a mention in
+        // prose or a call site cannot trip it.
+        //
+        // TahoWarn is deliberately absent: it is a retained name aliasing amber,
+        // not a retired one. TahoDisplay is present even though it was a font
+        // family rather than a colour, because Task 2 deleted it for the same
+        // reason these did and an alias is an alias.
+        val retiredShellTokens = listOf(
+            "TahoBg", "TahoSheet", "TahoGold", "TahoGoldHi", "TahoText", "TahoMuted",
+            "TahoFaint", "TahoNeutral", "TahoOk", "TahoInfo", "TahoError", "TahoJsonNum",
+            "TahoHairline", "TahoHairlineStrong", "TahoSurfaceRow", "TahoSurfaceRowHover",
+            "TahoSurfaceControl", "TahoDisplay",
+        )
+
+        // Scoped to the module directory, not to src/main: the include pattern
+        // is relative to the tree root, so `fileTree("browser/shell/src/main")
+        // { include("src/**/*.kt") }` resolves to
+        // browser/shell/src/main/src/**/*.kt and matches nothing -- a rule that
+        // can never fire. Caught by mutation, not by reading.
+        fileTree("browser/shell") {
+            include("src/**/*.kt")
+        }.forEach { source ->
+            val sourceText = source.readText()
+            retiredShellTokens.forEach { token ->
+                val redeclaration = Regex("""\bval\s+$token\b""")
+                if (redeclaration.containsMatchIn(sourceText)) {
+                    throw GradleException(
+                        "retired token $token reintroduced in ${source.relativeTo(projectDir)}",
+                    )
+                }
+            }
+        }
     }
 }
 

@@ -79,8 +79,8 @@ fun TahoBrowserMenuSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(TahoBlockShape)
-                .background(TahoSurfaceRow)
-                .border(1.dp, TahoHairline, TahoBlockShape)
+                .background(panel)
+                .border(1.dp, hairline, TahoBlockShape)
                 .clickable {
                     onCloseMenu()
                     onSiteInfo()
@@ -92,7 +92,7 @@ fun TahoBrowserMenuSheet(
                 modifier = Modifier
                     .size(28.dp)
                     .clip(CircleShape)
-                    .background(TahoOk.copy(alpha = 0.15f)),
+                    .background(ok.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center,
             ) {
                 Text("🔒", fontSize = 12.sp)
@@ -101,7 +101,7 @@ fun TahoBrowserMenuSheet(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = currentTitle?.takeIf { it.isNotBlank() } ?: cleanLocation,
-                    color = TahoText,
+                    color = ink,
                     fontFamily = TahoMono,
                     fontWeight = FontWeight.Medium,
                     fontSize = 11.5.sp,
@@ -110,7 +110,7 @@ fun TahoBrowserMenuSheet(
                 )
                 Text(
                     text = cleanLocation,
-                    color = TahoFaint,
+                    color = mute,
                     fontFamily = TahoMono,
                     fontSize = 9.sp,
                     maxLines = 1,
@@ -118,7 +118,7 @@ fun TahoBrowserMenuSheet(
                 )
             }
             Spacer(Modifier.width(6.dp))
-            Text("ⓘ Details", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 9.5.sp)
+            Text("ⓘ Details", color = amberHover, fontFamily = TahoMono, fontSize = 9.5.sp)
         }
 
         Spacer(Modifier.height(14.dp))
@@ -155,45 +155,45 @@ fun TahoBrowserMenuSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(TahoBlockShape)
-                .background(TahoSurfaceRow)
-                .border(1.dp, TahoHairline, TahoBlockShape)
+                .background(panel)
+                .border(1.dp, hairline, TahoBlockShape)
                 .padding(horizontal = 14.dp, vertical = 9.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Page Zoom", color = TahoText, fontFamily = TahoMono, fontSize = 11.sp)
+            Text("Page Zoom", color = ink, fontFamily = TahoMono, fontSize = 11.sp)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(
                     modifier = Modifier
                         .size(28.dp)
                         .clip(TahoPillShape)
-                        .background(TahoSurfaceControl)
+                        .background(bone)
                         .clickable(onClick = onZoomOut)
                         .semantics { role = Role.Button; contentDescription = "Zoom out" },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("−", color = TahoText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text("−", color = ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
                 Box(
                     modifier = Modifier
                         .clip(TahoPillShape)
-                        .background(TahoSurfaceControl)
+                        .background(bone)
                         .clickable(onClick = onZoomReset)
                         .padding(horizontal = 10.dp, vertical = 4.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("$zoomPercent%", color = TahoGoldHi, fontFamily = TahoMono, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                    Text("$zoomPercent%", color = amberHover, fontFamily = TahoMono, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                 }
                 Box(
                     modifier = Modifier
                         .size(28.dp)
                         .clip(TahoPillShape)
-                        .background(TahoSurfaceControl)
+                        .background(bone)
                         .clickable(onClick = onZoomIn)
                         .semantics { role = Role.Button; contentDescription = "Zoom in" },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("+", color = TahoText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text("+", color = ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -203,7 +203,7 @@ fun TahoBrowserMenuSheet(
         // Page Actions Section
         Text(
             text = "PAGE ACTIONS",
-            color = TahoFaint,
+            color = mute,
             fontFamily = TahoMono,
             fontSize = 9.5.sp,
             fontWeight = FontWeight.SemiBold,
@@ -215,8 +215,8 @@ fun TahoBrowserMenuSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(TahoCardShape)
-                .background(TahoSurfaceRow)
-                .border(1.dp, TahoHairline, TahoCardShape),
+                .background(panel)
+                .border(1.dp, hairline, TahoCardShape),
         ) {
             MenuItemRow("📑 Reader Mode", "Distraction-free readable view") {
                 onCloseMenu()
@@ -249,7 +249,7 @@ fun TahoBrowserMenuSheet(
         // Browser Management Section
         Text(
             text = "BROWSER HUBS",
-            color = TahoFaint,
+            color = mute,
             fontFamily = TahoMono,
             fontSize = 9.5.sp,
             fontWeight = FontWeight.SemiBold,
@@ -261,8 +261,8 @@ fun TahoBrowserMenuSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(TahoCardShape)
-                .background(TahoSurfaceRow)
-                .border(1.dp, TahoHairline, TahoCardShape),
+                .background(panel)
+                .border(1.dp, hairline, TahoCardShape),
         ) {
             MenuItemRow("★ Bookmarks & Folders", "${TahoBrowserStateStore.bookmarks.size} saved links") {
                 onCloseMenu()
@@ -318,16 +318,16 @@ private fun MenuQuickAction(
             modifier = Modifier
                 .size(46.dp)
                 .clip(RoundedCornerShape(13.dp))
-                .background(if (active) TahoGold.copy(alpha = 0.2f) else TahoSurfaceControl)
-                .border(1.dp, if (active) TahoGoldHi else TahoHairline, RoundedCornerShape(13.dp)),
+                .background(if (active) amber.copy(alpha = 0.2f) else bone)
+                .border(1.dp, if (active) amberHover else hairline, RoundedCornerShape(13.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Text(glyph, color = if (active) TahoGoldHi else TahoText, fontSize = 16.sp)
+            Text(glyph, color = if (active) amberHover else ink, fontSize = 16.sp)
         }
         Spacer(Modifier.height(5.dp))
         Text(
             text = label,
-            color = if (active) TahoGoldHi else TahoMuted,
+            color = if (active) amberHover else mute,
             fontFamily = TahoMono,
             fontSize = 9.sp,
             maxLines = 1,
@@ -352,7 +352,7 @@ private fun MenuItemRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                color = TahoText,
+                color = ink,
                 fontFamily = TahoMono,
                 fontSize = 11.5.sp,
                 fontWeight = FontWeight.Medium,
@@ -360,12 +360,12 @@ private fun MenuItemRow(
             Spacer(Modifier.height(2.dp))
             Text(
                 text = subtitle,
-                color = TahoFaint,
+                color = mute,
                 fontFamily = TahoMono,
                 fontSize = 9.sp,
             )
         }
-        Text("›", color = TahoFaint, fontSize = 16.sp)
+        Text("›", color = mute, fontSize = 16.sp)
     }
 }
 
@@ -375,6 +375,6 @@ private fun MenuItemDivider() {
         modifier = Modifier
             .fillMaxWidth()
             .height(1.dp)
-            .background(TahoHairline)
+            .background(hairline)
     )
 }

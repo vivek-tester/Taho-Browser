@@ -330,7 +330,7 @@ fun TahoBrowserApp(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(TahoBg),
+                .background(canvas),
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 browserContent()
@@ -592,8 +592,8 @@ fun TahoBrowserApp(
             ModalBottomSheet(
                 onDismissRequest = { showCaptureSummary = false },
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                containerColor = TahoSheet,
-                contentColor = TahoText,
+                containerColor = bone,
+                contentColor = ink,
                 shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
                 tonalElevation = 0.dp,
                 scrimColor = Color.Black.copy(alpha = .50f),
@@ -630,8 +630,8 @@ fun TahoBrowserApp(
                 ModalBottomSheet(
                     onDismissRequest = { selectedCaptureId = null },
                     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                    containerColor = TahoSheet,
-                    contentColor = TahoText,
+                    containerColor = bone,
+                    contentColor = ink,
                     shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
                     tonalElevation = 0.dp,
                     scrimColor = Color.Black.copy(alpha = .50f),
@@ -680,8 +680,8 @@ fun TahoBrowserApp(
                 ModalBottomSheet(
                     onDismissRequest = { showTransferConfirmation = false },
                     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                    containerColor = TahoSheet,
-                    contentColor = TahoText,
+                    containerColor = bone,
+                    contentColor = ink,
                     shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
                     tonalElevation = 0.dp,
                     scrimColor = Color.Black.copy(alpha = .50f),
@@ -732,8 +732,8 @@ fun TahoBrowserApp(
             ModalBottomSheet(
                 onDismissRequest = { originWarningTargetUrl = null },
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                containerColor = TahoSheet,
-                contentColor = TahoText,
+                containerColor = bone,
+                contentColor = ink,
                 shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
                 tonalElevation = 0.dp,
                 scrimColor = Color.Black.copy(alpha = .50f),
@@ -748,14 +748,14 @@ fun TahoBrowserApp(
                     Text(
                         text = "Destination Origin Changed",
                         color = TahoWarn,
-                        fontFamily = TahoDisplay,
+                        fontFamily = TahoBody,
                         fontWeight = FontWeight.Medium,
                         fontSize = 17.sp,
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = "This request is addressed to $parsedTarget, which differs from your current tab origin. Replaying it will send network traffic to this external host without live browser cookies or credentials.",
-                        color = TahoText,
+                        color = ink,
                         fontFamily = TahoMono,
                         fontSize = 11.sp,
                     )
@@ -787,8 +787,8 @@ fun TahoBrowserApp(
             ModalBottomSheet(
                 onDismissRequest = { showTabs = false },
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                containerColor = TahoSheet,
-                contentColor = TahoText,
+                containerColor = bone,
+                contentColor = ink,
                 shape = TahoSheetShape,
                 tonalElevation = 0.dp,
                 scrimColor = Color.Black.copy(alpha = .50f),
@@ -852,8 +852,8 @@ fun TahoBrowserApp(
                     settingsInitialSubPage = null
                 },
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                containerColor = TahoSheet,
-                contentColor = TahoText,
+                containerColor = bone,
+                contentColor = ink,
                 shape = TahoSheetShape,
                 tonalElevation = 0.dp,
                 scrimColor = Color.Black.copy(alpha = .50f),
@@ -879,8 +879,8 @@ fun TahoBrowserApp(
             ModalBottomSheet(
                 onDismissRequest = { showBrowserMenu = false },
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                containerColor = TahoSheet,
-                contentColor = TahoText,
+                containerColor = bone,
+                contentColor = ink,
                 shape = TahoSheetShape,
                 tonalElevation = 0.dp,
                 scrimColor = Color.Black.copy(alpha = .50f),
@@ -1006,8 +1006,8 @@ fun TahoBrowserApp(
                     onSitePermissionDecision(prompt.id, false)
                 },
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                containerColor = TahoSheet,
-                contentColor = TahoText,
+                containerColor = bone,
+                contentColor = ink,
                 shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
                 tonalElevation = 0.dp,
                 scrimColor = Color.Black.copy(alpha = .50f),
@@ -1036,15 +1036,15 @@ private fun BrowserNoticeBanner(
         modifier = Modifier
             .fillMaxWidth()
             .clip(TahoBlockShape)
-            .background(TahoSheet)
-            .border(1.dp, TahoHairlineStrong, TahoBlockShape)
+            .background(bone)
+            .border(1.dp, hairlineStrong, TahoBlockShape)
             .padding(start = 14.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = message,
             modifier = Modifier.weight(1f),
-            color = TahoMuted,
+            color = mute,
             fontFamily = TahoMono,
             fontSize = 10.sp,
         )
@@ -1055,7 +1055,7 @@ private fun BrowserNoticeBanner(
                 .clickable(onClick = onDismiss),
             contentAlignment = Alignment.Center,
         ) {
-            Text("×", color = TahoText, fontSize = 17.sp)
+            Text("×", color = ink, fontSize = 17.sp)
         }
     }
 }
@@ -1069,7 +1069,7 @@ private fun PageCrashBanner(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(TahoSheet)
+            .background(bone)
             .border(1.dp, TahoWarn.copy(alpha = .50f), RoundedCornerShape(14.dp))
             .padding(horizontal = 14.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1077,13 +1077,13 @@ private fun PageCrashBanner(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = "This page stopped responding.",
-                color = TahoText,
+                color = ink,
                 fontFamily = TahoMono,
                 fontSize = 11.sp,
             )
             Text(
                 text = "The tab is still open.",
-                color = TahoFaint,
+                color = mute,
                 fontFamily = TahoMono,
                 fontSize = 9.sp,
             )
@@ -1097,7 +1097,7 @@ private fun PageCrashBanner(
                     .semantics { role = Role.Button; contentDescription = "Reload Page" }
                     .clickable(onClick = onReload)
                     .padding(horizontal = 10.dp, vertical = 7.dp),
-                color = TahoGoldHi,
+                color = amberHover,
                 fontFamily = TahoMono,
                 fontSize = 10.sp,
             )
@@ -1109,7 +1109,7 @@ private fun PageCrashBanner(
                     .semantics { role = Role.Button; contentDescription = "View Captured Requests" }
                     .clickable(onClick = onViewCaptured)
                     .padding(horizontal = 10.dp, vertical = 7.dp),
-                color = TahoMuted,
+                color = mute,
                 fontFamily = TahoMono,
                 fontSize = 9.sp,
             )
@@ -1123,15 +1123,15 @@ private fun LoadFailureBanner(onReload: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(TahoSheet)
-            .border(1.dp, TahoError.copy(alpha = .45f), RoundedCornerShape(14.dp))
+            .background(bone)
+            .border(1.dp, danger.copy(alpha = .45f), RoundedCornerShape(14.dp))
             .padding(horizontal = 14.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = "Page failed to load",
             modifier = Modifier.weight(1f),
-            color = TahoText,
+            color = ink,
             fontFamily = TahoMono,
             fontSize = 11.sp,
         )
@@ -1143,7 +1143,7 @@ private fun LoadFailureBanner(onReload: () -> Unit) {
                 .semantics { role = Role.Button; contentDescription = "Reload" }
                 .clickable(onClick = onReload)
                 .padding(horizontal = 10.dp, vertical = 7.dp),
-            color = TahoGoldHi,
+            color = amberHover,
             fontFamily = TahoMono,
             fontSize = 10.sp,
         )
@@ -1191,13 +1191,13 @@ private fun ChromeAction(
     ) {
         Text(
             glyph,
-            color = if (enabled) TahoGoldHi else TahoFaint,
+            color = if (enabled) amberHover else mute,
             fontSize = 15.sp,
         )
         Spacer(Modifier.width(5.dp))
         Text(
             text = label,
-            color = if (enabled) TahoMuted else TahoFaint,
+            color = if (enabled) mute else mute,
             fontFamily = TahoMono,
             fontSize = 9.sp,
             maxLines = 1,
@@ -1224,9 +1224,9 @@ private fun CaptureIndicator(
         CaptureState.OFF -> return
     }
     val dotColor = when (state) {
-        CaptureState.OBSERVING, CaptureState.CAPTURING -> TahoOk
+        CaptureState.OBSERVING, CaptureState.CAPTURING -> ok
         CaptureState.LIMITED -> TahoWarn
-        CaptureState.ERROR -> TahoError
+        CaptureState.ERROR -> danger
         CaptureState.PAUSED, CaptureState.OFF -> Color.Transparent
     }
     val showDot = state != CaptureState.PAUSED && state != CaptureState.OFF
@@ -1238,7 +1238,7 @@ private fun CaptureIndicator(
             .tahoPulse(trigger = label)
             .clip(TahoPillShape)
             .background(Color(0xD1161619))
-            .border(1.dp, TahoHairlineStrong, TahoPillShape)
+            .border(1.dp, hairlineStrong, TahoPillShape)
             .semantics {
                 role = Role.Button
                 contentDescription = when (state) {
@@ -1265,7 +1265,7 @@ private fun CaptureIndicator(
         }
         Text(
             text = label,
-            color = TahoText,
+            color = ink,
             fontFamily = TahoMono,
             fontSize = 10.5.sp,
         )
@@ -1315,7 +1315,7 @@ private fun Omnibox(
                 modifier = Modifier
                     .fillMaxWidth(.26f)
                     .height(2.dp)
-                    .background(TahoGold),
+                    .background(amber),
             )
         }
 
@@ -1340,7 +1340,7 @@ private fun Omnibox(
                     if (draft.isEmpty()) {
                         Text(
                             text = "Search or enter address",
-                            color = TahoFaint,
+                            color = mute,
                             fontFamily = TahoMono,
                             fontSize = 12.sp,
                         )
@@ -1353,11 +1353,11 @@ private fun Omnibox(
                             .focusRequester(focusRequester),
                         singleLine = true,
                         textStyle = TextStyle(
-                            color = TahoText,
+                            color = ink,
                             fontFamily = TahoMono,
                             fontSize = 12.sp,
                         ),
-                        cursorBrush = SolidColor(TahoGold),
+                        cursorBrush = SolidColor(amber),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
                         keyboardActions = KeyboardActions(
                             onGo = {
@@ -1424,12 +1424,12 @@ private fun Omnibox(
                             .padding(horizontal = 10.dp, vertical = 7.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("↗", color = TahoFaint, fontSize = 11.sp)
+                        Text("↗", color = mute, fontSize = 11.sp)
                         Spacer(Modifier.width(8.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = title,
-                                color = TahoText,
+                                color = ink,
                                 fontFamily = TahoBody,
                                 fontSize = 10.5.sp,
                                 maxLines = 1,
@@ -1437,7 +1437,7 @@ private fun Omnibox(
                             )
                             Text(
                                 text = url,
-                                color = TahoFaint,
+                                color = mute,
                                 fontFamily = TahoMono,
                                 fontSize = 8.5.sp,
                                 maxLines = 1,
@@ -1456,11 +1456,11 @@ private fun Omnibox(
                             .padding(horizontal = 10.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("⌕", color = TahoGoldHi, fontSize = 11.sp)
+                        Text("⌕", color = amberHover, fontSize = 11.sp)
                         Spacer(Modifier.width(8.dp))
                         Text(
                             text = "Search for “$query”",
-                            color = TahoGoldHi,
+                            color = amberHover,
                             fontFamily = TahoBody,
                             fontSize = 10.5.sp,
                             maxLines = 1,
@@ -1486,7 +1486,7 @@ private fun OmniboxHomeButton(onClick: () -> Unit) {
             },
         contentAlignment = Alignment.Center,
     ) {
-        Text("⌂", color = TahoMuted, fontSize = 15.sp)
+        Text("⌂", color = mute, fontSize = 15.sp)
     }
 }
 
@@ -1503,7 +1503,7 @@ private fun OmniboxMenuButton(onClick: () -> Unit) {
             },
         contentAlignment = Alignment.Center,
     ) {
-        Text("⋮", color = TahoText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Text("⋮", color = ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -1524,7 +1524,7 @@ private fun OmniboxLeadingGlyph(
         if (isPrivate) {
             Text(
                 text = "◐",
-                color = TahoGoldHi,
+                color = amberHover,
                 fontSize = 14.sp,
             )
             return@Box
@@ -1543,14 +1543,14 @@ private fun OmniboxLeadingGlyph(
                 val bodyTop = size.height * .46f
 
                 drawRoundRect(
-                    color = TahoOk,
+                    color = ok,
                     topLeft = Offset(bodyLeft, bodyTop),
                     size = Size(bodyWidth, bodyHeight),
                     cornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx()),
                     style = Stroke(width = stroke),
                 )
                 drawArc(
-                    color = TahoOk,
+                    color = ok,
                     startAngle = 180f,
                     sweepAngle = 180f,
                     useCenter = false,
@@ -1564,7 +1564,7 @@ private fun OmniboxLeadingGlyph(
 
         Text(
             text = "⌕",
-            color = TahoFaint,
+            color = mute,
             fontSize = 14.sp,
         )
     }
@@ -1595,7 +1595,7 @@ private fun TabCountButton(
         ) {
             Text(
                 text = count.toString(),
-                color = TahoText,
+                color = ink,
                 fontFamily = TahoMono,
                 fontSize = 10.sp,
             )
@@ -1617,15 +1617,15 @@ private fun SitePermissionSheet(
     ) {
         Text(
             text = "Site permission",
-            color = TahoText,
-            fontFamily = TahoDisplay,
+            color = ink,
+            fontFamily = TahoBody,
             fontWeight = FontWeight.Medium,
             fontSize = 17.sp,
         )
         Spacer(Modifier.height(7.dp))
         Text(
             text = prompt.origin,
-            color = TahoGoldHi,
+            color = amberHover,
             fontFamily = TahoMono,
             fontSize = 10.sp,
             maxLines = 1,
@@ -1634,13 +1634,13 @@ private fun SitePermissionSheet(
         Spacer(Modifier.height(18.dp))
         Text(
             text = prompt.title,
-            color = TahoText,
+            color = ink,
             fontSize = 16.sp,
         )
         Spacer(Modifier.height(7.dp))
         Text(
             text = prompt.detail,
-            color = TahoMuted,
+            color = mute,
             fontSize = 12.sp,
         )
 
@@ -1648,7 +1648,7 @@ private fun SitePermissionSheet(
             Spacer(Modifier.height(12.dp))
             Text(
                 text = "Private tab · this prompt is not saved by Taho Browser.",
-                color = TahoFaint,
+                color = mute,
                 fontFamily = TahoMono,
                 fontSize = 9.sp,
             )
@@ -1686,10 +1686,10 @@ private fun PermissionAction(
         modifier = modifier
             .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(999.dp))
-            .background(if (primary) TahoGold else Color.White.copy(alpha = .045f))
+            .background(if (primary) amber else Color.White.copy(alpha = .045f))
             .border(
                 1.dp,
-                if (primary) TahoGold else Color.White.copy(alpha = .12f),
+                if (primary) amber else Color.White.copy(alpha = .12f),
                 RoundedCornerShape(999.dp),
             )
             .clickable(onClick = onClick),
@@ -1697,7 +1697,7 @@ private fun PermissionAction(
     ) {
         Text(
             text = text,
-            color = if (primary) TahoBg else TahoText,
+            color = if (primary) canvas else ink,
             fontFamily = TahoMono,
             fontSize = 11.sp,
         )
@@ -1726,14 +1726,14 @@ private fun TabSwitcher(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Tabs",
-                    color = TahoText,
-                    fontFamily = TahoDisplay,
+                    color = ink,
+                    fontFamily = TahoBody,
                     fontWeight = FontWeight.Medium,
                     fontSize = 17.sp,
                 )
                 Text(
                     text = tabs.size.toString() + if (tabs.size == 1) " open tab" else " open tabs",
-                    color = TahoMuted,
+                    color = mute,
                     fontFamily = TahoMono,
                     fontSize = 10.sp,
                 )
@@ -1779,7 +1779,7 @@ private fun MiniAction(
     ) {
         Text(
             text = text,
-            color = TahoGoldHi,
+            color = amberHover,
             fontFamily = TahoMono,
             fontSize = 10.sp,
         )
@@ -1793,7 +1793,7 @@ private fun TabRow(
     onClose: () -> Unit,
 ) {
     val borderColor = if (tab.selected) {
-        TahoGold.copy(alpha = .55f)
+        amber.copy(alpha = .55f)
     } else {
         Color.White.copy(alpha = .08f)
     }
@@ -1814,7 +1814,7 @@ private fun TabRow(
                 if (tab.isPrivate) {
                     Text(
                         text = "PRIVATE",
-                        color = TahoGoldHi,
+                        color = amberHover,
                         fontFamily = TahoMono,
                         fontSize = 8.sp,
                     )
@@ -1822,7 +1822,7 @@ private fun TabRow(
                 }
                 Text(
                     text = tab.title?.takeIf { it.isNotBlank() } ?: tabTitle(tab.location),
-                    color = TahoText,
+                    color = ink,
                     fontFamily = TahoMono,
                     fontSize = 11.sp,
                     maxLines = 1,
@@ -1849,8 +1849,8 @@ private fun TabRow(
                 },
                 color = when {
                     tab.crashed -> TahoWarn
-                    tab.loadFailed -> TahoError
-                    else -> TahoFaint
+                    tab.loadFailed -> danger
+                    else -> mute
                 },
                 fontFamily = TahoMono,
                 fontSize = 9.sp,
@@ -1866,7 +1866,7 @@ private fun TabRow(
                 .clickable(onClick = onClose),
             contentAlignment = Alignment.Center,
         ) {
-            Text("×", color = TahoMuted, fontSize = 18.sp)
+            Text("×", color = mute, fontSize = 18.sp)
         }
     }
 }
@@ -1885,7 +1885,7 @@ private fun SheetGrabHandle() {
 
 private fun tokenizedUrl(value: String) = buildAnnotatedString {
     if (value == "Search or enter address" || value.isBlank() || value == "about:blank") {
-        pushStyle(SpanStyle(color = TahoMuted))
+        pushStyle(SpanStyle(color = mute))
         append("Search or enter address")
         pop()
         return@buildAnnotatedString
@@ -1893,7 +1893,7 @@ private fun tokenizedUrl(value: String) = buildAnnotatedString {
 
     val schemeEnd = value.indexOf("://")
     if (schemeEnd < 0) {
-        pushStyle(SpanStyle(color = TahoText))
+        pushStyle(SpanStyle(color = ink))
         append(value)
         pop()
         return@buildAnnotatedString
@@ -1906,16 +1906,16 @@ private fun tokenizedUrl(value: String) = buildAnnotatedString {
         value.indexOf('#', authorityStart),
     ).filter { it >= 0 }.minOrNull() ?: value.length
 
-    pushStyle(SpanStyle(color = TahoFaint))
+    pushStyle(SpanStyle(color = mute))
     append(value.substring(0, authorityStart))
     pop()
 
-    pushStyle(SpanStyle(color = TahoText))
+    pushStyle(SpanStyle(color = ink))
     append(value.substring(authorityStart, authorityEnd))
     pop()
 
     if (authorityEnd < value.length) {
-        pushStyle(SpanStyle(color = TahoFaint))
+        pushStyle(SpanStyle(color = mute))
         append(value.substring(authorityEnd))
         pop()
     }
