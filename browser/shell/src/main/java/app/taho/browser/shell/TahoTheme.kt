@@ -8,7 +8,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
@@ -75,9 +74,10 @@ internal val ash = Color(0xFF666F7A)
 /** Disabled text only. WCAG 1.4.3 exempts disabled controls; nothing else may use it. See spec §4.1. */
 internal val stone = Color(0xFF4F5861)
 
-// The Single Amber Rule. Also carries warning state — every warning surface
-// must additionally render a WARN tag and a 4px status bar so colour is never
-// the only signal (WCAG 1.4.1). See spec §4.2.
+// The Single Amber Rule: reserved for the armed state and the primary action.
+// Also carries warning state — every warning surface must additionally render
+// a WARN tag and a 4px status bar so colour is never the only signal
+// (WCAG 1.4.1). See spec §4.2.
 internal val amber = Color(0xFFE8AE55)
 internal val amberHover = Color(0xFFEFC06C)
 internal val amberDeep = Color(0xFFD89A3C)
@@ -209,9 +209,10 @@ internal fun Modifier.tahoPressScale(
  * stroked at 1dp, drawn in when [trigger] changes. This is the only authored
  * entrance motion in the shell; nothing else animates on arrival.
  *
- * Ticks are absolutely positioned inside a `Box` scoped to the focused panel, so
- * the composable imposes no layout of its own. Fully suppressed under reduced
- * motion, where it snaps straight to fully extended.
+ * The caller owns placement and size. The ticks are stroked in a `Canvas` that
+ * fills the `Box` and is clipped to it, so nothing paints outside the bounds the
+ * caller's `modifier` defines. Under reduced motion the arm snaps to full length
+ * with no transition, so the reticle reads as extended without animating.
  *
  * The arm is an [Animatable], not an `animateFloatAsState` target: the two
  * writes must be sequential suspensions on one `MutatorMutex` so the `0f` reset
