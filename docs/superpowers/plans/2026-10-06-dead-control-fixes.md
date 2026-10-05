@@ -78,6 +78,7 @@ Create `browser/shell/src/test/kotlin/app/taho/browser/shell/TahoOmniboxAffordan
 package app.taho.browser.shell
 
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -93,36 +94,50 @@ class TahoOmniboxAffordanceTest {
      * Mirrors the predicate the composable uses. A pure function of the same
      * inputs, so the rule is testable on the JVM without Compose.
      */
-    private fun leadingGlyphEnabled(isStartPage: Boolean, editing: Boolean): Boolean =
-        !isStartPage && !editing
+    private fun leadingGlyphEnabled(isStartPage: Boolean): Boolean = !isStartPage
 
     @Test
     fun siteInformationIsUnavailableOnAStartPage() {
-        assertFalse(leadingGlyphEnabled(isStartPage = true, editing = false))
+        assertFalse(leadingGlyphEnabled(isStartPage = true))
     }
 
     @Test
     fun siteInformationIsAvailableOnALoadedPage() {
-        assertTrue(leadingGlyphEnabled(isStartPage = false, editing = false))
+        assertTrue(leadingGlyphEnabled(isStartPage = false))
     }
 
     @Test
-    fun theGlyphIsDisabledWhileEditingTheAddress() {
-        // Editing replaces the value with a draft; site info about the
-        // pre-edit page would be confusing mid-keystroke.
-        assertFalse(leadingGlyphEnabled(isStartPage = false, editing = true))
-    }
-
-    @Test
-    fun theSourceNoLongerContainsABareGuardedNoOp() {
-        // The defect's exact shape: `if (!isStartPage) { ... }` with no else,
-        // attached to a clickable that consumes the tap regardless.
+    fun bothCallSitesGateOnIsStartPageAlone() {
+        // Asserted on the PRODUCTION source. A test that re-derives the
+        // predicate inside itself cannot fail for any production change, so it
+        // guards nothing — the first three tests as originally written were
+        // exactly that.
         val source = java.io.File(
             "src/main/java/app/taho/browser/shell/TahoBrowserApp.kt"
         ).readText()
+        assertEquals(
+            2,
+            Regex("leadingGlyphEnabled\\s*=\\s*!isStartPage\\b").findAll(source).count(),
+            "both Omnibox call sites must gate on isStartPage alone",
+        )
         assertFalse(
-            source.contains("if (!isStartPage) {\n                                showSiteInfo = true"),
-            "the bare guarded no-op must be replaced by an explicit enabled flag",
+            source.contains("!isStartPage && !editing"),
+            "an editing clause re-creates a swallowed-tap dead zone: the omnibox " +
+                "row's own clickable is clickable(enabled = !editing), so when " +
+                "both are disabled nothing handles that tap",
+        )
+    }
+
+    @Test
+    fun theDisabledPathInstallsNoClickableAtAll() {
+        val source = java.io.File(
+            "src/main/java/app/taho/browser/shell/TahoBrowserApp.kt"
+        ).readText()
+        assertTrue(
+            source.contains("if (enabled) Modifier.clickable(onClick = onClick) else Modifier"),
+            "the disabled branch must add no clickable — clickable(enabled = false) " +
+                "still installs a pointer node that consumes taps, which is the " +
+                "defect being fixed",
         )
     }
 }
@@ -131,7 +146,8 @@ class TahoOmniboxAffordanceTest {
 - [ ] **Step 2: Run it to verify it fails**
 
 Run: `gradle :browser:shell:testDebugUnitTest --tests '*TahoOmniboxAffordanceTest*'`
-Expected: the fourth test FAILS — the bare guarded no-op is present at both call sites.
+Expected: `bothCallSitesGateOnIsStartPageAlone` and `theDisabledPathInstallsNoClickableAtAll`
+both FAIL — no `leadingGlyphEnabled` argument exists yet.
 
 - [ ] **Step 3: Thread an explicit `enabled` flag**
 
@@ -144,13 +160,24 @@ private fun Omnibox(
 ) {
 ```
 
-Replace both call sites' handlers with a flag, and pass it. At `:412`-ish:
+Replace both call sites' handlers with a flag, and pass it. **Identically at both
+sites** (`:412`-ish and `:576`-ish):
 
 ```kotlin
-leadingGlyphEnabled = !isStartPage && !editing,
+leadingGlyphEnabled = !isStartPage,
+onLeadingClick = { showSiteInfo = true },
 ```
 
-Delete the `onLeadingClick` parameter entirely — its only job was the no-op.
+**Keep `onLeadingClick` as the enabled action — do not delete it.** The omnibox row's
+own clickable is `clickable(enabled = !editing, onClick = onBeginEdit)`, and a disabled
+Compose clickable still claims its pointer area (`ClickableKt.clickable` installs
+`ClickableElement` unconditionally; only hover is gated on `enabled`). So with the
+glyph's handler removed, a loaded page would have *nothing* handling that tap in the
+glyph's region — the same swallowed-tap defect this task closes, reintroduced.
+
+`isStartPage` alone is the predicate, with no `editing` clause: site information stays
+reachable while editing, because the user is on a real page and may legitimately ask
+what site they are on.
 
 Inside `Omnibox`, pass the flag down where the glyph is composed (`:1337`):
 
@@ -177,39 +204,70 @@ private fun OmniboxLeadingGlyph(
         modifier = Modifier
             .size(28.dp)
             .clip(RoundedCornerShape(6.dp))
-            // enabled = false means no clickable at all, so the tap falls
-            // through to whatever is behind rather than being consumed.
+            // enabled = false means no clickable AT ALL, so the tap reaches
+            // whatever is behind. `clickable(enabled = false)` is not enough:
+            // it still installs a pointer-input node that consumes taps.
             .then(
-                if (enabled) Modifier.clickable(onClick = {}) else Modifier,
-            ),
+                if (enabled) Modifier.clickable(onClick = onClick) else Modifier,
+            )
+            // mergeDescendants because the enclosing omnibox Row is itself a
+            // clickable, and AbstractClickableNode merges descendant semantics.
+            // Without this the label folds into the Row and is never announced
+            // on its own. Use semantics disabled() -- NOT Modifier.disabled(),
+            // which would re-install a consuming clickable.
+            .semantics(mergeDescendants = true) {
+                if (enabled) {
+                    role = Role.Button
+                } else {
+                    disabled()
+                }
+            },
         contentAlignment = Alignment.Center,
     ) {
 ```
 
-Then dim the glyph when disabled, so it reads as unavailable rather than merely inert. Use
-`ash` — this is a non-text mark, which is its sanctioned use:
+Leave the secure-connection lock `Canvas` strokes in `ok`. They render only under
+`!editing && value.startsWith("https://")`, which is a real loaded page — exactly where
+`enabled` is true — so substituting `markColor` would collapse `ok` to `mute` and destroy a
+live security signal to express a state that cannot occur in that branch. Add a one-line comment
+so the next reader does not "finish" the substitution.
+
+Then dim the other marks when disabled, so the glyph reads as unavailable rather than merely
+inert. Use `ash` — this is a non-text mark, which is its sanctioned use:
 
 ```kotlin
         val markColor = if (enabled) (if (isPrivate) amberHover else mute) else ash
 ```
 
-Apply `markColor` to the glyphs in that composable (the `◐`, the lock `Canvas` stroke colours,
-and the `Text` colours inside it). Read the composable and replace each hardcoded
-`amberHover`/`mute`/`ok` with `markColor`, keeping the `ok` secure-connection lock stroke as-is
-if you judge it reads better in `ok` — state your choice either way.
+Apply `markColor` to the private-mode `◐` and the magnifier glyph. Read the composable and
+replace each hardcoded `amberHover`/`mute` with `markColor`, except the `ok` lock strokes.
 
-- [ ] **Step 5: Add a semantics role so the state is announced**
+> **Known gap:** `TahoTokenMigrationTest.ashAndStoneAreNeverUsedOnTextRoles` matches the
+> literal string `color = ash`, so a `Text(..., color = markColor)` escapes it. That is fine
+> here — `markColor` never carries a string — but note it beside the guard so a future reader
+> does not assume the guard covers this path.
 
-A disabled control should announce as disabled. Give the glyph a description that reflects
-availability:
+- [ ] **Step 5: Make the semantics correct**
 
-```kotlin
-.semantics {
-    contentDescription = if (enabled) "Site information" else "No site information on this page"
-}
-```
+`contentDescription` gives a label; it does not give a *state*. Use `disabled()` from
+`androidx.compose.ui.semantics` so TalkBack announces the dimmed state, and set `role =
+Role.Button` when enabled, matching the three sibling omnibox controls.
 
-- [ ] **Step 6: Verify and commit**
+Use `Modifier.semantics(mergeDescendants = true)`, because the enclosing omnibox Row is itself
+clickable and `AbstractClickableNode.getShouldMergeDescendantSemantics()` is true — without it
+the label folds into the Row and is never announced on its own.
+
+Do **not** use `Modifier.disabled()`: it installs a consuming clickable, reinstating the defect.
+
+- [ ] **Step 6: Delete the defaulted empty handlers**
+
+`OmniboxLeadingGlyph`'s `onClick: () -> Unit = {}` and `Omnibox`'s `onLeadingClick: () -> Unit =
+{}` let a future call site that omits either resurrect exactly the bug this task closed: a
+clickable whose handler does nothing. Remove both defaults so omission becomes a compile error.
+`onMenuClick` and `onHomeClick` share the shape but are pre-existing and always supplied — leave
+them.
+
+- [ ] **Step 7: Verify and commit**
 
 ```bash
 gradle :browser:shell:testDebugUnitTest --tests '*TahoOmniboxAffordanceTest*'
@@ -530,6 +588,109 @@ the UI and a shortcut could be added but never taken off the page.
 Unpin by long press with the state announced in the semantics label, and
 add a visible remove control on pinned tiles so removal is not
 gesture-only."
+```
+
+---
+
+### Task 4b: Give the start page its tab-switcher route
+
+**Files:**
+- Modify: `browser/shell/src/main/java/app/taho/browser/shell/TahoStartPage.kt` — header
+  (`:228-231`)
+- Test: `browser/shell/src/test/kotlin/app/taho/browser/shell/TahoStartPageRouteTest.kt` (create)
+
+**Interfaces:**
+- Consumes: `onOpenTabs`, already declared at `TahoStartPage.kt:70` and already passed a live
+  `{ showTabs = true }` from `TahoBrowserApp.kt:347` — into a parameter nothing reads.
+- Produces: the start page header invokes `onOpenTabs`.
+
+Added after Tasks 3 and 4, from the Task 3 implementer's finding. `TahoStartPage` declares
+`onOpenTabs` (`:70`), `onNewTab` (`:72`) and `onNewPrivateTab` (`:73`) and references **none** of
+them. This is the same defect class as the plan's other four, and arguably the most consequential:
+**the start page has no route to the tab switcher at all.**
+
+`onNewTab` and `onNewPrivateTab` are the same defect but lower severity — "New tab" is reachable
+via the omnibox tab-count button → tab switcher `+ New`. Wire `onOpenTabs` here; record the other
+two as deferred rather than expanding scope.
+
+- [ ] **Step 1: Write the failing test**
+
+```kotlin
+package app.taho.browser.shell
+
+import java.io.File
+import kotlin.test.Test
+import kotlin.test.assertTrue
+
+/**
+ * `onOpenTabs` is passed live from TahoBrowserApp (it sets `showTabs = true`)
+ * into a parameter the start page never reads, so the new-tab page has no
+ * route to the tab switcher.
+ */
+class TahoStartPageRouteTest {
+
+    private val live = File("src/main/java/app/taho/browser/shell/TahoStartPage.kt")
+        .readText()
+        .substringAfter("fun TahoStartPage(")
+        .lineSequence()
+        .map { it.trim() }
+        .filterNot { it.startsWith("//") || it.startsWith("*") || it.startsWith("/*") }
+        .toList()
+
+    @Test
+    fun theStartPageInvokesItsTabSwitcherRoute() {
+        assertTrue(
+            Regex("\\bonOpenTabs\\b").findAll(live.joinToString("\n")).count() >= 2,
+            "onOpenTabs must be declared AND invoked, not merely declared",
+        )
+    }
+}
+```
+
+Note the shape: anchored on `fun TahoStartPage(` so the parameter's own signature does not
+satisfy it, counted over **live lines only** so a commented-out control does not either, and
+`>= 2` so declaration alone is insufficient. Those three details came from failures in Tasks 1–3.
+
+- [ ] **Step 2: Run it to verify it fails**
+
+Run: `gradle :browser:shell:testDebugUnitTest --tests '*TahoStartPageRouteTest*'`
+Expected: FAILS — `saw 1 live occurrence(s); 1 means declaration only`.
+
+- [ ] **Step 3: Add the control**
+
+`TahoStartPage`'s header (`:228-231`) currently holds the wordmark plus `StartHeaderIcon("⚙",
+Settings)` and `StartHeaderIcon("✦", Customize)`. Add a tab-count control:
+
+```kotlin
+StartHeaderIcon(
+    glyph = "▦",
+    description = "Open tabs (${state.tabCount})",
+    onClick = onOpenTabs,
+)
+```
+
+`StartHeaderIcon` takes `(glyph: String, description: String, onClick: () -> Unit)` — pass the
+count in the description so the label is informative rather than bare. Read the call sites at
+`:229-230` and match their shape exactly.
+
+- [ ] **Step 4: Verify and commit**
+
+```bash
+gradle :browser:shell:testDebugUnitTest --rerun-tasks
+gradle verifyArchitecture
+```
+
+```bash
+git add browser/shell/src/main/java/app/taho/browser/shell/TahoStartPage.kt browser/shell/src/test/
+git commit -m "fix(start): give the start page a route to the tab switcher
+
+onOpenTabs was passed live from TahoBrowserApp but never referenced by
+TahoStartPage, so the new-tab page had no way into the tab switcher. Same
+defect class as the four already fixed; found while verifying Task 3.
+
+onNewTab and onNewPrivateTab are declared and unused too, but 'New tab'
+is reachable via the omnibox tab count, so those are deferred rather
+than expanded into this fix."
 ```
 
 ---
