@@ -1546,12 +1546,15 @@ private fun OmniboxLeadingGlyph(
         modifier = Modifier
             .size(28.dp)
             .clip(RoundedCornerShape(6.dp))
-            // No pointer-input node at all when disabled. `clickable(enabled =
-            // false)` is not enough: ClickableKt.clickable always appends a
-            // ClickableElement (only hover is gated on `enabled`), and
-            // detectTapGestures consumes, so the glyph would swallow the tap.
-            // With nothing installed, the tap reaches whatever is beneath --
-            // here the omnibox row, which begins editing only when `!editing`.
+            // No pointer-input node at all when disabled. The original defect was
+            // the handler body: it ran and did nothing, and that consumed the
+            // tap. `clickable(enabled = false)` would not have fixed that --
+            // `clickable` appends its element unconditionally, and the gesture
+            // it installs consumes the down event with no `enabled` check (in
+            // 1.9.1 the flag gates only the press body and the onClick call, not
+            // the `down.consume()` around them). A disabled clickable still
+            // swallows the tap. Omitting the node is the only shape that keeps
+            // this control out of the parent row's hit test at all.
             .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
             // mergeDescendants because the enclosing omnibox Row is itself
             // clickable, and AbstractClickableNode merges descendant semantics:

@@ -39,16 +39,17 @@ class TahoOmniboxAffordanceTest {
         val source = File(
             "src/main/java/app/taho/browser/shell/TahoBrowserApp.kt",
         ).readText()
+        // The `,?\\s*$` tail is load-bearing twice over. A bare `\b` matches at
+        // the trailing space, so `!isStartPage && !editing` would satisfy this
+        // count and the assertion would pass for the exact regression it exists
+        // to catch; the comma has to be tolerated explicitly, because anchoring
+        // to end-of-line without it matches nothing at all and the test fails
+        // on correct source instead of on the mutation.
         assertEquals(
             2,
-            Regex("leadingGlyphEnabled\\s*=\\s*!isStartPage\\b").findAll(source).count(),
-            "both Omnibox call sites must gate on isStartPage alone",
-        )
-        assertFalse(
-            source.contains("!isStartPage && !editing"),
-            "an editing clause re-creates a swallowed-tap dead zone: the omnibox " +
-                "row's own clickable is clickable(enabled = !editing), so when " +
-                "both are disabled nothing handles that tap",
+            Regex("leadingGlyphEnabled\\s*=\\s*!isStartPage\\s*,?\\s*$", RegexOption.MULTILINE)
+                .findAll(source).count(),
+            "both Omnibox call sites must gate on isStartPage and nothing else",
         )
     }
 
@@ -59,9 +60,8 @@ class TahoOmniboxAffordanceTest {
         ).readText()
         assertTrue(
             source.contains("if (enabled) Modifier.clickable(onClick = onClick) else Modifier"),
-            "the disabled branch must add no clickable — clickable(enabled = false) " +
-                "still installs a pointer node that consumes taps, which is the " +
-                "defect being fixed",
+            "the disabled branch should add no clickable, so this control does not " +
+                "participate in the omnibox row's hit test at all",
         )
     }
 }
