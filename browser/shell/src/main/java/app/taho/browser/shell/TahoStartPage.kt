@@ -62,6 +62,20 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+/**
+ * The new-tab page.
+ *
+ * `onOpenTabs` was declared here and never referenced, while `TahoBrowserApp`
+ * passed it a live `{ showTabs = true }` — so this surface had no route into
+ * the tab switcher at all. The header now carries a `▦` control bound to it, and
+ * the open-tab count rides in the accessibility label rather than in the glyph,
+ * so the announced name says what the control will show.
+ *
+ * The count comes from `recentTabs`, which is the caller's full `state.tabs`.
+ * That is independent of `showRecentTabsOnStartPage`, which only gates whether
+ * the Continue Browsing section is rendered: with the setting off the header
+ * control still reports the true count instead of zero.
+ */
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun TahoStartPage(
@@ -229,6 +243,7 @@ fun TahoStartPage(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     StartHeaderIcon("⚙", "Settings", onOpenSettings)
                     StartHeaderIcon("✦", "Customize", { showCustomizeSheet = true })
+                    StartHeaderIcon("▦", "Open tabs (${recentTabs.size})", onOpenTabs)
                 }
             }
 
