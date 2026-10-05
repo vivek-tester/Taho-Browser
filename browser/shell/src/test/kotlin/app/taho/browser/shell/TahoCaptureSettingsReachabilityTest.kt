@@ -34,12 +34,35 @@ class TahoCaptureSettingsReachabilityTest {
 
     @Test
     fun theSummarySheetOffersAnEntryPointToThem() {
-        val summary = productUx.readText()
-            .substringAfter("M7CaptureSummarySheet(")
-            .take(4000)
+        // Two separate weaknesses, two guards.
+        //
+        // ANCHOR. `substringAfter("M7CaptureSummarySheet(")` anchored on the
+        // *declaration*, so the parameter's own signature satisfied the
+        // assertion and a declared-and-never-wired handler passed. Anchoring on
+        // "fun " picks the declaration instead of its first mention.
+        //
+        // COUNT. One occurrence is still the signature alone. Requiring two
+        // forces declared *and* used.
+        //
+        // LIVE LINES ONLY. A raw text count is defeated by commenting the
+        // control out — verified by mutation: commenting out the
+        // M7SheetHeaderAction left the identifier sitting in the file and the
+        // suite stayed green. Dropping line comments and KDoc bodies closes it.
+        //
+        // The substringAfter anchor degrades silently if the declaration is
+        // renamed: it returns the whole remainder rather than throwing. Treat a
+        // sudden drop in these counts as a renamed anchor, not a fixed defect.
+        val live = productUx.readText()
+            .substringAfter("fun M7CaptureSummarySheet(")
+            .lineSequence()
+            .map { it.trim() }
+            .filterNot { it.startsWith("//") || it.startsWith("*") || it.startsWith("/*") }
+            .joinToString("\n")
+
         assertTrue(
-            summary.contains("onOpenCaptureSettings") || summary.contains("M7SettingsSheet("),
-            "the capture summary needs a control that opens capture settings",
+            Regex("\\bonOpenCaptureSettings\\b").findAll(live).count() >= 2,
+            "onOpenCaptureSettings must be declared AND passed to a control — " +
+                "not merely declared, and not merely commented out",
         )
     }
 

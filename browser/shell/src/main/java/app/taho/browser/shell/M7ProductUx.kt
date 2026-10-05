@@ -304,6 +304,11 @@ internal fun M7CaptureSummarySheet(
                     color = mute,
                     fontFamily = TahoMono,
                     fontSize = 10.sp,
+                    // Two 48dp header actions leave this column ~52dp narrower
+                    // than before; without an ellipsis the count wraps and
+                    // grows the sheet header.
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             M7SheetHeaderAction(
@@ -1227,8 +1232,12 @@ internal fun M7SendConfirmationSheet(
 @Composable
 internal fun M7SettingsSheet(
     captureCapabilityNote: String?,
-    retentionMode: String = "Session only",
-    onRetentionModeChanged: (String) -> Unit = {},
+    // No defaults anywhere on this signature. A defaulted handler makes the
+    // retention chips — which carry a visible selected background and consume
+    // taps — into exactly the dead control this sheet was unreachably hiding,
+    // and omission must be a compile error rather than a silent no-op.
+    retentionMode: String,
+    onRetentionModeChanged: (String) -> Unit,
     onClearCaptureData: () -> Unit,
     onDismiss: () -> Unit,
 ) {
