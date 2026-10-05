@@ -182,6 +182,7 @@ fun TahoBrowserApp(
     var isDesktopMode by rememberSaveable { mutableStateOf(false) }
     var settingsInitialSubPage by rememberSaveable { mutableStateOf<SettingsSubPage?>(null) }
     var showCaptureSummary by rememberSaveable { mutableStateOf(false) }
+    var showCaptureSettings by rememberSaveable { mutableStateOf(false) }
     var selectedCaptureId by rememberSaveable { mutableStateOf<String?>(null) }
     var lastSelectedCaptureId by rememberSaveable { mutableStateOf<String?>(null) }
     var captureFilter by rememberSaveable { mutableStateOf(M7CaptureFilterUi.RELEVANT) }
@@ -269,6 +270,7 @@ fun TahoBrowserApp(
         if (state.sitePermission != null) {
             showTabs = false
             showCaptureSummary = false
+            showCaptureSettings = false
             showSettings = false
             showBrowserMenu = false
             showSiteInfo = false
@@ -295,6 +297,7 @@ fun TahoBrowserApp(
             showTransferConfirmation ||
             selectedCaptureId != null ||
             showCaptureSummary ||
+            showCaptureSettings ||
             showSettings ||
             showTabs ||
             editing ||
@@ -316,6 +319,7 @@ fun TahoBrowserApp(
                 onSitePermissionDecision(state.sitePermission.id, false)
             showTransferConfirmation -> showTransferConfirmation = false
             selectedCaptureId != null -> selectedCaptureId = null
+            showCaptureSettings -> showCaptureSettings = false
             showCaptureSummary -> showCaptureSummary = false
             showSettings -> {
                 showSettings = false
@@ -585,7 +589,10 @@ fun TahoBrowserApp(
 
         if (showCaptureSummary && selectedCaptureId == null && state.sitePermission == null) {
             ModalBottomSheet(
-                onDismissRequest = { showCaptureSummary = false },
+                onDismissRequest = {
+                    showCaptureSummary = false
+                    showCaptureSettings = false
+                },
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                 containerColor = bone,
                 contentColor = ink,
@@ -594,24 +601,41 @@ fun TahoBrowserApp(
                 scrimColor = Color.Black.copy(alpha = .50f),
                 dragHandle = { SheetGrabHandle() },
             ) {
-                M7CaptureSummarySheet(
-                    requests = state.captureRequests,
-                    filter = captureFilter,
-                    searchQuery = searchQuery,
-                    onSearchQueryChange = { searchQuery = it },
-                    listState = captureListState,
-                    selectedId = lastSelectedCaptureId,
-                    onFilterSelected = { captureFilter = it },
-                    onSelect = { requestId ->
-                        lastSelectedCaptureId = requestId
-                        selectedCaptureId = requestId
-                        selectedSecretPolicy = M4SecretPolicyUi.PARAMETERIZE
-                    },
-                    onClose = {
-                        showCaptureSummary = false
-                        searchQuery = ""
-                    },
-                )
+                // M7SettingsSheet is sheet *content*, not a sheet: it renders a
+                // bare Column with no scrim, drag handle or dismissal of its
+                // own. Swapping it into this sheet keeps one scrim, one drag
+                // handle and one dismissal path instead of stacking a second
+                // sheet whose scrim would cover this sheet's Close and drag.
+                if (showCaptureSettings) {
+                    M7SettingsSheet(
+                        captureCapabilityNote = state.captureCapabilityNote,
+                        retentionMode = state.retentionMode,
+                        onRetentionModeChanged = onRetentionModeChanged,
+                        onClearCaptureData = onClearCaptureData,
+                        onDismiss = { showCaptureSettings = false },
+                    )
+                } else {
+                    M7CaptureSummarySheet(
+                        requests = state.captureRequests,
+                        filter = captureFilter,
+                        searchQuery = searchQuery,
+                        onSearchQueryChange = { searchQuery = it },
+                        listState = captureListState,
+                        selectedId = lastSelectedCaptureId,
+                        onFilterSelected = { captureFilter = it },
+                        onSelect = { requestId ->
+                            lastSelectedCaptureId = requestId
+                            selectedCaptureId = requestId
+                            selectedSecretPolicy = M4SecretPolicyUi.PARAMETERIZE
+                        },
+                        onOpenCaptureSettings = { showCaptureSettings = true },
+                        onClose = {
+                            showCaptureSummary = false
+                            showCaptureSettings = false
+                            searchQuery = ""
+                        },
+                    )
+                }
             }
         }
 

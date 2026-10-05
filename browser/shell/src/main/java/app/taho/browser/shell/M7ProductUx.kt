@@ -273,6 +273,7 @@ internal fun M7CaptureSummarySheet(
     selectedId: String?,
     onFilterSelected: (M7CaptureFilterUi) -> Unit,
     onSelect: (String) -> Unit,
+    onOpenCaptureSettings: () -> Unit,
     onClose: () -> Unit,
 ) {
     val relevantCount = requests.count { it.relevantByDefault }
@@ -305,16 +306,16 @@ internal fun M7CaptureSummarySheet(
                     fontSize = 10.sp,
                 )
             }
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .semantics { role = Role.Button; contentDescription = "Close captured requests" }
-                    .clickable(onClick = onClose),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("×", color = mute, fontSize = 18.sp)
-            }
+            M7SheetHeaderAction(
+                glyph = "⚙",
+                description = "Capture settings",
+                onClick = onOpenCaptureSettings,
+            )
+            M7SheetHeaderAction(
+                glyph = "×",
+                description = "Close captured requests",
+                onClick = onClose,
+            )
         }
         Spacer(Modifier.height(12.dp))
         M7CaptureSearchField(
@@ -407,6 +408,35 @@ internal fun M7CaptureSummarySheet(
                 fontSize = 9.sp,
             )
         }
+    }
+}
+
+/**
+ * The M7 sheet-header action: a square, glyph-only control carrying a
+ * description so TalkBack names it.
+ *
+ * Lifted out of the capture summary header's Close `×` rather than authored a
+ * second time, so the capture-settings entry point is the same affordance the
+ * reader's eye already knows. 48dp, per the plan's minimum touch target.
+ *
+ * Emoji stay `Text` glyphs here on purpose — the TahoIcon migration is a
+ * separate queued task and must not be smuggled in with a reachability fix.
+ */
+@Composable
+private fun M7SheetHeaderAction(
+    glyph: String,
+    description: String,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .semantics { role = Role.Button; contentDescription = description }
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(glyph, color = mute, fontSize = 18.sp)
     }
 }
 
@@ -1185,12 +1215,22 @@ internal fun M7SendConfirmationSheet(
     }
 }
 
+/**
+ * Browser and capture settings — the only UI for retention mode and for
+ * deleting captures, so it has to stay reachable from the capture surface.
+ *
+ * Renders sheet *content*, not a sheet: no scrim, no drag handle, no
+ * dismissal of its own until [onDismiss] was added. That parameter is
+ * deliberately without a default, so a future call site cannot compose this
+ * with no way out.
+ */
 @Composable
 internal fun M7SettingsSheet(
     captureCapabilityNote: String?,
     retentionMode: String = "Session only",
     onRetentionModeChanged: (String) -> Unit = {},
     onClearCaptureData: () -> Unit,
+    onDismiss: () -> Unit,
 ) {
     var confirmingClear by rememberSaveable { mutableStateOf(false) }
 
@@ -1200,19 +1240,31 @@ internal fun M7SettingsSheet(
             .navigationBarsPadding()
             .padding(start = 18.dp, end = 18.dp, bottom = 20.dp),
     ) {
-        Text(
-            text = "Settings",
-            color = ink,
-            fontFamily = TahoBody,
-            fontWeight = FontWeight.Medium,
-            fontSize = 17.sp,
-        )
-        Text(
-            text = "Browser and capture",
-            color = mute,
-            fontFamily = TahoMono,
-            fontSize = 10.sp,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Settings",
+                    color = ink,
+                    fontFamily = TahoBody,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 17.sp,
+                )
+                Text(
+                    text = "Browser and capture",
+                    color = mute,
+                    fontFamily = TahoMono,
+                    fontSize = 10.sp,
+                )
+            }
+            M7SheetHeaderAction(
+                glyph = "×",
+                description = "Close settings",
+                onClick = onDismiss,
+            )
+        }
         Spacer(Modifier.height(16.dp))
 
         Row(
