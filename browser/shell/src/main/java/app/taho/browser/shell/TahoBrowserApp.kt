@@ -854,7 +854,6 @@ fun TahoBrowserApp(
                         onNavigate(url)
                         showTabs = false
                     },
-                    onCloseOverview = { showTabs = false },
                     onOpenSettings = {
                         showTabs = false
                         settingsInitialSubPage = SettingsSubPage.MAIN

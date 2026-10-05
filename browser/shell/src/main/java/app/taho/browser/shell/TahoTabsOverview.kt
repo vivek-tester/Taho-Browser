@@ -61,7 +61,6 @@ fun TahoTabsOverviewSheet(
     onCloseAllTabs: () -> Unit = {},
     onDuplicateTab: (String) -> Unit = {},
     onRestoreClosedTab: (String) -> Unit = {},
-    onCloseOverview: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
@@ -128,6 +127,25 @@ fun TahoTabsOverviewSheet(
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Settings route. Placed before "+ New" so the primary action
+                // stays right-most. A bare glyph rather than a labelled pill: at
+                // 10.sp a "Settings" label beside the existing "◐ Private" pill
+                // would overflow the header at narrow widths, and this file
+                // already establishes the glyph-only shape — the tab card's
+                // close control is a square glyph with no background or border.
+                // 48.dp gives it the same hit area as the neighbouring pills
+                // (34.dp tall) without making it look any different.
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(TahoPillShape)
+                        .clickable(onClick = onOpenSettings)
+                        .semantics { role = Role.Button; contentDescription = "Settings" },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("⚙", color = mute, fontSize = 14.sp)
+                }
+
                 Box(
                     modifier = Modifier
                         .height(34.dp)
