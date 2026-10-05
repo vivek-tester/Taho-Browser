@@ -58,6 +58,13 @@ class TahoTokenMigrationTest {
      * The check balances parentheses instead of scanning line by line. Compose
      * arguments are almost always one-per-line here, so a line-scoped regex
      * would miss nearly every real occurrence.
+     *
+     * Limitation: it matches the literal `color = ash` / `color = stone` only.
+     * A call that passes an indirect reference -- e.g.
+     * `OmniboxLeadingGlyph`'s `Text("◐", color = markColor)` -- escapes this
+     * guard entirely, so it does NOT prove no ash-coloured string exists
+     * repo-wide. That claim rests on those references resolving to non-ash
+     * tokens, which nothing here verifies.
      */
     @Test
     fun ashAndStoneAreNeverUsedOnTextRoles() {

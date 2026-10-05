@@ -69,6 +69,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.core.view.WindowInsetsControllerCompat
@@ -417,7 +418,7 @@ fun TahoBrowserApp(
                                 onNavigate("about:blank")
                             }
                         },
-                        leadingGlyphEnabled = !isStartPage && !editing,
+                        leadingGlyphEnabled = !isStartPage,
                         onLeadingClick = { showSiteInfo = true },
                     )
                     Spacer(Modifier.height(8.dp))
@@ -570,7 +571,7 @@ fun TahoBrowserApp(
                                 onNavigate("about:blank")
                             }
                         },
-                        leadingGlyphEnabled = !isStartPage && !editing,
+                        leadingGlyphEnabled = !isStartPage,
                         onLeadingClick = { showSiteInfo = true },
                     )
                 }
@@ -1279,12 +1280,14 @@ private fun Omnibox(
     tabCount: Int,
     /**
      * Site information describes a loaded document, so the leading glyph has
-     * nothing to open on a start page, and the draft replaces the address while
-     * editing. Passing this as a flag rather than guarding inside
-     * [onLeadingClick] is what makes the glyph genuinely disabled: a disabled
-     * glyph installs no clickable at all, so its tap falls through to the
-     * omnibox row and begins editing instead of being swallowed by a handler
-     * that did nothing. See spec §4.1 for the mark and disabled tokens.
+     * nothing to open on a start page. Passing this as a flag rather than
+     * guarding inside [onLeadingClick] is what makes the glyph genuinely
+     * disabled: a disabled glyph installs no clickable at all, so its tap falls
+     * through to the omnibox row instead of being swallowed by a handler that
+     * did nothing. `isStartPage` alone is the predicate — `editing` must NOT be
+     * part of it, because the row's own clickable is
+     * `clickable(enabled = !editing)`, and disabling both leaves that tap
+     * handled by nothing. See spec §4.1 for the mark and disabled tokens.
      */
     leadingGlyphEnabled: Boolean,
     onDraftChange: (String) -> Unit,
@@ -1294,7 +1297,9 @@ private fun Omnibox(
     onTabsClick: () -> Unit,
     onMenuClick: () -> Unit = {},
     onHomeClick: () -> Unit = {},
-    onLeadingClick: () -> Unit = {},
+    // Deliberately not defaulted: an omitted handler would compile into a
+    // clickable that does nothing, which is the defect this flag closed.
+    onLeadingClick: () -> Unit,
 ) {
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
@@ -1521,29 +1526,50 @@ private fun OmniboxLeadingGlyph(
     editing: Boolean,
     isPrivate: Boolean,
     enabled: Boolean,
-    onClick: () -> Unit = {},
+    // Deliberately not defaulted: an omitted handler would compile into a
+    // clickable that does nothing, which is the defect `enabled` exists to fix.
+    onClick: () -> Unit,
 ) {
     /**
      * `ash` is the sanctioned non-text mark token and the only value here that
      * says "unavailable" without being read as a colour state (spec §4.1). The
      * glyph carries no string -- the accessible name comes from the
      * contentDescription below -- so the mark may take a sub-4.5:1 token.
+     *
+     * Known gap: `TahoTokenMigrationTest.ashAndStoneAreNeverUsedOnTextRoles`
+     * matches the literal `color = ash`, so these `color = markColor` call
+     * sites escape that guard entirely. Safe only because `markColor` never
+     * carries a string -- do not assume the guard covers this path.
      */
     val markColor = if (enabled) (if (isPrivate) amberHover else mute) else ash
     Box(
         modifier = Modifier
             .size(28.dp)
             .clip(RoundedCornerShape(6.dp))
-            // No clickable at all when disabled. `clickable(enabled = false)`
-            // still claims the touch area in some Compose versions, which is
-            // the defect being fixed; with no pointer node the tap reaches the
-            // omnibox row beneath and begins editing.
+            // No pointer-input node at all when disabled. `clickable(enabled =
+            // false)` is not enough: ClickableKt.clickable always appends a
+            // ClickableElement (only hover is gated on `enabled`), and
+            // detectTapGestures consumes, so the glyph would swallow the tap.
+            // With nothing installed, the tap reaches whatever is beneath --
+            // here the omnibox row, which begins editing only when `!editing`.
             .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
-            .semantics {
+            // mergeDescendants because the enclosing omnibox Row is itself
+            // clickable, and AbstractClickableNode merges descendant semantics:
+            // without it this label folds into the Row's and is never announced
+            // on its own. Use semantics `disabled()` rather than
+            // Modifier.disabled(), which would re-install a consuming clickable.
+            .semantics(mergeDescendants = true) {
                 contentDescription = if (enabled) {
                     "Site information"
                 } else {
+                    // `enabled` is false in exactly one case now: no loaded
+                    // document, which is what this label describes.
                     "No site information on this page"
+                }
+                if (enabled) {
+                    role = Role.Button
+                } else {
+                    disabled()
                 }
             },
         contentAlignment = Alignment.Center,
