@@ -6,6 +6,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -764,6 +765,20 @@ private fun StartHeaderIcon(glyph: String, description: String, onClick: () -> U
     }
 }
 
+/**
+ * A shortcut must be navigable, re-pin-able and removable.
+ *
+ * `onTogglePin` and `onRemove` used to be declared here and never referenced, so
+ * `TahoBrowserStateStore.togglePinTopSite` and `.removeTopSite` — both passed as
+ * live lambdas at the call site — were unreachable, and a shortcut could be
+ * added but never taken off the page.
+ *
+ * Two affordances, because one is not enough: a long press toggles the pin, and
+ * a visible Remove control takes the shortcut off the page outright. The long
+ * press carries an accessibility label and the pin state is part of the tile's
+ * announced name, so a screen reader learns both the state and what the gesture
+ * will do.
+ */
 @Composable
 private fun StartShortcutTile(
     item: TopSiteItem,
@@ -772,49 +787,97 @@ private fun StartShortcutTile(
     onRemove: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    Column(
-        modifier = Modifier
-            .width(72.dp)
-            .tahoPressScale(interaction)
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
+    Column(modifier = Modifier.width(72.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .tahoPressScale(interaction)
+                .combinedClickable(
+                    interactionSource = interaction,
+                    indication = null,
+                    onClick = onClick,
+                    onLongClickLabel = if (item.isPinned) {
+                        "Unpin ${item.title}"
+                    } else {
+                        "Pin ${item.title}"
+                    },
+                    onLongClick = onTogglePin,
+                )
+                // A clickable merges its descendants, and contentDescription is
+                // parent-preferred on merge, so this label survives the merge
+                // and the glyph/title Texts cannot clobber it.
+                .semantics {
+                    contentDescription = buildString {
+                        append(item.title)
+                        if (item.isPinned) append(", pinned")
+                    }
+                },
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color(0xFF141418))
+                    .border(1.dp, if (item.isPinned) amber.copy(alpha = 0.45f) else hairline, RoundedCornerShape(14.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = item.iconGlyph,
+                    color = if (item.isPinned) amberHover else ink,
+                    fontFamily = TahoMono,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp,
+                )
+                if (item.isPinned) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(3.dp)
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(amber)
+                    )
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = item.title,
+                color = mute,
+                fontFamily = TahoMono,
+                fontSize = 9.5.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+            )
+        }
+
+        // Visible dismissal, so removal is not gesture-only. It gets its own
+        // 48dp band rather than overlaying the glyph: the tile is 72dp wide and
+        // 52dp of that is the glyph box, so two 48dp targets cannot coexist
+        // inside it, and an overlay would make the tile's own tap ambiguous.
+        //
+        // It is a *sibling* of the tile, not a child, on purpose — a clickable
+        // merges its descendant semantics, so a nested Remove control would be
+        // folded into the tile's announced name and never exposed on its own.
+        //
+        // Rendered for pinned and unpinned tiles alike. Gating it on isPinned
+        // would re-create the very defect this fixes: the long press unpinning
+        // moves a tile into a state with no Remove at all, where the only way
+        // back would be another long press to re-pin it.
         Box(
             modifier = Modifier
-                .size(52.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(Color(0xFF141418))
-                .border(1.dp, if (item.isPinned) amber.copy(alpha = 0.45f) else hairline, RoundedCornerShape(14.dp)),
+                .fillMaxWidth()
+                .height(48.dp)
+                .clickable(onClick = onRemove)
+                .semantics {
+                    role = Role.Button
+                    contentDescription = "Remove ${item.title}"
+                },
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = item.iconGlyph,
-                color = if (item.isPinned) amberHover else ink,
-                fontFamily = TahoMono,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 13.sp,
-            )
-            if (item.isPinned) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(3.dp)
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .background(amber)
-                )
-            }
+            Text("× Remove", color = mute, fontFamily = TahoMono, fontSize = 9.sp)
         }
-        Spacer(Modifier.height(6.dp))
-        Text(
-            text = item.title,
-            color = mute,
-            fontFamily = TahoMono,
-            fontSize = 9.5.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-        )
     }
 }
 
