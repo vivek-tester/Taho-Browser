@@ -417,11 +417,8 @@ fun TahoBrowserApp(
                                 onNavigate("about:blank")
                             }
                         },
-                        onLeadingClick = {
-                            if (!isStartPage) {
-                                showSiteInfo = true
-                            }
-                        },
+                        leadingGlyphEnabled = !isStartPage && !editing,
+                        onLeadingClick = { showSiteInfo = true },
                     )
                     Spacer(Modifier.height(8.dp))
                 }
@@ -573,11 +570,8 @@ fun TahoBrowserApp(
                                 onNavigate("about:blank")
                             }
                         },
-                        onLeadingClick = {
-                            if (!isStartPage) {
-                                showSiteInfo = true
-                            }
-                        },
+                        leadingGlyphEnabled = !isStartPage && !editing,
+                        onLeadingClick = { showSiteInfo = true },
                     )
                 }
             }
@@ -1283,6 +1277,16 @@ private fun Omnibox(
     isLoading: Boolean,
     isPrivate: Boolean,
     tabCount: Int,
+    /**
+     * Site information describes a loaded document, so the leading glyph has
+     * nothing to open on a start page, and the draft replaces the address while
+     * editing. Passing this as a flag rather than guarding inside
+     * [onLeadingClick] is what makes the glyph genuinely disabled: a disabled
+     * glyph installs no clickable at all, so its tap falls through to the
+     * omnibox row and begins editing instead of being swallowed by a handler
+     * that did nothing. See spec §4.1 for the mark and disabled tokens.
+     */
+    leadingGlyphEnabled: Boolean,
     onDraftChange: (String) -> Unit,
     onBeginEdit: () -> Unit,
     onSubmit: () -> Unit,
@@ -1334,6 +1338,7 @@ private fun Omnibox(
                 value = value,
                 editing = editing,
                 isPrivate = isPrivate,
+                enabled = leadingGlyphEnabled,
                 onClick = onLeadingClick,
             )
             Spacer(Modifier.width(8.dp))
@@ -1515,25 +1520,48 @@ private fun OmniboxLeadingGlyph(
     value: String,
     editing: Boolean,
     isPrivate: Boolean,
+    enabled: Boolean,
     onClick: () -> Unit = {},
 ) {
+    /**
+     * `ash` is the sanctioned non-text mark token and the only value here that
+     * says "unavailable" without being read as a colour state (spec §4.1). The
+     * glyph carries no string -- the accessible name comes from the
+     * contentDescription below -- so the mark may take a sub-4.5:1 token.
+     */
+    val markColor = if (enabled) (if (isPrivate) amberHover else mute) else ash
     Box(
         modifier = Modifier
             .size(28.dp)
             .clip(RoundedCornerShape(6.dp))
-            .clickable(onClick = onClick),
+            // No clickable at all when disabled. `clickable(enabled = false)`
+            // still claims the touch area in some Compose versions, which is
+            // the defect being fixed; with no pointer node the tap reaches the
+            // omnibox row beneath and begins editing.
+            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
+            .semantics {
+                contentDescription = if (enabled) {
+                    "Site information"
+                } else {
+                    "No site information on this page"
+                }
+            },
         contentAlignment = Alignment.Center,
     ) {
         if (isPrivate) {
             Text(
                 text = "◐",
-                color = amberHover,
+                color = markColor,
                 fontSize = 14.sp,
             )
             return@Box
         }
 
         if (!editing && value.startsWith("https://")) {
+            // The lock stays `ok` rather than tracking `markColor`: its green
+            // states transport security, which is independent of whether the
+            // control is available. Dimming it would erase a real signal on a
+            // genuinely secure page, where `enabled` is true anyway.
             Canvas(
                 modifier = Modifier
                     .size(18.dp)
@@ -1567,7 +1595,7 @@ private fun OmniboxLeadingGlyph(
 
         Text(
             text = "⌕",
-            color = mute,
+            color = markColor,
             fontSize = 14.sp,
         )
     }
