@@ -205,13 +205,53 @@ rather than an expanding ring, preserving the reduced-motion bypass.
 Replace emoji with authored vector drawables (`res/drawable/`), 24dp viewport,
 1.5dp stroke, round caps and joins, `currentColor` tint — one family, one weight.
 
-Required set (28): lock, sliders/settings, sparkle, search, arrow-up-right,
-shield, star, book, share, find, monitor, minus, plus, reader, translate, install,
-print, download, clock, key, puzzle, chevron-right, close, layers, incognito,
-grid, folder, plus the capture-specific marks (activity/pulse, send, alert).
+Required set, reconciled against the shell at `0cb3822` (37):
+
+    close  chevron-right  minus  plus  search  check  warn-triangle  settings
+    person  incognito  brand  shield  shield-check  lock  bolt  monitor
+    monitor-check  sparkle  grid  clock  caret-up  caret-down  alert  home  card
+    star  star-outline  book  reader  expand
+    location  camera  microphone  notification  clipboard  storage  popups
+    autoplay
 
 Each needs `contentDescription` for accessibility, replacing the
 `contentDescription` semantics calls that currently sit on emoji glyphs.
+
+### What changed from the original list, and why
+
+The original list read "Required set (28)" and then enumerated 30 names. It has been
+replaced rather than patched, because it no longer described this codebase:
+
+- **It was internally inconsistent.** It claimed 28 and listed 30. The implementation plan
+  separately claimed 28 plus a brand mark, and its test expected 29. Three numbers, two
+  documents, and the mismatch is why the first two attempts at this task produced the wrong
+  file count.
+- **Eight names had no site.** `find`, `print`, `download`, `key`, `puzzle` and `folder` exist
+  in the shell only *inside prose* — `"🔍 Find on page"` — never in an icon slot.
+  `arrow-up-right`, `share`, `translate` and `install` had no glyph at all.
+- **Thirteen were missing.** The site-permission list (`TahoPageOverlays.kt`) alone contributes
+  nine: location, camera, microphone, notification, clipboard, storage, popups, autoplay and
+  background. Also `check`, `warn-triangle`, `home`, `card`, `person`, `expand`, `caret-up`,
+  `caret-down`, `star-outline`, `monitor-check` and `shield-check`.
+- **`close` was two codepoints.** `×` (U+00D7, 28 uses) and `✕` (U+2715, 4 uses) are both the
+  close affordance. One drawable serves both; leaving them as separate glyphs would have
+  preserved the inconsistency the icon system exists to remove.
+
+### Inline marks are not icons
+
+The shell uses 31 further glyph characters (55 occurrences) **only inside sentences** —
+`"✓ complete"`, `"△ body partial"`, `"📁 Requests"`. These are typographic marks in prose and
+stay as text. Converting them would be wrong: the spec's intent is to replace emoji *used as
+icons*, not to strip punctuation out of labels. The distinction is what keeps this task from
+either under- or over-reaching, and it is why the guard test distinguishes icon slots from prose
+rather than banning glyph characters outright.
+
+### Two glyphs are data, not chrome
+
+`⌕` and `📌` reach the UI through the `iconGlyph` **data field** on `SearchEngineItem` and
+`TopSiteItem` (`TahoModels.kt`), with `addSearchEngine(iconGlyph = "⌕")` and a `.take(2)`
+truncation that implies user-supplied content. Converting those would be a model change, not an
+icon swap. Chrome uses of the same characters become drawables; the data field keeps text.
 
 ## 6. Change surface
 
