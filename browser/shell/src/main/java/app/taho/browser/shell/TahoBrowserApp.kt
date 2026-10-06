@@ -6,7 +6,6 @@ import android.content.ContextWrapper
 import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -46,15 +45,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -1073,7 +1069,12 @@ private fun BrowserNoticeBanner(
                 .clickable(onClick = onDismiss),
             contentAlignment = Alignment.Center,
         ) {
-            Text("×", color = ink, fontSize = 17.sp)
+            TahoIcon(
+                name = TahoIconName.Close,
+                tint = ink,
+                description = "Dismiss message",
+                modifier = Modifier.size(17.dp),
+            )
         }
     }
 }
@@ -1181,17 +1182,17 @@ private fun NavigationTray(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        ChromeAction("Back", "‹", Modifier.weight(1f), canGoBack, onBack)
-        ChromeAction("Forward", "›", Modifier.weight(1f), canGoForward, onForward)
-        ChromeAction("Reload", "↻", Modifier.weight(1f), true, onReload)
-        ChromeAction("Done", "×", Modifier.weight(1f), true, onCancel)
+        ChromeAction("Back", TahoIconName.ChevronLeft, Modifier.weight(1f), canGoBack, onBack)
+        ChromeAction("Forward", TahoIconName.ChevronRight, Modifier.weight(1f), canGoForward, onForward)
+        ChromeAction("Reload", TahoIconName.Reload, Modifier.weight(1f), true, onReload)
+        ChromeAction("Done", TahoIconName.Close, Modifier.weight(1f), true, onCancel)
     }
 }
 
 @Composable
 private fun ChromeAction(
     label: String,
-    glyph: String,
+    icon: TahoIconName,
     modifier: Modifier = Modifier,
     enabled: Boolean,
     onClick: () -> Unit,
@@ -1207,13 +1208,15 @@ private fun ChromeAction(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // The armed/rest distinction lives on the glyph only. The label stays mute
+        // The armed/rest distinction lives on the mark only. The label stays mute
         // in both states: this is a chrome bar on a near-black fill (mute 5.44:1,
         // stone 2.54:1 -- stone fails AA and this label is never truly disabled).
-        Text(
-            glyph,
-            color = if (enabled) amberHover else mute,
-            fontSize = 15.sp,
+        // The label is the visible name, so the mark beside it is decorative.
+        TahoIcon(
+            name = icon,
+            tint = if (enabled) amberHover else mute,
+            description = null,
+            modifier = Modifier.size(15.dp),
         )
         Spacer(Modifier.width(5.dp))
         Text(
@@ -1460,7 +1463,12 @@ private fun Omnibox(
                             .padding(horizontal = 10.dp, vertical = 7.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("↗", color = mute, fontSize = 11.sp)
+                        TahoIcon(
+                            name = TahoIconName.ExternalLink,
+                            tint = mute,
+                            description = null,
+                            modifier = Modifier.size(13.dp),
+                        )
                         Spacer(Modifier.width(8.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
@@ -1492,7 +1500,12 @@ private fun Omnibox(
                             .padding(horizontal = 10.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("⌕", color = amberHover, fontSize = 11.sp)
+                        TahoIcon(
+                            name = TahoIconName.Search,
+                            tint = amberHover,
+                            description = null,
+                            modifier = Modifier.size(13.dp),
+                        )
                         Spacer(Modifier.width(8.dp))
                         Text(
                             text = "Search for “$query”",
@@ -1522,7 +1535,7 @@ private fun OmniboxHomeButton(onClick: () -> Unit) {
             },
         contentAlignment = Alignment.Center,
     ) {
-        Text("⌂", color = mute, fontSize = 15.sp)
+        TahoIcon(TahoIconName.Home, tint = mute, description = null, modifier = Modifier.size(17.dp))
     }
 }
 
@@ -1539,7 +1552,7 @@ private fun OmniboxMenuButton(onClick: () -> Unit) {
             },
         contentAlignment = Alignment.Center,
     ) {
-        Text("⋮", color = ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        TahoIcon(TahoIconName.Overflow, tint = ink, description = null, modifier = Modifier.size(18.dp))
     }
 }
 
@@ -1560,11 +1573,15 @@ private fun OmniboxLeadingGlyph(
      * contentDescription below -- so the mark may take a sub-4.5:1 token.
      *
      * Known gap: `TahoTokenMigrationTest.ashAndStoneAreNeverUsedOnTextRoles`
-     * matches the literal `color = ash`, so these `color = markColor` call
-     * sites escape that guard entirely. Safe only because `markColor` never
-     * carries a string -- do not assume the guard covers this path.
+     * matches the literal `color = ash`, so these `tint = markColor` call
+     * sites escape that guard entirely. The guard is now doubly quiet here:
+     * `TahoIcon` is not a `Text` call at all, so the opener it matches
+     * (`Text|TextStyle|SpanStyle`) cannot see these lines. Safe only because
+     * `markColor` never carries a string -- do not assume the guard covers
+     * this path.
      */
     val markColor = if (enabled) (if (isPrivate) amberHover else mute) else ash
+    val markSize = Modifier.size(17.dp)
     Box(
         modifier = Modifier
             .size(28.dp)
@@ -1601,10 +1618,11 @@ private fun OmniboxLeadingGlyph(
         contentAlignment = Alignment.Center,
     ) {
         if (isPrivate) {
-            Text(
-                text = "◐",
-                color = markColor,
-                fontSize = 14.sp,
+            TahoIcon(
+                name = TahoIconName.Incognito,
+                tint = markColor,
+                description = null,
+                modifier = markSize,
             )
             return@Box
         }
@@ -1614,41 +1632,20 @@ private fun OmniboxLeadingGlyph(
             // states transport security, which is independent of whether the
             // control is available. Dimming it would erase a real signal on a
             // genuinely secure page, where `enabled` is true anyway.
-            Canvas(
-                modifier = Modifier
-                    .size(18.dp)
-                    .semantics { contentDescription = "Secure connection" },
-            ) {
-                val stroke = 1.35.dp.toPx()
-                val bodyWidth = size.width * .56f
-                val bodyHeight = size.height * .42f
-                val bodyLeft = (size.width - bodyWidth) / 2f
-                val bodyTop = size.height * .46f
-
-                drawRoundRect(
-                    color = ok,
-                    topLeft = Offset(bodyLeft, bodyTop),
-                    size = Size(bodyWidth, bodyHeight),
-                    cornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx()),
-                    style = Stroke(width = stroke),
-                )
-                drawArc(
-                    color = ok,
-                    startAngle = 180f,
-                    sweepAngle = 180f,
-                    useCenter = false,
-                    topLeft = Offset(size.width * .29f, size.height * .12f),
-                    size = Size(size.width * .42f, size.height * .54f),
-                    style = Stroke(width = stroke),
-                )
-            }
+            TahoIcon(
+                name = TahoIconName.Lock,
+                tint = ok,
+                description = "Secure connection",
+                modifier = Modifier.size(18.dp),
+            )
             return@Box
         }
 
-        Text(
-            text = "⌕",
-            color = markColor,
-            fontSize = 14.sp,
+        TahoIcon(
+            name = TahoIconName.Search,
+            tint = markColor,
+            description = null,
+            modifier = markSize,
         )
     }
 }
@@ -1949,7 +1946,12 @@ private fun TabRow(
                 .clickable(onClick = onClose),
             contentAlignment = Alignment.Center,
         ) {
-            Text("×", color = mute, fontSize = 18.sp)
+            TahoIcon(
+                name = TahoIconName.Close,
+                tint = mute,
+                description = "Close tab",
+                modifier = Modifier.size(18.dp),
+            )
         }
     }
 }

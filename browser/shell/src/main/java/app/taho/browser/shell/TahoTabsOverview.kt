@@ -143,7 +143,7 @@ fun TahoTabsOverviewSheet(
                         .semantics { role = Role.Button; contentDescription = "Settings" },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("⚙", color = mute, fontSize = 14.sp)
+                    TahoIcon(TahoIconName.Settings, tint = mute, description = null, modifier = Modifier.size(16.dp))
                 }
 
                 Box(
@@ -186,7 +186,7 @@ fun TahoTabsOverviewSheet(
                 .padding(horizontal = 14.dp, vertical = 8.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("⌕", color = mute, fontSize = 13.sp)
+                TahoIcon(TahoIconName.Search, tint = mute, description = null, modifier = Modifier.size(15.dp))
                 Spacer(Modifier.width(8.dp))
                 Box(modifier = Modifier.weight(1f)) {
                     if (searchQuery.isEmpty()) {
@@ -202,7 +202,14 @@ fun TahoTabsOverviewSheet(
                     )
                 }
                 if (searchQuery.isNotEmpty()) {
-                    Text("×", color = mute, fontSize = 14.sp, modifier = Modifier.clickable { searchQuery = "" })
+                    TahoIcon(
+                        name = TahoIconName.Close,
+                        tint = mute,
+                        description = "Clear tab search",
+                        modifier = Modifier
+                            .clickable { searchQuery = "" }
+                            .size(15.dp),
+                    )
                 }
             }
         }
@@ -763,7 +770,12 @@ private fun DetailedTabCard(
                     .semantics { role = Role.Button; contentDescription = "Close tab" },
                 contentAlignment = Alignment.Center,
             ) {
-                Text("×", color = mute, fontSize = 18.sp)
+                TahoIcon(
+                    name = TahoIconName.Close,
+                    tint = mute,
+                    description = null,
+                    modifier = Modifier.size(18.dp),
+                )
             }
         }
 

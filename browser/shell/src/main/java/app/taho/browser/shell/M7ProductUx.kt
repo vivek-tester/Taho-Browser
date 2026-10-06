@@ -312,12 +312,12 @@ internal fun M7CaptureSummarySheet(
                 )
             }
             M7SheetHeaderAction(
-                glyph = "⚙",
+                icon = TahoIconName.Settings,
                 description = "Capture settings",
                 onClick = onOpenCaptureSettings,
             )
             M7SheetHeaderAction(
-                glyph = "×",
+                icon = TahoIconName.Close,
                 description = "Close captured requests",
                 onClick = onClose,
             )
@@ -424,12 +424,13 @@ internal fun M7CaptureSummarySheet(
  * second time, so the capture-settings entry point is the same affordance the
  * reader's eye already knows. 48dp, per the plan's minimum touch target.
  *
- * Emoji stay `Text` glyphs here on purpose — the TahoIcon migration is a
- * separate queued task and must not be smuggled in with a reachability fix.
+ * The mark is an authored `TahoIcon`, not an emoji: a glyph-only control whose
+ * only content is the mark is precisely the case the icon family exists for,
+ * and the accessible name now rides on the mark instead of a `semantics` block.
  */
 @Composable
 private fun M7SheetHeaderAction(
-    glyph: String,
+    icon: TahoIconName,
     description: String,
     onClick: () -> Unit,
 ) {
@@ -437,11 +438,13 @@ private fun M7SheetHeaderAction(
         modifier = Modifier
             .size(48.dp)
             .clip(RoundedCornerShape(12.dp))
-            .semantics { role = Role.Button; contentDescription = description }
+            .semantics { role = Role.Button }
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(glyph, color = mute, fontSize = 18.sp)
+        // The mark is the control's only content, so it carries the name the Box
+        // used to hold in a semantics block.
+        TahoIcon(icon, tint = mute, description = description, modifier = Modifier.size(18.dp))
     }
 }
 
@@ -654,7 +657,7 @@ internal fun M7RequestInspectorSheet(
                         .clickable(onClick = onToggleWorkspace),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("⛶", color = amberHover, fontSize = 16.sp)
+                    TahoIcon(TahoIconName.Expand, tint = amberHover, description = null, modifier = Modifier.size(17.dp))
                 }
                 Spacer(Modifier.width(4.dp))
             }
@@ -669,7 +672,12 @@ internal fun M7RequestInspectorSheet(
                     .clickable(onClick = onBack),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("×", color = mute, fontSize = 18.sp)
+                TahoIcon(
+                    TahoIconName.Close,
+                    tint = mute,
+                    description = null,
+                    modifier = Modifier.size(18.dp),
+                )
             }
         }
 
@@ -1075,16 +1083,21 @@ internal fun M7SendConfirmationSheet(
                     .clickable(onClick = onCancel),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("×", color = mute, fontSize = 18.sp)
+                TahoIcon(
+                    TahoIconName.Close,
+                    tint = mute,
+                    description = null,
+                    modifier = Modifier.size(18.dp),
+                )
             }
         }
         Spacer(Modifier.height(14.dp))
 
-        M7TransferLine("✓", "URL · Method · Query — included", ok)
+        M7TransferLine(TahoIconName.Check, "URL · Method · Query — included", ok)
         M7TransferLine(
             if (request.requestBodyCompleteness == M4CompletenessUi.COMPLETE ||
                 request.requestBodyCompleteness == M4CompletenessUi.NOT_APPLICABLE
-            ) "✓" else "△",
+            ) TahoIconName.Check else TahoIconName.WarnTriangle,
             when (request.requestBodyCompleteness) {
                 M4CompletenessUi.NOT_APPLICABLE -> "Request body — not applicable"
                 M4CompletenessUi.COMPLETE -> "Request body — included"
@@ -1096,9 +1109,9 @@ internal fun M7SendConfirmationSheet(
                 request.requestBodyCompleteness == M4CompletenessUi.NOT_APPLICABLE
             ) ok else TahoWarn,
         )
-        M7TransferLine("✓", "Non-sensitive headers — normalized", ok)
+        M7TransferLine(TahoIconName.Check, "Non-sensitive headers — normalized", ok)
         if (request.sensitiveCount > 0) {
-            M7TransferLine("⛨", "Authorization and other detected secrets — protected below", TahoWarn)
+            M7TransferLine(TahoIconName.Shield, "Authorization and other detected secrets — protected below", TahoWarn)
         }
 
         if (request.fromPrivateSession) {
@@ -1269,7 +1282,7 @@ internal fun M7SettingsSheet(
                 )
             }
             M7SheetHeaderAction(
-                glyph = "×",
+                icon = TahoIconName.Close,
                 description = "Close settings",
                 onClick = onDismiss,
             )
@@ -1414,7 +1427,13 @@ internal fun M7TechnicalWorkspaceView(
                     .clickable(onClick = onClose),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("✕", color = mute, fontSize = 20.sp)
+                // The mark is this control's only content, so it carries the name.
+                TahoIcon(
+                    TahoIconName.Close,
+                    tint = mute,
+                    description = "Close technical workspace",
+                    modifier = Modifier.size(20.dp),
+                )
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -1665,13 +1684,14 @@ private fun M7HonestyNote(text: String, warning: Boolean = false) {
 }
 
 @Composable
-private fun M7TransferLine(glyph: String, copy: String, color: Color) {
+private fun M7TransferLine(icon: TahoIconName, copy: String, color: Color) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
     ) {
-        Text(glyph, color = color, fontFamily = TahoMono, fontSize = 10.sp)
+        // The copy beside it is the visible label, so the mark is decorative.
+        TahoIcon(icon, tint = color, description = null, modifier = Modifier.size(11.dp))
         Spacer(Modifier.width(7.dp))
         Text(copy, color = color, fontFamily = TahoMono, fontSize = 10.sp)
     }
@@ -1825,10 +1845,11 @@ internal fun M7PrimaryButton(
                         .background(Color.Black.copy(alpha = .15f)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        text = "↗",
-                        color = if (enabled) canvas else mute,
-                        fontSize = 12.sp,
+                    TahoIcon(
+                        TahoIconName.ExternalLink,
+                        tint = if (enabled) canvas else mute,
+                        description = null,
+                        modifier = Modifier.size(14.dp),
                     )
                 }
             }

@@ -162,7 +162,7 @@ fun TahoStartPage(
                         .border(1.dp, amber, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("🔒", fontSize = 28.sp)
+                    TahoIcon(TahoIconName.Lock, tint = amber, description = null, modifier = Modifier.size(30.dp))
                 }
                 Spacer(Modifier.height(16.dp))
                 Text(
@@ -230,11 +230,12 @@ fun TahoStartPage(
                             .border(1.dp, amber.copy(alpha = 0.35f), RoundedCornerShape(10.dp)),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(
-                            text = if (isPrivate) "◐" else "⬡",
-                            color = amberHover,
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
+                        // The wordmark beside it is the label; the crest is decorative.
+                        TahoIcon(
+                            name = if (isPrivate) TahoIconName.Incognito else TahoIconName.Brand,
+                            tint = amberHover,
+                            description = null,
+                            modifier = Modifier.size(19.dp),
                         )
                     }
                     Spacer(Modifier.width(10.dp))
@@ -266,9 +267,9 @@ fun TahoStartPage(
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StartHeaderIcon("⚙", "Settings", onOpenSettings)
-                    StartHeaderIcon("✦", "Customize", { showCustomizeSheet = true })
-                    StartHeaderIcon("▦", "Open tabs (${recentTabs.size})", onOpenTabs)
+                    StartHeaderIcon(TahoIconName.Settings, "Settings", onOpenSettings)
+                    StartHeaderIcon(TahoIconName.Sparkle, "Customize", { showCustomizeSheet = true })
+                    StartHeaderIcon(TahoIconName.Grid, "Open tabs (${recentTabs.size})", onOpenTabs)
                 }
             }
 
@@ -286,7 +287,7 @@ fun TahoStartPage(
                 ) {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("🛡", fontSize = 16.sp)
+                            TahoIcon(TahoIconName.Shield, tint = amberHover, description = null, modifier = Modifier.size(17.dp))
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 text = "Strict Private Isolation Active",
@@ -546,7 +547,7 @@ fun TahoStartPage(
                                 .padding(horizontal = 14.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text("⏱", fontSize = 12.sp, color = mute)
+                            TahoIcon(TahoIconName.Clock, tint = mute, description = null, modifier = Modifier.size(13.dp))
                             Spacer(Modifier.width(10.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
@@ -788,7 +789,7 @@ fun TahoStartPage(
 }
 
 @Composable
-private fun StartHeaderIcon(glyph: String, description: String, onClick: () -> Unit) {
+private fun StartHeaderIcon(icon: TahoIconName, description: String, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     Box(
         modifier = Modifier
@@ -801,7 +802,7 @@ private fun StartHeaderIcon(glyph: String, description: String, onClick: () -> U
             .semantics { role = Role.Button; contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        Text(glyph, color = mute, fontSize = 14.sp)
+        TahoIcon(icon, tint = mute, description = description, modifier = Modifier.size(16.dp))
     }
 }
 

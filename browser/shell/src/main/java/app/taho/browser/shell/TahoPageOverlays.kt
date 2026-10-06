@@ -50,8 +50,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -89,7 +87,7 @@ fun TahoFindInPageBar(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("⌕", color = amberHover, fontSize = 14.sp)
+            TahoIcon(TahoIconName.Search, tint = amberHover, description = null, modifier = Modifier.size(15.dp))
             Spacer(Modifier.width(8.dp))
 
             Box(modifier = Modifier.weight(1f)) {
@@ -116,33 +114,38 @@ fun TahoFindInPageBar(
                     modifier = Modifier.padding(horizontal = 6.dp),
                 )
 
-                Text(
-                    text = "▲",
-                    color = if (matchCount > 0) ink else mute,
-                    fontSize = 11.sp,
+                // Each arrow is a control whose only content is the mark, so the
+                // label sits on the mark rather than in a semantics block.
+                TahoIcon(
+                    name = TahoIconName.CaretUp,
+                    tint = if (matchCount > 0) ink else mute,
+                    description = "Previous match",
                     modifier = Modifier
                         .clickable(enabled = matchCount > 0, onClick = onPrevious)
-                        .padding(horizontal = 6.dp),
+                        .padding(horizontal = 6.dp)
+                        .size(13.dp),
                 )
 
-                Text(
-                    text = "▼",
-                    color = if (matchCount > 0) ink else mute,
-                    fontSize = 11.sp,
+                TahoIcon(
+                    name = TahoIconName.CaretDown,
+                    tint = if (matchCount > 0) ink else mute,
+                    description = "Next match",
                     modifier = Modifier
                         .clickable(enabled = matchCount > 0, onClick = onNext)
-                        .padding(horizontal = 6.dp),
+                        .padding(horizontal = 6.dp)
+                        .size(13.dp),
                 )
             }
 
             Spacer(Modifier.width(6.dp))
-            Text(
-                text = "✕",
-                color = mute,
-                fontSize = 14.sp,
+            TahoIcon(
+                name = TahoIconName.Close,
+                tint = mute,
+                description = "Close find bar",
                 modifier = Modifier
                     .clickable(onClick = onClose)
-                    .padding(4.dp),
+                    .padding(4.dp)
+                    .size(15.dp),
             )
         }
     }
@@ -352,7 +355,17 @@ fun TahoSiteInfoSheet(
                         .background(if (isSecure && !hasMixedContent) ok.copy(alpha = 0.15f) else TahoWarn.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(if (isSecure && !hasMixedContent) "🔒" else "⚠️", fontSize = 16.sp)
+                    // The state word below the host is the label; this mark repeats it.
+                    TahoIcon(
+                        name = if (isSecure && !hasMixedContent) {
+                            TahoIconName.Lock
+                        } else {
+                            TahoIconName.Alert
+                        },
+                        tint = if (isSecure && !hasMixedContent) ok else TahoWarn,
+                        description = null,
+                        modifier = Modifier.size(18.dp),
+                    )
                 }
                 Spacer(Modifier.width(12.dp))
                 Column {
@@ -444,15 +457,15 @@ fun TahoSiteInfoSheet(
                     .border(1.dp, hairline, TahoCardShape),
             ) {
                 listOf(
-                    "Location" to "📍",
-                    "Camera" to "📷",
-                    "Microphone" to "🎙",
-                    "Notification" to "🔔",
-                    "Clipboard" to "📋",
-                    "Storage" to "💾",
-                    "Pop-ups" to "🗖",
-                    "Autoplay" to "▶",
-                    "Background Activity" to "⚡",
+                    "Location" to TahoIconName.Location,
+                    "Camera" to TahoIconName.Camera,
+                    "Microphone" to TahoIconName.Microphone,
+                    "Notification" to TahoIconName.Notification,
+                    "Clipboard" to TahoIconName.Clipboard,
+                    "Storage" to TahoIconName.Storage,
+                    "Pop-ups" to TahoIconName.Popups,
+                    "Autoplay" to TahoIconName.Autoplay,
+                    "Background Activity" to TahoIconName.Bolt,
                 ).forEachIndexed { idx, (perm, icon) ->
                     val current = perms.find { it.permission == perm }?.state ?: "ASK"
                     PermissionItemToggle(
@@ -534,13 +547,29 @@ fun TahoSiteInfoSheet(
                     ) {
                         Text("Per-Site Zoom Level", color = ink, fontFamily = TahoMono, fontSize = 11.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text("−", color = ink, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable {
-                                if (zoom > 50) TahoBrowserStateStore.setZoomForOrigin(host, zoom - 10)
-                            }.padding(4.dp))
+                            TahoIcon(
+                                name = TahoIconName.Minus,
+                                tint = ink,
+                                description = "Zoom out",
+                                modifier = Modifier
+                                    .clickable {
+                                        if (zoom > 50) TahoBrowserStateStore.setZoomForOrigin(host, zoom - 10)
+                                    }
+                                    .padding(4.dp)
+                                    .size(13.dp),
+                            )
                             Text("$zoom%", color = amberHover, fontFamily = TahoMono, fontSize = 10.sp)
-                            Text("+", color = ink, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable {
-                                if (zoom < 300) TahoBrowserStateStore.setZoomForOrigin(host, zoom + 10)
-                            }.padding(4.dp))
+                            TahoIcon(
+                                name = TahoIconName.Plus,
+                                tint = ink,
+                                description = "Zoom in",
+                                modifier = Modifier
+                                    .clickable {
+                                        if (zoom < 300) TahoBrowserStateStore.setZoomForOrigin(host, zoom + 10)
+                                    }
+                                    .padding(4.dp)
+                                    .size(13.dp),
+                            )
                         }
                     }
                 }
@@ -652,7 +681,7 @@ private fun SiteDetailRow(key: String, value: String) {
 
 @Composable
 private fun PermissionItemToggle(
-    icon: String,
+    icon: TahoIconName,
     label: String,
     state: String,
     onStateChange: (String) -> Unit,
@@ -665,7 +694,8 @@ private fun PermissionItemToggle(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(icon, fontSize = 12.sp)
+            // The permission name is the visible label beside it.
+            TahoIcon(icon, tint = mute, description = null, modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(10.dp))
             Text(label, color = ink, fontFamily = TahoMono, fontSize = 11.sp)
         }
@@ -967,7 +997,15 @@ fun TahoTranslationBar(
                     Text("Original", color = mute, fontFamily = TahoMono, fontSize = 9.sp)
                 }
 
-                Text("✕", color = mute, fontSize = 12.sp, modifier = Modifier.clickable(onClick = onClose).padding(4.dp))
+                TahoIcon(
+                    name = TahoIconName.Close,
+                    tint = mute,
+                    description = "Close translation bar",
+                    modifier = Modifier
+                        .clickable(onClick = onClose)
+                        .padding(4.dp)
+                        .size(13.dp),
+                )
             }
         }
     }

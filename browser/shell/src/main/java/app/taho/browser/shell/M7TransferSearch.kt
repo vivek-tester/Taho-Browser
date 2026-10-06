@@ -34,8 +34,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.semantics
@@ -83,10 +81,11 @@ internal fun M7TransferProgressOverlay(
                         .background(amber.copy(alpha = .14f)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        text = "↗",
-                        color = amberHover,
-                        fontSize = 18.sp,
+                    TahoIcon(
+                        TahoIconName.ExternalLink,
+                        tint = amberHover,
+                        description = null,
+                        modifier = Modifier.size(20.dp),
                     )
                 }
             }
@@ -212,7 +211,12 @@ internal fun M7CaptureSearchField(
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             decorationBox = { inner ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("⌕", color = mute, fontSize = 12.sp)
+                    TahoIcon(
+                        TahoIconName.Search,
+                        tint = mute,
+                        description = null,
+                        modifier = Modifier.size(14.dp),
+                    )
                     Spacer(Modifier.width(8.dp))
                     Box {
                         if (query.isEmpty()) {

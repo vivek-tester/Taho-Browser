@@ -148,9 +148,9 @@ class TahoStartHeaderBudgetTest {
         val body = indexOfFirst { it.startsWith("fun TahoStartPage(") }
 
         // ---- the header row, located from the icon calls that end it -------
-        // `StartHeaderIcon("…"` matches the three call sites and not the
-        // declaration, which is `private fun StartHeaderIcon(glyph: String`.
-        val iconCall = indexOfFirst(from = body) { it.startsWith("StartHeaderIcon(\"") }
+        // `StartHeaderIcon(TahoIconName.…` matches the three call sites and not
+        // the declaration, which is `private fun StartHeaderIcon(icon: …`.
+        val iconCall = indexOfFirst(from = body) { it.startsWith("StartHeaderIcon(") }
         val iconRowIndex = indexOfFirst(to = iconCall) { it.startsWith("Row(") }
 
         // The brand header is the *outermost* Row whose own extent contains the
@@ -167,7 +167,7 @@ class TahoStartHeaderBudgetTest {
         val header = live.subList(headerStart, headerEnd)
         val headerText = header.joinToString("\n")
 
-        val iconCount = header.count { it.startsWith("StartHeaderIcon(\"") }
+        val iconCount = header.count { it.startsWith("StartHeaderIcon(") }
         assertTrue(iconCount > 0, "no header icons in the brand header — the anchor " +
             "drifted and the right-hand group would measure as empty")
 
@@ -186,16 +186,29 @@ class TahoStartHeaderBudgetTest {
 
         // ---- left group: crest + spacer + the wider of its two Texts -------
         val leftRowIndex = indexOfFirst(from = headerStart + 1, to = headerEnd) { it.startsWith("Row(") }
-        val crestSizes = allOf("\\.size\\(([\\d.]+)\\.dp\\)", headerText)
-        assertTrue(crestSizes.size == 1, "expected exactly one fixed-size box in the brand " +
-            "header, found ${crestSizes.size} (${crestSizes.joinToString { fmt(it) }}) — the " +
-            "crest size is read as the first, so an added box would be measured wrongly")
+        // Read the crest off the crest `Box` itself, not off "the first .size in
+        // the header". The crest now paints a `TahoIcon`, whose own `Modifier.size`
+        // is a second fixed size inside that Box — the mark's paint size, not a
+        // layout footprint — so a positional first-match would still be right by
+        // luck and would break silently the day the mark was restyled. The Box's
+        // *signature* is the layout footprint; its body is not.
+        val crestBoxIndex = indexOfFirst(
+            from = leftRowIndex + 1,
+            to = headerEnd,
+        ) { it.startsWith("Box(") }
+        val crestSizes = allOf(
+            "\\.size\\(([\\d.]+)\\.dp\\)",
+            signatureOf(crestBoxIndex),
+        )
+        assertTrue(crestSizes.size == 1, "expected exactly one fixed size on the crest Box — " +
+            "the box itself; the mark inside it is sized as a paint detail, not a " +
+            "footprint — found ${crestSizes.size} (${crestSizes.joinToString { fmt(it) }})")
         val crest = crestSizes.first()
         val spacer = oneOf("\\.width\\(([\\d.]+)\\.dp\\)", headerText, "crest spacer")
 
-        // The crest glyph is *also* an `isPrivate` text branch, so the wordmark
-        // is located from the left Row's own Column and the two branches read
-        // inside it — never by scanning the whole header for the first match.
+        // The crest mark is *also* an `isPrivate` branch, so the wordmark is located
+        // from the left Row's own Column and the two branches read inside it —
+        // never by scanning the whole header for the first match.
         val wordmarkColumnIndex = indexOfFirst(
             from = leftRowIndex + 1,
             to = headerEnd,

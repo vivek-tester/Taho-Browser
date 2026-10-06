@@ -28,7 +28,13 @@ class TahoTabsHeaderTest {
      * anchor would make every scan below pass on unrelated code.
      */
     private fun sheetBody(): String {
-        val anchor = "fun TahoTabsOverviewSheet("
+        // Anchored on the search bar's leading icon so `theHeaderInvokesTheSettingsCallback`
+    // can slice the header off the top of the sheet. That mark was `"⌕"` and is now
+    // `TahoIcon(TahoIconName.Search`, so the delimiter has to name the icon rather
+    // than the character — otherwise `substringBefore` finds no anchor at all and
+    // hands back the whole file, which is precisely the widening this class exists
+    // to prevent. The `onClick = onOpenSettings` above it is what the slice keeps.
+    val anchor = "TahoTabsOverviewSheet("
         val live = tabsFile.readText()
             .lineSequence()
             .map { it.trim() }
@@ -51,7 +57,12 @@ class TahoTabsHeaderTest {
     @Test
     fun theHeaderInvokesTheSettingsCallback() {
         val body = sheetBody()
-        val header = body.substringBefore("⌕")
+        val header = body.substringBefore("TahoIconName.Search")
+        assertTrue(
+            header.length < body.length,
+            "the search-bar anchor was lost — the slice below would silently widen " +
+                "to the whole sheet and pass on unrelated code",
+        )
         val occurrences = Regex("\\bonOpenSettings\\b").findAll(header).count()
         assertTrue(
             occurrences >= 2,

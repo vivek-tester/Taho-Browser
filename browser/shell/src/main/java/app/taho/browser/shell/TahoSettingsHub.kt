@@ -49,10 +49,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -125,7 +122,13 @@ fun TahoSettingsHubSheet(
                             .clickable { currentSubPage = SettingsSubPage.MAIN },
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text("‹", color = amberHover, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        // The sub-page title beside it names the destination.
+                        TahoIcon(
+                            name = TahoIconName.ChevronLeft,
+                            tint = amberHover,
+                            description = null,
+                            modifier = Modifier.size(20.dp),
+                        )
                     }
                     Spacer(Modifier.width(10.dp))
                 }
@@ -178,7 +181,7 @@ fun TahoSettingsHubSheet(
                     .clickable(onClick = onDismiss),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("×", color = mute, fontSize = 16.sp)
+                TahoIcon(TahoIconName.Close, tint = mute, description = "Close", modifier = Modifier.size(17.dp))
             }
         }
 
@@ -270,7 +273,7 @@ private fun SettingsMainIndex(onNavigateSub: (SettingsSubPage) -> Unit) {
                 .padding(horizontal = 14.dp, vertical = 8.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("⌕", color = mute, fontSize = 13.sp)
+                TahoIcon(TahoIconName.Search, tint = mute, description = null, modifier = Modifier.size(15.dp))
                 Spacer(Modifier.width(8.dp))
                 Box(modifier = Modifier.weight(1f)) {
                     if (searchFilter.isEmpty()) {
@@ -286,7 +289,14 @@ private fun SettingsMainIndex(onNavigateSub: (SettingsSubPage) -> Unit) {
                     )
                 }
                 if (searchFilter.isNotEmpty()) {
-                    Text("×", color = mute, fontSize = 14.sp, modifier = Modifier.clickable { searchFilter = "" })
+                    TahoIcon(
+                        name = TahoIconName.Close,
+                        tint = mute,
+                        description = "Clear search filter",
+                        modifier = Modifier
+                            .clickable { searchFilter = "" }
+                            .size(15.dp),
+                    )
                 }
             }
         }
@@ -314,7 +324,13 @@ private fun SettingsMainIndex(onNavigateSub: (SettingsSubPage) -> Unit) {
                         Spacer(Modifier.height(2.dp))
                         Text(subtitle, color = mute, fontFamily = TahoMono, fontSize = 9.sp)
                     }
-                    Text("›", color = mute, fontSize = 16.sp)
+                    // The row is the control and the tile's title is its visible label.
+                    TahoIcon(
+                        name = TahoIconName.ChevronRight,
+                        tint = mute,
+                        description = null,
+                        modifier = Modifier.size(16.dp),
+                    )
                 }
             }
         }
@@ -375,7 +391,16 @@ private fun SettingsAppearancePage() {
                     // saturated colour, so this pairs dark-on-light exactly as the
                     // accent pills above do (canvas reads 6.02:1 worst case across
                     // the five accents; ink would read 1.65:1 and fail).
-                    if (sel) Text("✓", color = canvas, fontSize = 14.sp)
+                    // Selected is also the only state this swatch has, so the tick
+                    // names it: a colour alone is not an announcement.
+                    if (sel) {
+                        TahoIcon(
+                            name = TahoIconName.Check,
+                            tint = canvas,
+                            description = "$name accent, selected",
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
                 }
             }
         }
@@ -496,13 +521,14 @@ private fun SettingsSearchEnginePage() {
                     }
                     if (engines.size > 1 && !sel) {
                         Spacer(Modifier.width(10.dp))
-                        Text(
-                            text = "×",
-                            color = mute,
-                            fontSize = 16.sp,
+                        TahoIcon(
+                            name = TahoIconName.Close,
+                            tint = mute,
+                            description = "Remove ${engine.name}",
                             modifier = Modifier
                                 .clickable { TahoBrowserStateStore.removeSearchEngine(engine.id) }
                                 .padding(4.dp)
+                                .size(16.dp),
                         )
                     }
                 }
@@ -877,7 +903,7 @@ private fun SettingsBookmarksPage(onNavigate: (String) -> Unit) {
                 .padding(horizontal = 12.dp, vertical = 7.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("⌕", color = mute, fontSize = 13.sp)
+                TahoIcon(TahoIconName.Search, tint = mute, description = null, modifier = Modifier.size(15.dp))
                 Spacer(Modifier.width(8.dp))
                 Box(modifier = Modifier.weight(1f)) {
                     if (bookmarkSearch.isEmpty()) {
@@ -893,7 +919,15 @@ private fun SettingsBookmarksPage(onNavigate: (String) -> Unit) {
                     )
                 }
                 if (bookmarkSearch.isNotEmpty()) {
-                    Text("×", color = mute, fontSize = 14.sp, modifier = Modifier.clickable { bookmarkSearch = "" })
+                                        TahoIcon(
+                        name = TahoIconName.Close,
+                        tint = mute,
+                        description = "Clear bookmark search",
+                        modifier = Modifier
+
+                            .clickable { bookmarkSearch = "" }
+                            .size(15.dp),
+                    )
                 }
             }
         }
@@ -1021,7 +1055,16 @@ private fun SettingsBookmarksPage(onNavigate: (String) -> Unit) {
                             showAddFolderDialog = false
                         }
                     }.padding(horizontal = 6.dp))
-                    Text("×", color = mute, fontSize = 14.sp, modifier = Modifier.clickable { showAddFolderDialog = false }.padding(horizontal = 4.dp))
+                                        TahoIcon(
+                        name = TahoIconName.Close,
+                        tint = mute,
+                        description = "Cancel new folder",
+                        modifier = Modifier
+
+                            .clickable { showAddFolderDialog = false }
+                            .padding(horizontal = 4.dp)
+                            .size(15.dp),
+                    )
                 }
             }
 
@@ -1134,7 +1177,16 @@ private fun SettingsBookmarksPage(onNavigate: (String) -> Unit) {
                                 }
                                 Text(item.url, color = mute, fontFamily = TahoMono, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
-                            Text("×", color = mute, fontSize = 16.sp, modifier = Modifier.clickable { TahoBrowserStateStore.removeBookmark(item.id) }.padding(6.dp))
+                                                        TahoIcon(
+                                name = TahoIconName.Close,
+                                tint = mute,
+                                description = "Remove bookmark ${item.title}",
+                                modifier = Modifier
+
+                                .clickable { TahoBrowserStateStore.removeBookmark(item.id) }
+                                .padding(6.dp)
+                                .size(16.dp),
+                            )
                         }
                     }
                 }
@@ -1170,7 +1222,16 @@ private fun SettingsBookmarksPage(onNavigate: (String) -> Unit) {
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(if (item.isRead) "Unmark" else "Mark Read", color = mute, fontFamily = TahoMono, fontSize = 9.sp, modifier = Modifier.clickable { TahoBrowserStateStore.toggleReadingListRead(item.id) }.padding(4.dp))
-                                Text("×", color = mute, fontSize = 16.sp, modifier = Modifier.clickable { TahoBrowserStateStore.removeReadingListItem(item.id) }.padding(4.dp))
+                                                                TahoIcon(
+                                    name = TahoIconName.Close,
+                                    tint = mute,
+                                    description = "Remove ${item.title} from reading list",
+                                    modifier = Modifier
+
+                                    .clickable { TahoBrowserStateStore.removeReadingListItem(item.id) }
+                                    .padding(4.dp)
+                                    .size(16.dp),
+                                )
                             }
                         }
                     }
@@ -1206,7 +1267,16 @@ private fun SettingsBookmarksPage(onNavigate: (String) -> Unit) {
                                 Text(page.title, color = ink, fontFamily = TahoMono, fontSize = 11.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text("${page.url} · ${page.sizeBytes / 1024} KB cached", color = mute, fontFamily = TahoMono, fontSize = 8.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
-                            Text("×", color = mute, fontSize = 16.sp, modifier = Modifier.clickable { TahoBrowserStateStore.removeOfflinePage(page.id) }.padding(6.dp))
+                                                        TahoIcon(
+                                name = TahoIconName.Close,
+                                tint = mute,
+                                description = "Remove ${page.title} from offline pages",
+                                modifier = Modifier
+
+                                .clickable { TahoBrowserStateStore.removeOfflinePage(page.id) }
+                                .padding(6.dp)
+                                .size(16.dp),
+                            )
                         }
                     }
                 }
@@ -1235,7 +1305,7 @@ private fun SettingsHistoryPage(onNavigate: (String) -> Unit) {
                 .padding(horizontal = 12.dp, vertical = 7.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("⌕", color = mute, fontSize = 13.sp)
+                TahoIcon(TahoIconName.Search, tint = mute, description = null, modifier = Modifier.size(15.dp))
                 Spacer(Modifier.width(8.dp))
                 Box(modifier = Modifier.weight(1f)) {
                     if (search.isEmpty()) {
@@ -1256,13 +1326,15 @@ private fun SettingsHistoryPage(onNavigate: (String) -> Unit) {
                     )
                 }
                 if (search.isNotEmpty()) {
-                    Text(
-                        "×",
-                        color = mute,
-                        fontSize = 14.sp,
+                                        TahoIcon(
+                        name = TahoIconName.Close,
+                        tint = mute,
+                        description = "Clear search",
                         modifier = Modifier
+
                             .clickable { search = "" }
-                            .padding(4.dp),
+                            .padding(4.dp)
+                            .size(15.dp),
                     )
                 }
             }
@@ -1301,7 +1373,16 @@ private fun SettingsHistoryPage(onNavigate: (String) -> Unit) {
                         Text(entry.title, color = ink, fontFamily = TahoMono, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(entry.url, color = mute, fontFamily = TahoMono, fontSize = 8.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    Text("×", color = mute, fontSize = 16.sp, modifier = Modifier.clickable { TahoBrowserStateStore.removeHistoryEntry(entry.id) }.padding(6.dp))
+                                        TahoIcon(
+                        name = TahoIconName.Close,
+                        tint = mute,
+                        description = "Remove ${entry.title} from history",
+                        modifier = Modifier
+
+                            .clickable { TahoBrowserStateStore.removeHistoryEntry(entry.id) }
+                            .padding(6.dp)
+                            .size(16.dp),
+                    )
                 }
             }
         }
@@ -1436,7 +1517,7 @@ private fun SettingsPasswordsPage() {
                 .padding(horizontal = 12.dp, vertical = 7.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("⌕", color = mute, fontSize = 13.sp)
+                TahoIcon(TahoIconName.Search, tint = mute, description = null, modifier = Modifier.size(15.dp))
                 Spacer(Modifier.width(8.dp))
                 Box(modifier = Modifier.weight(1f)) {
                     if (search.isEmpty()) {
@@ -1452,7 +1533,15 @@ private fun SettingsPasswordsPage() {
                     )
                 }
                 if (search.isNotEmpty()) {
-                    Text("×", color = mute, fontSize = 14.sp, modifier = Modifier.clickable { search = "" })
+                                        TahoIcon(
+                        name = TahoIconName.Close,
+                        tint = mute,
+                        description = "Clear search",
+                        modifier = Modifier
+
+                            .clickable { search = "" }
+                            .size(15.dp),
+                    )
                 }
             }
         }
@@ -1779,9 +1868,16 @@ private fun SettingsAutofillPage() {
                     Text(addr.fullName, color = ink, fontFamily = TahoMono, fontSize = 11.sp)
                     Text("${addr.street}, ${addr.city}, ${addr.state} ${addr.zipCode}", color = mute, fontFamily = TahoMono, fontSize = 9.sp)
                 }
-                Text("×", color = mute, fontSize = 16.sp, modifier = Modifier.clickable {
-                    TahoBrowserStateStore.removeSavedAddress(addr.id)
-                }.padding(6.dp))
+                                TahoIcon(
+                    name = TahoIconName.Close,
+                    tint = mute,
+                    description = "Remove saved address ${addr.label}",
+                    modifier = Modifier
+
+                    .clickable { TahoBrowserStateStore.removeSavedAddress(addr.id) }
+                    .padding(6.dp)
+                    .size(16.dp),
+                )
             }
             Spacer(Modifier.height(6.dp))
         }
@@ -1850,11 +1946,18 @@ private fun SettingsAutofillPage() {
                     Text("${pay.cardType} · ${pay.cardNumberMasked} (Exp: ${pay.cardExpiry})", color = mute, fontFamily = TahoMono, fontSize = 9.sp)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("💳", fontSize = 14.sp)
+                    TahoIcon(TahoIconName.Card, tint = mute, description = null, modifier = Modifier.size(15.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("×", color = mute, fontSize = 16.sp, modifier = Modifier.clickable {
-                        TahoBrowserStateStore.removeSavedPayment(pay.id)
-                    }.padding(6.dp))
+                    TahoIcon(
+                        name = TahoIconName.Close,
+                        tint = mute,
+                        description = "Remove saved card for ${pay.cardHolder}",
+                        modifier = Modifier
+
+                            .clickable { TahoBrowserStateStore.removeSavedPayment(pay.id) }
+                            .padding(6.dp)
+                            .size(16.dp),
+                    )
                 }
             }
             Spacer(Modifier.height(6.dp))
@@ -2251,7 +2354,13 @@ private fun SettingsPerformanceMediaPage() {
                         fontSize = 10.sp,
                     )
                     if (selected) {
-                        Text("✓", color = amberHover, fontFamily = TahoMono, fontSize = 10.sp)
+                        // Selection is a state the row's label does not carry.
+                        TahoIcon(
+                            name = TahoIconName.Check,
+                            tint = amberHover,
+                            description = "$label, selected",
+                            modifier = Modifier.size(11.dp),
+                        )
                     }
                 }
             }
@@ -2556,13 +2665,15 @@ private fun SettingsDiagnosticsPage() {
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
-                        Text(
-                            "×",
-                            color = mute,
-                            fontSize = 16.sp,
+                                                TahoIcon(
+                            name = TahoIconName.Close,
+                            tint = mute,
+                            description = "Dismiss notification from ${item.origin}",
                             modifier = Modifier
+
                                 .clickable { TahoBrowserStateStore.removeWebsiteNotification(item.id) }
-                                .padding(4.dp),
+                                .padding(4.dp)
+                                .size(16.dp),
                         )
                     }
                 }
@@ -2712,11 +2823,14 @@ private fun SettingsBackupExportPage() {
                         modifier = Modifier.weight(1f),
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text(
-                        "×",
-                        color = mute,
-                        fontSize = 14.sp,
-                        modifier = Modifier.clickable { statusMessage = null },
+                                        TahoIcon(
+                        name = TahoIconName.Close,
+                        tint = mute,
+                        description = "Dismiss status message",
+                        modifier = Modifier
+
+                            .clickable { statusMessage = null }
+                            .size(15.dp),
                     )
                 }
             }
@@ -2836,9 +2950,16 @@ private fun SettingsCollectionsPage() {
                         Text(col.name, color = ink, fontFamily = TahoMono, fontSize = 11.5.sp, fontWeight = FontWeight.Medium)
                         Text("${col.linkCount} links · ${col.description}", color = mute, fontFamily = TahoMono, fontSize = 8.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    Text("×", color = mute, fontSize = 16.sp, modifier = Modifier.clickable {
-                        TahoBrowserStateStore.removeCollection(col.id)
-                    }.padding(6.dp))
+                                        TahoIcon(
+                        name = TahoIconName.Close,
+                        tint = mute,
+                        description = "Remove collection ${col.name}",
+                        modifier = Modifier
+
+                            .clickable { TahoBrowserStateStore.removeCollection(col.id) }
+                            .padding(6.dp)
+                            .size(16.dp),
+                    )
                 }
                 Spacer(Modifier.height(6.dp))
             }
@@ -2863,9 +2984,9 @@ private fun SettingsOnboardingPage(onFinish: () -> Unit) {
                 Spacer(Modifier.height(6.dp))
                 Text("Engineered for builders, security researchers, and privacy purists.", color = mute, fontFamily = TahoMono, fontSize = 11.sp)
                 Spacer(Modifier.height(20.dp))
-                OnboardingFeature("⬡", "AMOLED Pitch Black Chrome", "Zero eye strain, battery-efficient true OLED blacks.")
-                OnboardingFeature("🛡", "Strict Zero-Trust Defense", "Trackers, fingerprinting, and cryptominers blocked by default.")
-                OnboardingFeature("⚡", "Live Network Capture", "Inspect, replay, and transfer API payloads directly to Project-Taho.")
+                OnboardingFeature(TahoIconName.Brand, "AMOLED Pitch Black Chrome", "Zero eye strain, battery-efficient true OLED blacks.")
+                OnboardingFeature(TahoIconName.Shield, "Strict Zero-Trust Defense", "Trackers, fingerprinting, and cryptominers blocked by default.")
+                OnboardingFeature(TahoIconName.Bolt, "Live Network Capture", "Inspect, replay, and transfer API payloads directly to Project-Taho.")
                 Spacer(Modifier.height(24.dp))
                 M7PrimaryButton("Continue", modifier = Modifier.fillMaxWidth()) { step = 2 }
             }
@@ -2891,9 +3012,10 @@ private fun SettingsOnboardingPage(onFinish: () -> Unit) {
 }
 
 @Composable
-private fun OnboardingFeature(icon: String, title: String, desc: String) {
+private fun OnboardingFeature(icon: TahoIconName, title: String, desc: String) {
     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        Text(icon, fontSize = 18.sp)
+        // The title beside it is the visible label.
+        TahoIcon(icon, tint = mute, description = null, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(12.dp))
         Column {
             Text(title, color = ink, fontFamily = TahoMono, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
@@ -3060,7 +3182,16 @@ private fun SettingsCheckboxRow(title: String, count: String, checked: Boolean, 
                     .border(1.dp, if (checked) amberHover else hairline, RoundedCornerShape(4.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                if (checked) Text("✓", color = canvas, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                if (checked) {
+                        // The row's own title is the label; this is the state, and
+                        // state is not something the title already conveys.
+                        TahoIcon(
+                            name = TahoIconName.Check,
+                            tint = canvas,
+                            description = "$title, on",
+                            modifier = Modifier.size(12.dp),
+                        )
+                    }
             }
             Spacer(Modifier.width(10.dp))
             Text(title, color = ink, fontFamily = TahoMono, fontSize = 11.sp)
@@ -3123,7 +3254,7 @@ private fun SettingsLinkRow(label: String, url: String) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, color = ink, fontFamily = TahoMono, fontSize = 11.sp)
-        Text("↗", color = amberHover, fontSize = 13.sp)
+        TahoIcon(TahoIconName.ExternalLink, tint = amberHover, description = null, modifier = Modifier.size(15.dp))
     }
     Spacer(Modifier.height(6.dp))
 }

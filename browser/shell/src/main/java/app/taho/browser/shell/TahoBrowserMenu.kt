@@ -30,7 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -95,7 +94,14 @@ fun TahoBrowserMenuSheet(
                     .background(ok.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("🔒", fontSize = 12.sp)
+                // The row is the control and it carries two text labels, so the
+                // mark itself is decorative.
+                TahoIcon(
+                    name = TahoIconName.Lock,
+                    tint = ok,
+                    description = null,
+                    modifier = Modifier.size(14.dp),
+                )
             }
             Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -128,22 +134,30 @@ fun TahoBrowserMenuSheet(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            MenuQuickAction(if (isBookmarked) "★" else "☆", if (isBookmarked) "Bookmarked" else "Bookmark", isBookmarked) {
+            MenuQuickAction(
+                icon = if (isBookmarked) TahoIconName.Star else TahoIconName.StarOutline,
+                label = if (isBookmarked) "Bookmarked" else "Bookmark",
+                active = isBookmarked,
+            ) {
                 onToggleBookmark()
             }
-            MenuQuickAction("📖", "Reading", false) {
+            MenuQuickAction(TahoIconName.Book, "Reading", false) {
                 onCloseMenu()
                 onSaveToReadingList()
             }
-            MenuQuickAction("↗", "Share", false) {
+            MenuQuickAction(TahoIconName.ExternalLink, "Share", false) {
                 onCloseMenu()
                 onShare()
             }
-            MenuQuickAction("⌕", "Find", false) {
+            MenuQuickAction(TahoIconName.Search, "Find", false) {
                 onCloseMenu()
                 onFindInPage()
             }
-            MenuQuickAction(if (isDesktopMode) "🖥✓" else "🖥", "Desktop", isDesktopMode) {
+            MenuQuickAction(
+                icon = if (isDesktopMode) TahoIconName.MonitorCheck else TahoIconName.Monitor,
+                label = "Desktop",
+                active = isDesktopMode,
+            ) {
                 onToggleDesktopMode()
             }
         }
@@ -169,10 +183,18 @@ fun TahoBrowserMenuSheet(
                         .clip(TahoPillShape)
                         .background(bone)
                         .clickable(onClick = onZoomOut)
-                        .semantics { role = Role.Button; contentDescription = "Zoom out" },
+                        .semantics { role = Role.Button },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("−", color = ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    // The label moved from the Box onto the mark: the glyph was
+                    // the control's only content, so this is the string a screen
+                    // reader needs and the Box no longer has to own it.
+                    TahoIcon(
+                        name = TahoIconName.Minus,
+                        tint = ink,
+                        description = "Zoom out",
+                        modifier = Modifier.size(14.dp),
+                    )
                 }
                 Box(
                     modifier = Modifier
@@ -190,10 +212,15 @@ fun TahoBrowserMenuSheet(
                         .clip(TahoPillShape)
                         .background(bone)
                         .clickable(onClick = onZoomIn)
-                        .semantics { role = Role.Button; contentDescription = "Zoom in" },
+                        .semantics { role = Role.Button },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("+", color = ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    TahoIcon(
+                        name = TahoIconName.Plus,
+                        tint = ink,
+                        description = "Zoom in",
+                        modifier = Modifier.size(14.dp),
+                    )
                 }
             }
         }
@@ -301,7 +328,7 @@ fun TahoBrowserMenuSheet(
 
 @Composable
 private fun MenuQuickAction(
-    glyph: String,
+    icon: TahoIconName,
     label: String,
     active: Boolean,
     onClick: () -> Unit,
@@ -322,7 +349,13 @@ private fun MenuQuickAction(
                 .border(1.dp, if (active) amberHover else hairline, RoundedCornerShape(13.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Text(glyph, color = if (active) amberHover else ink, fontSize = 16.sp)
+            // Label is announced alongside: the mark is decorative here.
+            TahoIcon(
+                name = icon,
+                tint = if (active) amberHover else ink,
+                description = null,
+                modifier = Modifier.size(20.dp),
+            )
         }
         Spacer(Modifier.height(5.dp))
         Text(
@@ -365,7 +398,14 @@ private fun MenuItemRow(
                 fontSize = 9.sp,
             )
         }
-        Text("›", color = mute, fontSize = 16.sp)
+        // The row is the control and the title is its visible label, so the
+        // trailing chevron repeats it rather than naming it.
+        TahoIcon(
+            name = TahoIconName.ChevronRight,
+            tint = mute,
+            description = null,
+            modifier = Modifier.size(16.dp),
+        )
     }
 }
 
