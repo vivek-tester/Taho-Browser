@@ -200,12 +200,28 @@ fun TahoStartPage(
             Spacer(Modifier.height(18.dp))
 
             // Brand Header / Crest
+            //
+            // The row's whole budget is `screenWidth - 40dp` (the root column's
+            // 20dp horizontal padding either side), so a 360dp screen offers
+            // 320dp. The right group is fixed at 3 x 38dp + 2 x 8dp = 130dp and
+            // is deliberately unweighted: weighted, the icons would shrink and
+            // clip, which is worse than a truncated word.
+            //
+            // That leaves 190dp for crest (34) + spacer (10) + the wordmark
+            // column — 146dp for the wider of its two Texts. So the left group
+            // *is* weighted and the tagline yields: unweighted, it was measured at
+            // its full 29-glyph width and the icon group was laid out on top of
+            // it, because a fixed-size Box is placed outside the measured box
+            // rather than wrapping away.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Box(
                         modifier = Modifier
                             .size(34.dp)
@@ -222,7 +238,7 @@ fun TahoStartPage(
                         )
                     }
                     Spacer(Modifier.width(10.dp))
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = if (isPrivate) "TAHO PRIVATE" else "TAHO BROWSER",
                             color = ink,
@@ -230,12 +246,21 @@ fun TahoStartPage(
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 15.sp,
                             letterSpacing = 1.2.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
+                        // 8sp, not 9: 29 glyphs at 0.6em of 9sp is 157dp, which
+                        // overruns the 146dp the column has left after the crest
+                        // and the icon group. Single-line and ellipsised so that a
+                        // longer copy, a fourth icon, or a reader at 130% font
+                        // scale truncates instead of colliding.
                         Text(
                             text = if (isPrivate) "Encrypted Ephemeral Engine" else "Zero-Trust Engineering Chrome",
                             color = if (isPrivate) amberHover else mute,
                             fontFamily = TahoMono,
-                            fontSize = 9.sp,
+                            fontSize = 8.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
@@ -789,10 +814,17 @@ private fun StartHeaderIcon(glyph: String, description: String, onClick: () -> U
  * added but never taken off the page.
  *
  * Two affordances, because one is not enough: a long press toggles the pin, and
- * a visible Remove control takes the shortcut off the page outright. The long
- * press carries an accessibility label and the pin state is part of the tile's
+ * a visible Remove control takes the shortcut off the page. The long press
+ * carries an accessibility label and the pin state is part of the tile's
  * announced name, so a screen reader learns both the state and what the gesture
  * will do.
+ *
+ * Removal is offered but not one tap deep. The Remove band is a sibling 6dp
+ * under the tile's own label, and `removeTopSite` is not undoable — the id is
+ * gone and re-adding mints a fresh UUID — so a loose finger would otherwise
+ * destroy a shortcut with no way back but retyping the address. The band opens
+ * a confirmation, M7ProductUx's `confirmingClear` shape, and only the confirm
+ * control calls [onRemove].
  */
 @Composable
 private fun StartShortcutTile(
@@ -802,6 +834,12 @@ private fun StartShortcutTile(
     onRemove: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
+    // Keyed on the shortcut's identity, not a bare `remember`: the tiles live in
+    // a FlowRow that a lazy layout may one day recycle, and an unkeyed flag
+    // survives the swap — scrolling one shortcut into confirming would then arm
+    // a *different* shortcut's deletion. A changed id re-runs the initializer,
+    // so the flag comes back false.
+    var confirmingRemove by remember(item.id) { mutableStateOf(false) }
     Column(modifier = Modifier.width(72.dp)) {
         Column(
             modifier = Modifier
@@ -880,18 +918,82 @@ private fun StartShortcutTile(
         // would re-create the very defect this fixes: the long press unpinning
         // moves a tile into a state with no Remove at all, where the only way
         // back would be another long press to re-pin it.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .clickable(onClick = onRemove)
-                .semantics {
-                    role = Role.Button
-                    contentDescription = "Remove ${item.title}"
-                },
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("× Remove", color = mute, fontFamily = TahoMono, fontSize = 9.sp)
+        //
+        // One tap only *asks*. Removal is not undoable — `removeTopSite` is an
+        // unfiltered `filterNot { it.id == id }` and re-adding mints a fresh
+        // UUID, so the tile comes back only by retyping the address — and the
+        // band sits 6dp under the tile's own label, so a loose finger aimed at
+        // the shortcut lands on it. Hence the two-step swap: the same shape as
+        // M7ProductUx's `confirmingClear` (question, then Cancel and an action),
+        // never a third pattern. The tile is 72dp wide, so the two controls
+        // stack rather than share a row — two 48dp targets will not fit abreast.
+        if (!confirmingRemove) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .clickable { confirmingRemove = true }
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = "Remove ${item.title}"
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("× Remove", color = mute, fontFamily = TahoMono, fontSize = 9.sp)
+            }
+        } else {
+            // The tile is 72dp wide, so this column holds about 13 glyphs of 9sp
+            // TahoMono per line. A prose explanation here does not fit — the
+            // earlier three-line, 8sp "It can be added back by typing its
+            // address." filled every permitted line edge to edge and grew the
+            // tile from ~118dp to ~160dp, dragging its three neighbours in the
+            // four-across FlowRow to match. The recoverability note is real, so
+            // it lives in the confirm control's announced label, where a screen
+            // reader already receives it, rather than as cramped visible prose.
+            Text(
+                text = "Remove ${item.title}?",
+                color = ink,
+                fontFamily = TahoMono,
+                fontSize = 9.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(6.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .clickable { confirmingRemove = false }
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = "Cancel removing ${item.title}"
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("Cancel", color = mute, fontFamily = TahoMono, fontSize = 9.sp)
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .clickable {
+                        confirmingRemove = false
+                        onRemove()
+                    }
+                    .semantics {
+                        role = Role.Button
+                        // Announced rather than printed: `removeTopSite` is an
+                        // unfiltered filterNot and re-adding mints a fresh UUID,
+                        // so the user should hear what they are giving up before
+                        // they confirm, and there is no room to show it.
+                        contentDescription = "Confirm removing ${item.title}. " +
+                            "It can be added back by typing its address."
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("Remove", color = danger, fontFamily = TahoMono, fontSize = 9.sp)
+            }
         }
     }
 }
