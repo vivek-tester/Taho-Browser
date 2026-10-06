@@ -205,12 +205,12 @@ rather than an expanding ring, preserving the reduced-motion bypass.
 Replace emoji with authored vector drawables (`res/drawable/`), 24dp viewport,
 1.5dp stroke, round caps and joins, `currentColor` tint — one family, one weight.
 
-Required set, reconciled against the shell at `0cb3822` (38):
+Required set, reconciled against the shell at `0cb3822` (42):
 
-    close  chevron-right  minus  plus  search  check  warn-triangle  settings
-    person  incognito  brand  shield  shield-check  lock  bolt  monitor
+    close  chevron-left  chevron-right  minus  plus  search  check  warn-triangle
+    settings  person  incognito  brand  shield  shield-check  lock  bolt  monitor
     monitor-check  sparkle  grid  clock  caret-up  caret-down  alert  home  card
-    star  star-outline  book  reader  expand
+    star  star-outline  book  reader  expand  reload  overflow  external-link
     location  camera  microphone  notification  clipboard  storage  popups
     autoplay
 
@@ -228,14 +228,30 @@ replaced rather than patched, because it no longer described this codebase:
   file count.
 - **Eight names had no site.** `find`, `print`, `download`, `key`, `puzzle` and `folder` exist
   in the shell only *inside prose* — `"🔍 Find on page"` — never in an icon slot.
-  `arrow-up-right`, `share`, `translate` and `install` had no glyph at all.
-- **Thirteen were missing.** The site-permission list (`TahoPageOverlays.kt`) alone contributes
+  `translate` and `install` had no glyph at all.
+- **Eight were missing.** The site-permission list (`TahoPageOverlays.kt`) alone contributes
   nine: location, camera, microphone, notification, clipboard, storage, popups, autoplay and
   background. Also `check`, `warn-triangle`, `home`, `card`, `person`, `expand`, `caret-up`,
-  `caret-down`, `star-outline`, `monitor-check` and `shield-check`.
+  `caret-down`, `star-outline`, `monitor-check`, `shield-check`, `reload`, `overflow`,
+  `chevron-left` and `external-link`.
 - **`close` was two codepoints.** `×` (U+00D7, 28 uses) and `✕` (U+2715, 4 uses) are both the
   close affordance. One drawable serves both; leaving them as separate glyphs would have
   preserved the inconsistency the icon system exists to remove.
+
+### A correction: `arrow-up-right` was wrongly struck
+
+An intermediate revision of this section claimed `arrow-up-right`, `share` and `install` had
+no glyph in the shell. That was wrong, and it came from a defect in the survey rather than
+from the tree: the detector used to inventory glyph characters covered the supplementary
+planes and the dingbat blocks, but not the arrows block, so it never saw `↗` (U+2197,
+5 uses), `↻` (U+21BB) or `↲`-adjacent navigation marks. `external-link` and `reload` are the
+same omission, and `overflow` (`⋮`, U+22EE) is the browser menu button — the very control
+this port's dead-control work began with. The first draft of this reconciliation was 38 icons
+because of that blind spot; it is 42.
+
+The lesson generalises past this task: an inventory that reports a *negative* ("nothing uses
+this") is only as trustworthy as the ranges it scanned. Assert the coverage of the detector,
+not just the finding.
 
 ### Inline marks are not icons
 
