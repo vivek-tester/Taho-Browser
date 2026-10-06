@@ -205,7 +205,7 @@ rather than an expanding ring, preserving the reduced-motion bypass.
 Replace emoji with authored vector drawables (`res/drawable/`), 24dp viewport,
 1.5dp stroke, round caps and joins, `currentColor` tint — one family, one weight.
 
-Required set, reconciled against the shell at `0cb3822` (37):
+Required set, reconciled against the shell at `0cb3822` (38):
 
     close  chevron-right  minus  plus  search  check  warn-triangle  settings
     person  incognito  brand  shield  shield-check  lock  bolt  monitor
