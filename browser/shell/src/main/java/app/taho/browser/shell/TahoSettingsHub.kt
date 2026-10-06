@@ -956,7 +956,15 @@ private fun SettingsBookmarksPage(onNavigate: (String) -> Unit) {
                                 .clickable { selectedFolder = f.id }
                                 .padding(horizontal = 7.dp, vertical = 3.dp),
                         ) {
-                            Text("📁 undefined", color = if (fSel) amberHover else mute, fontFamily = TahoMono, fontSize = 8.5.sp)
+                            Text(
+                                // Was the literal "📁 undefined": the folder's
+                                // name was never interpolated, so every folder
+                                // chip rendered as the word "undefined".
+                                text = "📁 ${f.name}",
+                                color = if (fSel) amberHover else mute,
+                                fontFamily = TahoMono,
+                                fontSize = 8.5.sp,
+                            )
                         }
                     }
                     Box(
