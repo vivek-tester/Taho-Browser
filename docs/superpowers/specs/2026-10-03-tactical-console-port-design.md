@@ -160,7 +160,15 @@ This is a mechanical but wide change: `TahoFaint` appears throughout
 | Mono / all metrics, identifiers, timestamps | JetBrains Mono | JetBrains Mono (unchanged) |
 
 Two registers, not three. Every URL, count, timestamp, byte size, status code and
-label value moves to JetBrains Mono with `tabular-nums` for column alignment.
+label value moves to JetBrains Mono for column alignment.
+
+**Amendment (Plan 1 final review).** This clause originally required `tabular-nums` explicitly.
+That was over-specified: `tabular-nums` exists to make *proportional* faces reserve equal digit
+widths, and JetBrains Mono is monospaced by construction, so every glyph — digit or not —
+already advances 600/1000 em. There is no `fontFeatureSettings` or `tnum` anywhere in the
+shell, and the Plan 1 review confirmed the numerals do align. Adding the tag anyway would be
+cargo-culting a feature the typeface does not need, so the requirement is withdrawn rather
+than the tree padded to match it.
 
 **Prerequisite:** Archivo TTFs must be added to `browser/shell/src/main/res/font/`
 and licensed (OFL). Clash Display and General Sans are then unused and removed.
