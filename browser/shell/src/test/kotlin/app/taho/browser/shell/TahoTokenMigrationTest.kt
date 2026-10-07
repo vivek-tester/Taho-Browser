@@ -191,15 +191,39 @@ class TahoTokenMigrationTest {
             "TahoStartPage.kt",
         )
 
-        val BANNED_TEXT_COLOUR = Regex("color\\s*=\\s*(ash|stone)\\b")
+        /**
+         * `tint\s*=\s*(ash|stone)` is here for the same reason `color` is, and
+         * its absence was a real gap rather than a theoretical one.
+         *
+         * `TahoIcon` (spec §5) renders a drawable through Material3's `Icon`,
+         * which takes `tint` and never `color` — so every one of the 72 icon
+         * call sites was outside this guard entirely, and a branch-wide review
+         * proved it by mutation: replacing the omnibox leading glyph's
+         * `TahoIcon` with `Text("◐", color = if (enabled) mute else ash)` left
+         * all 63 tests green. `ash` reached a `Text` through an expression and
+         * nothing noticed.
+         *
+         * The invariant held by inspection at the time — `ash` had exactly one
+         * production reference and it carried no string — but "by inspection"
+         * is not a guard. Icon tints are `ash`'s sanctioned use (spec §4.4),
+         * so this is where a future regression would land.
+         */
+        val BANNED_TEXT_COLOUR = Regex("(color|tint)\\s*=\\s*(ash|stone)\\b")
 
         /**
          * The lookbehind deliberately omits `.`: a qualified call such as
          * `androidx.compose.ui.text.TextStyle(` must still be scanned, because
          * that is exactly how a fully-qualified call site slips past. It keeps
          * `[A-Za-z0-9_]` so an identifier like `myText(` is still excluded.
+         *
+         * `TahoIcon` is now included. It is not a text role, so scanning its
+         * argument list is only sound because [BANNED_TEXT_COLOUR] requires a
+         * `tint`/`color` *named argument* equal to `ash`/`stone` — which is
+         * precisely the thing that must not happen, since no icon carries a
+         * string. See the KDoc there.
          */
-        val TEXT_ROLE_OPENERS = Regex("(?<![A-Za-z0-9_])(Text|TextStyle|SpanStyle)\\s*\\(")
+        val TEXT_ROLE_OPENERS =
+            Regex("(?<![A-Za-z0-9_])(Text|TextStyle|SpanStyle|TahoIcon)\\s*\\(")
 
         val LITERAL_PATTERNS = listOf(
             Regex("Color\\(0x[0-9A-Fa-f]{6,8}\\)"),

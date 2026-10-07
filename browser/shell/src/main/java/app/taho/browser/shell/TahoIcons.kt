@@ -43,7 +43,14 @@ import app.taho.browser.shell.R
 internal fun TahoIcon(
     name: TahoIconName,
     tint: Color,
-    description: String? = null,
+    // Deliberately not defaulted. The KDoc above states the rule -- an icon that
+    // is the sole content of an interactive control must pass a description --
+    // and a default of `null` meant the rule was documentation rather than
+    // enforcement: a branch-wide review proved it by mutation, setting the
+    // browser menu's zoom-out label to `null` left all 63 tests green. Passing
+    // `null` explicitly still compiles; omitting the argument no longer does,
+    // so the next unlabelled icon-only control is a build error.
+    description: String?,
     modifier: Modifier = Modifier,
 ) {
     Icon(
